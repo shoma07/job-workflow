@@ -15,5 +15,6 @@ gem "rubocop-performance", require: false
 gem "rubocop-rbs_inline", require: false
 gem "rubocop-rspec", require: false
 gem "rubocop-thread_safety", require: false
+gem "simplecov", require: false
 gem "sqlite3"
 gem "steep", require: false
