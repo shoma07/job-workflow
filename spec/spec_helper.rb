@@ -1,5 +1,13 @@
 # frozen_string_literal: true
 
+require "simplecov"
+
+SimpleCov.start do
+  enable_coverage(:branch)
+  minimum_coverage(line: 100, branch: 100)
+  merge_timeout(3_600)
+end
+
 require "shuttle_job"
 
 RSpec.configure do |config|
