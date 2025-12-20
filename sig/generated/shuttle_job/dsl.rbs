@@ -1,0 +1,23 @@
+# Generated from lib/shuttle_job/dsl.rb with RBS::Inline
+
+module ShuttleJob
+  module DSL
+    extend ActiveSupport::Concern
+
+    def self.class_attribute: (Symbol, default: untyped) -> void
+
+    def self._workflow_tasks: () -> Hash[Symbol, Task]
+
+    # :  (?Hash[untyped, untyped] context) -> void
+    def perform: (?Hash[untyped, untyped] context) -> void
+
+    module ClassMethods
+      def class_attribute: (Symbol, default: untyped) -> void
+
+      def _workflow_tasks: () -> Hash[Symbol, Task]
+
+      # :  (Symbol task_name) { (untyped) -> void } -> void
+      def task: (Symbol task_name) { (untyped) -> void } -> void
+    end
+  end
+end
