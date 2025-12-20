@@ -1,5 +1,74 @@
+plugins:
+  - rubocop-performance
+  - rubocop-rspec
+  - rubocop-rbs_inline
+  - rubocop-thread_safety
+
 AllCops:
   TargetRubyVersion: 3.1
+  NewCops: enable
+  SuggestExtensions: false
+
+Layout/LeadingCommentSpace:
+  Enabled: true
+  AllowDoxygenCommentStyle: false
+  AllowGemfileRubyComment: false
+  AllowRBSInlineAnnotation: true
+
+Layout/LineLength:
+  Enabled: true
+  Max: 120
+  AllowHeredoc: true
+  AllowURI: true
+  AllowQualifiedName: true
+  AllowRBSInlineAnnotation: true
+  AllowCopDirectives: true
+  AllowedPatterns:
+    - "^ *#"
+
+Metrics/BlockLength:
+  Enabled: true
+  CountComments: false
+  Max: 25
+  CountAsOne:
+    - array
+    - hash
+    - heredoc
+
+Metrics/ClassLength:
+  Enabled: true
+  CountComments: false
+  Max: 100
+  CountAsOne:
+    - array
+    - hash
+    - heredoc
+
+Metrics/MethodLength:
+  Enabled: true
+  CountComments: false
+  Max: 10
+  CountAsOne:
+    - array
+    - hash
+    - heredoc
+
+Metrics/ModuleLength:
+  Enabled: true
+  CountComments: false
+  Max: 100
+  CountAsOne:
+    - array
+    - hash
+    - heredoc
+
+RSpec/ExampleLength:
+  Enabled: true
+  Max: 5
+  CountAsOne:
+    - array
+    - hash
+    - heredoc
 
 Style/StringLiterals:
   EnforcedStyle: double_quotes
