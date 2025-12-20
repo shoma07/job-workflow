@@ -5,9 +5,15 @@ source "https://rubygems.org"
 # Specify your gem's dependencies in shuttle_job.gemspec
 gemspec
 
-gem "irb"
-gem "rake", "~> 13.0"
-
-gem "rspec", "~> 3.0"
-
-gem "rubocop", "~> 1.21"
+gem "irb", require: false
+gem "rake", require: false
+gem "rbs", require: false
+gem "rbs-inline", require: false
+gem "rspec", require: false
+gem "rubocop", require: false
+gem "rubocop-performance", require: false
+gem "rubocop-rbs_inline", require: false
+gem "rubocop-rspec", require: false
+gem "rubocop-thread_safety", require: false
+gem "sqlite3"
+gem "steep", require: false
