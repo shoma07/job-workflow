@@ -11,7 +11,13 @@ module ShuttleJob
     # :  (Task) -> void
     def add_task: (Task) -> void
 
+    # :  (ContextDef) -> void
+    def add_context: (ContextDef) -> void
+
     # :  () -> Array[Task]
     def tasks: () -> Array[Task]
+
+    # :  () -> Array[ContextDef]
+    def contexts: () -> Array[ContextDef]
   end
 end
