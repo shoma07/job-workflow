@@ -16,8 +16,8 @@ module ShuttleJob
 
       def _workflow_tasks: () -> Hash[Symbol, Task]
 
-      # :  (Symbol task_name) { (untyped) -> void } -> void
-      def task: (Symbol task_name) { (untyped) -> void } -> void
+      # :  (Symbol task_name, ?depends_on: Array[Symbol]) { (untyped) -> void } -> void
+      def task: (Symbol task_name, ?depends_on: Array[Symbol]) { (untyped) -> void } -> void
     end
   end
 end
