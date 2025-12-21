@@ -8,17 +8,20 @@ RSpec.describe ShuttleJob::Workflow do
   end
 
   describe "#run" do
-    subject(:run) { workflow.run(context) }
+    subject(:run) { workflow.run({ value: 1 }) }
 
-    let(:context) { { value: 0 } }
     let(:workflow) do
       workflow = described_class.new
-      workflow.add_task(ShuttleJob::Task.new(name: :increment, block: ->(ctx) { ctx[:value] += 1 }))
-      workflow.add_task(ShuttleJob::Task.new(name: :double, block: ->(ctx) { ctx[:value] *= 2 }))
+      workflow.add_context(ShuttleJob::ContextDef.new(name: :value, type: "Integer", default: 0))
+      workflow.add_task(ShuttleJob::Task.new(name: :increment, block: ->(ctx) { ctx.value += 1 }))
+      workflow.add_task(ShuttleJob::Task.new(name: :double, block: ->(ctx) { ctx.value *= 2 }))
       workflow
     end
+    let(:ctx) { ShuttleJob::Context.new(workflow) }
 
-    it { expect { run }.to change { context[:value] }.from(0).to(2) }
+    before { allow(ShuttleJob::Context).to receive(:new).with(workflow).and_return(ctx) }
+
+    it { expect { run }.to change(ctx, :value).from(0).to(4) }
   end
 
   describe "#add_task" do

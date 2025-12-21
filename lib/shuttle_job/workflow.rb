@@ -8,9 +8,9 @@ module ShuttleJob
       @context_defs = {} #: Hash[Symbol, ContextDef]
     end
 
-    #:  (Hash[untyped, untyped] context) -> void
-    def run(context)
-      ShuttleJob::Runner.new(self).run(context)
+    #:  (Hash[untyped, untyped] initial_context_hash) -> void
+    def run(initial_context_hash)
+      ShuttleJob::Runner.new(self).run(initial_context_hash)
     end
 
     #:  (Task) -> void
