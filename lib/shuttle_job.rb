@@ -8,6 +8,7 @@ require_relative "shuttle_job/task"
 require_relative "shuttle_job/dsl"
 require_relative "shuttle_job/runner"
 require_relative "shuttle_job/workflow"
+require_relative "shuttle_job/context_def"
 
 module ShuttleJob
   class Error < StandardError; end

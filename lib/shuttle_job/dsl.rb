@@ -18,6 +18,11 @@ module ShuttleJob
     end
 
     module ClassMethods
+      #:  (String context_name, String type, ?default: untyped) -> void
+      def context(context_name, type, default: nil)
+        _workflow.add_context(ContextDef.new(name: context_name, type:, default:))
+      end
+
       # @rbs!
       #   def class_attribute: (Symbol, default: untyped) -> void
       #   def _workflow: () -> Workflow

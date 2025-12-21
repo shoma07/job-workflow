@@ -52,4 +52,39 @@ RSpec.describe ShuttleJob::Workflow do
       )
     end
   end
+
+  describe "#add_context" do
+    subject(:add_context) { workflow.add_context(context_def) }
+
+    let(:workflow) { described_class.new }
+    let(:context_def) do
+      ShuttleJob::ContextDef.new(
+        name: :sample_context,
+        type: "Integer",
+        default: 1
+      )
+    end
+
+    it { expect { add_context }.to change(workflow, :contexts).from([]).to([context_def]) }
+  end
+
+  describe "#contexts" do
+    subject(:contexts) { workflow.contexts }
+
+    let(:workflow) do
+      workflow = described_class.new
+      context_instances.each do |context_def|
+        workflow.add_context(context_def)
+      end
+      workflow
+    end
+    let(:context_instances) do
+      [
+        ShuttleJob::ContextDef.new(name: :context1, type: "String", default: "default1"),
+        ShuttleJob::ContextDef.new(name: :context2, type: "Integer", default: 2)
+      ]
+    end
+
+    it { expect(contexts).to eq(context_instances) }
+  end
 end

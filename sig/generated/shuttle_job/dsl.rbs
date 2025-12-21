@@ -12,6 +12,9 @@ module ShuttleJob
     def perform: (?Hash[untyped, untyped] context) -> void
 
     module ClassMethods
+      # :  (String context_name, String type, ?default: untyped) -> void
+      def context: (String context_name, String type, ?default: untyped) -> void
+
       def class_attribute: (Symbol, default: untyped) -> void
 
       def _workflow: () -> Workflow

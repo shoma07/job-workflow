@@ -22,6 +22,26 @@ RSpec.describe ShuttleJob::DSL do
     it { expect { perform }.to change { ctx[:a] }.from(0).to(3) }
   end
 
+  describe "self.context" do
+    let(:klass) do
+      Class.new do
+        include ShuttleJob::DSL
+      end
+    end
+
+    context "without default" do
+      subject(:context) { klass.context(:example_context, "String") }
+
+      it { expect { context }.to change { klass._workflow.contexts.size }.from(0).to(1) }
+    end
+
+    context "with default" do
+      subject(:context) { klass.context(:example_context, "String", default: "default") }
+
+      it { expect { context }.to change { klass._workflow.contexts.size }.from(0).to(1) }
+    end
+  end
+
   describe "self.task" do
     subject(:task) do
       klass.task(:example_task) do |ctx|
