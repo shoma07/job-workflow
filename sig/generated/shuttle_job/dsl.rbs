@@ -6,7 +6,7 @@ module ShuttleJob
 
     def self.class_attribute: (Symbol, default: untyped) -> void
 
-    def self._workflow_tasks: () -> Hash[Symbol, Task]
+    def self._workflow: () -> Workflow
 
     # :  (?Hash[untyped, untyped] context) -> void
     def perform: (?Hash[untyped, untyped] context) -> void
@@ -14,7 +14,7 @@ module ShuttleJob
     module ClassMethods
       def class_attribute: (Symbol, default: untyped) -> void
 
-      def _workflow_tasks: () -> Hash[Symbol, Task]
+      def _workflow: () -> Workflow
 
       # :  (Symbol task_name, ?depends_on: Array[Symbol]) { (untyped) -> void } -> void
       def task: (Symbol task_name, ?depends_on: Array[Symbol]) { (untyped) -> void } -> void
