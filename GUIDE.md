@@ -355,18 +355,18 @@ end
 #### Conditional Execution
 
 ```ruby
-# if: Execute only if condition is true
-task :premium_feature, if: ->(ctx) { ctx.user.premium? } do |ctx|
+# condition: Execute only if condition returns true
+task :premium_feature, condition: ->(ctx) { ctx.user.premium? } do |ctx|
   ctx.premium_result = premium_process
 end
 
-# unless: Execute only if condition is false
-task :free_tier_limit, unless: ->(ctx) { ctx.user.premium? } do |ctx|
+# Inverse condition using negation
+task :free_tier_limit, condition: ->(ctx) { !ctx.user.premium? } do |ctx|
   ctx.limited_result = limited_process
 end
 
 # Complex condition
-task :complex, if: ->(ctx) { ctx.amount > 1000 && ctx.verified } do |ctx|
+task :complex, condition: ->(ctx) { ctx.amount > 1000 && ctx.verified } do |ctx|
   ctx.vip_process = true
 end
 ```
@@ -590,9 +590,9 @@ ShuttleJob provides conditional execution features to selectively execute tasks 
 
 ### Basic Conditional Execution
 
-#### if: Option
+#### condition: Option
 
-Execute task only if condition is true.
+Execute task only if condition returns true.
 
 ```ruby
 class UserNotificationJob < ApplicationJob
@@ -608,22 +608,22 @@ class UserNotificationJob < ApplicationJob
   # Execute only for premium users
   task :send_premium_notification,
        depends_on: :load_user_preferences,
-       if: ->(ctx) { ctx.user.premium? } do |ctx|
+       condition: ->(ctx) { ctx.user.premium? } do |ctx|
     PremiumNotificationService.send(ctx.user, ctx.notification_type)
   end
   
   # Send simple notification to standard users
   task :send_standard_notification,
        depends_on: :load_user_preferences,
-       if: ->(ctx) { !ctx.user.premium? } do |ctx|
+       condition: ->(ctx) { !ctx.user.premium? } do |ctx|
     StandardNotificationService.send(ctx.user, ctx.notification_type)
   end
 end
 ```
 
-#### unless: Option
+#### Complex Conditions
 
-Execute task only if condition is false.
+You can use any Ruby expression in the condition lambda.
 
 ```ruby
 class DataSyncJob < ApplicationJob
@@ -634,9 +634,9 @@ class DataSyncJob < ApplicationJob
   
   # Execute only if more than 1 hour since last sync
   task :sync_data,
-       unless: ->(ctx) { 
-         return false if ctx.force_sync  # Always execute if force_sync is true
-         ctx.last_sync_at && ctx.last_sync_at > 1.hour.ago
+       condition: ->(ctx) { 
+         return true if ctx.force_sync  # Always execute if force_sync is true
+         !ctx.last_sync_at || ctx.last_sync_at <= 1.hour.ago
        } do |ctx|
     SyncService.perform
     ctx.last_sync_at = Time.current
@@ -1162,8 +1162,7 @@ task(name, **options, &block)
   - `retry_count` (Integer): Number of retries
   - `retry_options` (Hash): Advanced retry settings
   - `timeout` (ActiveSupport::Duration): Timeout duration
-  - `if` (Proc): Execute if true
-  - `unless` (Proc): Execute if false
+  - `condition` (Proc): Execute only if returns true (default: `->(_ctx) { true }`)
   - `throttle` (Hash): Throttling settings
 - `block` (Proc): Task implementation (takes `|ctx|`)
 
@@ -1182,7 +1181,7 @@ task :with_dependencies,
 end
 
 task :conditional,
-     if: ->(ctx) { ctx.enabled? } do |ctx|
+     condition: ->(ctx) { ctx.enabled? } do |ctx|
   ctx.conditional_result = "executed"
 end
 
