@@ -6,29 +6,30 @@ module ShuttleJob
 
     # @rbs!
     #   def self.class_attribute: (Symbol, default: untyped) -> void
-    #   def self._workflow_tasks: () -> Hash[Symbol, Task]
+    #   def self._workflow: () -> Workflow
 
     included do
-      class_attribute :_workflow_tasks, default: {}
+      class_attribute :_workflow, default: Workflow.new
     end
 
     #:  (?Hash[untyped, untyped] context) -> void
     def perform(context = {})
-      runner = ShuttleJob::Runner.new(self.class._workflow_tasks)
-      runner.run(context)
+      self.class._workflow.run(context)
     end
 
     module ClassMethods
       # @rbs!
       #   def class_attribute: (Symbol, default: untyped) -> void
-      #   def _workflow_tasks: () -> Hash[Symbol, Task]
+      #   def _workflow: () -> Workflow
 
       #:  (Symbol task_name, ?depends_on: Array[Symbol]) { (untyped) -> void } -> void
       def task(task_name, depends_on: [], &block)
-        _workflow_tasks[task_name] = Task.new(
-          name: task_name,
-          block: block,
-          depends_on:
+        _workflow.add_task(
+          Task.new(
+            name: task_name,
+            block: block,
+            depends_on:
+          )
         )
       end
     end

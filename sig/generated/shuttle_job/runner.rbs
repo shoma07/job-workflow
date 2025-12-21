@@ -2,14 +2,14 @@
 
 module ShuttleJob
   class Runner
-    # :  (Hash[Symbol, Task] tasks) -> void
-    def initialize: (Hash[Symbol, Task] tasks) -> void
+    # :  (Workflow) -> void
+    def initialize: (Workflow) -> void
 
     # :  (Hash[untyped, untyped] context) -> void
     def run: (Hash[untyped, untyped] context) -> void
 
     private
 
-    attr_reader tasks: Hash[Symbol, Task]
+    attr_reader workflow: Workflow
   end
 end

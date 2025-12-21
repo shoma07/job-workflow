@@ -2,8 +2,8 @@
 
 RSpec.describe ShuttleJob::DSL do
   describe "#perform" do
-    let(:klass) do
-      Class.new do
+    subject(:perform) do
+      klass = Class.new do
         include ShuttleJob::DSL
 
         task :task_one do |ctx|
@@ -14,27 +14,32 @@ RSpec.describe ShuttleJob::DSL do
           ctx[:a] += 2
         end
       end
+      klass.new.perform(ctx)
     end
 
-    it do
-      ctx = { a: 0 }
-      klass.new.perform(ctx)
-      expect(ctx[:a]).to eq(3)
-    end
+    let(:ctx) { { a: 0 } }
+
+    it { expect { perform }.to change { ctx[:a] }.from(0).to(3) }
   end
 
   describe "self.task" do
-    let(:klass) do
-      Class.new do
-        include ShuttleJob::DSL
-
-        task :example_task do |context|
-          context[:example]
-        end
+    subject(:task) do
+      klass.task(:example_task) do |ctx|
+        ctx[:example]
       end
     end
 
-    it { expect(klass._workflow_tasks[:example_task]).to be_a(ShuttleJob::Task) }
-    it { expect(klass._workflow_tasks[:example_task].block.call({ example: 1 })).to eq(1) }
+    let(:klass) do
+      Class.new do
+        include ShuttleJob::DSL
+      end
+    end
+
+    it { expect { task }.to change { klass._workflow.tasks.size }.from(0).to(1) }
+
+    it do
+      task
+      expect(klass._workflow.tasks[0].block.call({ example: 1 })).to eq(1)
+    end
   end
 end

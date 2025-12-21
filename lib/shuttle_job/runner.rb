@@ -2,20 +2,20 @@
 
 module ShuttleJob
   class Runner
-    #:  (Hash[Symbol, Task] tasks) -> void
-    def initialize(tasks)
-      @tasks = tasks
+    #:  (Workflow) -> void
+    def initialize(workflow)
+      @workflow = workflow
     end
 
     #:  (Hash[untyped, untyped] context) -> void
     def run(context)
-      tasks.each_value do |task|
+      workflow.tasks.each do |task|
         task.block.call(context)
       end
     end
 
     private
 
-    attr_reader :tasks #: Hash[Symbol, Task]
+    attr_reader :workflow #: Workflow
   end
 end

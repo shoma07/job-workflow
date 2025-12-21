@@ -3,12 +3,10 @@
 RSpec.describe ShuttleJob::Runner do
   describe "#run" do
     let(:runner) do
-      described_class.new(
-        {
-          task_one: ShuttleJob::Task.new(name: :task_one, block: ->(ctx) { ctx[:a] += 1 }),
-          task_two: ShuttleJob::Task.new(name: :task_two, block: ->(ctx) { ctx[:a] += 2 })
-        }
-      )
+      workflow = ShuttleJob::Workflow.new
+      workflow.add_task(ShuttleJob::Task.new(name: :task_one, block: ->(ctx) { ctx[:a] += 1 }))
+      workflow.add_task(ShuttleJob::Task.new(name: :task_two, block: ->(ctx) { ctx[:a] += 2 }))
+      described_class.new(workflow)
     end
 
     it do

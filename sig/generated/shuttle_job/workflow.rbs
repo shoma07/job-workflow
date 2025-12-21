@@ -1,0 +1,17 @@
+# Generated from lib/shuttle_job/workflow.rb with RBS::Inline
+
+module ShuttleJob
+  class Workflow
+    # :  () -> void
+    def initialize: () -> void
+
+    # :  (Hash[untyped, untyped] context) -> void
+    def run: (Hash[untyped, untyped] context) -> void
+
+    # :  (Task) -> void
+    def add_task: (Task) -> void
+
+    # :  () -> Array[Task]
+    def tasks: () -> Array[Task]
+  end
+end
