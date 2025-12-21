@@ -1,0 +1,25 @@
+# Generated from lib/shuttle_job/context.rb with RBS::Inline
+
+module ShuttleJob
+  class Context
+    attr_reader raw_data: Hash[Symbol, untyped]
+
+    # :  (Workflow) -> void
+    def initialize: (Workflow) -> void
+
+    # :  (Hash[Symbol, untyped]) -> void
+    def merge!: (Hash[Symbol, untyped]) -> void
+
+    # :  ...
+    def method_missing: ...
+
+    # :  (Symbol, bool) -> bool
+    def respond_to_missing?: (Symbol, bool) -> bool
+
+    private
+
+    attr_reader reader_names: Set[Symbol]
+
+    attr_reader writer_names: Set[Symbol]
+  end
+end

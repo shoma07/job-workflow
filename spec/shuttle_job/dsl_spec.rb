@@ -3,23 +3,32 @@
 RSpec.describe ShuttleJob::DSL do
   describe "#perform" do
     subject(:perform) do
-      klass = Class.new do
+      klass.new.perform(initial_context_hash)
+    end
+
+    let(:klass) do
+      Class.new do
         include ShuttleJob::DSL
 
+        context :a, "Integer", default: 0
+
         task :task_one do |ctx|
-          ctx[:a] += 1
+          ctx.a += 1
         end
 
         task :task_two do |ctx|
-          ctx[:a] += 2
+          ctx.a += 2
         end
       end
-      klass.new.perform(ctx)
+    end
+    let(:initial_context_hash) { { a: 0 } }
+    let(:ctx) { ShuttleJob::Context.new(klass._workflow) }
+
+    before do
+      allow(ShuttleJob::Context).to receive(:new).with(klass._workflow).and_return(ctx)
     end
 
-    let(:ctx) { { a: 0 } }
-
-    it { expect { perform }.to change { ctx[:a] }.from(0).to(3) }
+    it { expect { perform }.to change(ctx, :a).from(0).to(3) }
   end
 
   describe "self.context" do
