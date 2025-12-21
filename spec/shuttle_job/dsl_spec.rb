@@ -53,9 +53,8 @@ RSpec.describe ShuttleJob::DSL do
 
   describe "self.task" do
     subject(:task) do
-      klass.task(:example_task) do |ctx|
-        ctx[:example]
-      end
+      klass.context :example, "Integer"
+      klass.task :example_task, &:example
     end
 
     let(:klass) do
@@ -68,7 +67,9 @@ RSpec.describe ShuttleJob::DSL do
 
     it do
       task
-      expect(klass._workflow.tasks[0].block.call({ example: 1 })).to eq(1)
+      ctx = ShuttleJob::Context.new(klass._workflow)
+      ctx.merge!({ example: 1 }) # rubocop:disable Performance/RedundantMerge
+      expect(klass._workflow.tasks[0].block.call(ctx)).to eq(1)
     end
   end
 end

@@ -4,7 +4,7 @@ module ShuttleJob
   class Workflow
     #:  () -> void
     def initialize
-      @tasks = {} #: Hash[Symbol, Task]
+      @task_graph = TaskGraph.new
       @context_defs = {} #: Hash[Symbol, ContextDef]
     end
 
@@ -15,7 +15,7 @@ module ShuttleJob
 
     #:  (Task) -> void
     def add_task(task)
-      @tasks[task.name] = task
+      @task_graph.add(task)
     end
 
     #:  (ContextDef) -> void
@@ -25,7 +25,7 @@ module ShuttleJob
 
     #:  () -> Array[Task]
     def tasks
-      @tasks.values
+      @task_graph.to_a
     end
 
     #:  () -> Array[ContextDef]
