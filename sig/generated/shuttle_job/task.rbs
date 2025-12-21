@@ -8,7 +8,14 @@ module ShuttleJob
 
     attr_reader depends_on: Array[Symbol]
 
-    # :  (name: Symbol, block: ^(untyped) -> void, ?depends_on: Array[Symbol]) -> void
-    def initialize: (name: Symbol, block: ^(untyped) -> void, ?depends_on: Array[Symbol]) -> void
+    attr_reader condition: ^(Context) -> bool
+
+    # :  (
+    #      name: Symbol,
+    #      block: ^(untyped) -> void,
+    #      ?depends_on: Array[Symbol],
+    #      condition: ^(Context) -> bool
+    #    ) -> void
+    def initialize: (name: Symbol, block: ^(untyped) -> void, condition: ^(Context) -> bool, ?depends_on: Array[Symbol]) -> void
   end
 end

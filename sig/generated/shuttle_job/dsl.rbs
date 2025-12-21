@@ -19,8 +19,12 @@ module ShuttleJob
 
       def _workflow: () -> Workflow
 
-      # :  (Symbol task_name, ?depends_on: Array[Symbol]) { (untyped) -> void } -> void
-      def task: (Symbol task_name, ?depends_on: Array[Symbol]) { (untyped) -> void } -> void
+      # :  (
+      #      Symbol task_name,
+      #      ?depends_on: Array[Symbol],
+      #      ?condition: ^(Context) -> bool,
+      #    ) { (untyped) -> void } -> void
+      def task: (Symbol task_name, ?depends_on: Array[Symbol], ?condition: ^(Context) -> bool) { (untyped) -> void } -> void
     end
   end
 end
