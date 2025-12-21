@@ -6,6 +6,7 @@ SimpleCov.start do
   enable_coverage(:branch)
   minimum_coverage(line: 100, branch: 100)
   merge_timeout(3_600)
+  add_filter "/spec/"
 end
 
 require "shuttle_job"
