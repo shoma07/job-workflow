@@ -9,9 +9,13 @@ module ShuttleJob
 
     #:  (Hash[untyped, untyped] initial_context_hash) -> void
     def run(initial_context_hash)
-      context = Context.new(workflow)
-      context.merge!(initial_context_hash)
-      workflow.tasks.each { _1.block.call(context) }
+      ctx = Context.new(workflow)
+      ctx.merge!(initial_context_hash)
+      workflow.tasks.each do |task|
+        next unless task.condition.call(ctx)
+
+        task.block.call(ctx)
+      end
     end
 
     private

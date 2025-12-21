@@ -27,13 +27,18 @@ module ShuttleJob
       #   def class_attribute: (Symbol, default: untyped) -> void
       #   def _workflow: () -> Workflow
 
-      #:  (Symbol task_name, ?depends_on: Array[Symbol]) { (untyped) -> void } -> void
-      def task(task_name, depends_on: [], &block)
+      #:  (
+      #     Symbol task_name,
+      #     ?depends_on: Array[Symbol],
+      #     ?condition: ^(Context) -> bool,
+      #   ) { (untyped) -> void } -> void
+      def task(task_name, depends_on: [], condition: ->(_ctx) { true }, &block)
         _workflow.add_task(
           Task.new(
             name: task_name,
             block: block,
-            depends_on:
+            depends_on:,
+            condition:
           )
         )
       end

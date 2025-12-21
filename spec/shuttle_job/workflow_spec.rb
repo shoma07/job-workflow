@@ -15,6 +15,9 @@ RSpec.describe ShuttleJob::Workflow do
       workflow.add_context(ShuttleJob::ContextDef.new(name: :value, type: "Integer", default: 0))
       workflow.add_task(ShuttleJob::Task.new(name: :increment, block: ->(ctx) { ctx.value += 1 }))
       workflow.add_task(ShuttleJob::Task.new(name: :double, block: ->(ctx) { ctx.value *= 2 }))
+      workflow.add_task(
+        ShuttleJob::Task.new(name: :ignore, block: ->(ctx) { ctx.value *= 100 }, condition: ->(_ctx) { false })
+      )
       workflow
     end
     let(:ctx) { ShuttleJob::Context.new(workflow) }
