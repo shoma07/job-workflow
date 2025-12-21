@@ -6,7 +6,9 @@ module ShuttleJob
 
     attr_reader block: ^(untyped) -> void
 
-    # :  (name: Symbol, block: ^(untyped) -> void) -> void
-    def initialize: (name: Symbol, block: ^(untyped) -> void) -> void
+    attr_reader depends_on: Array[Symbol]
+
+    # :  (name: Symbol, block: ^(untyped) -> void, ?depends_on: Array[Symbol]) -> void
+    def initialize: (name: Symbol, block: ^(untyped) -> void, ?depends_on: Array[Symbol]) -> void
   end
 end
