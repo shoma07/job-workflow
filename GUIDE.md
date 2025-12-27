@@ -388,9 +388,9 @@ end
 
 ## Parallel Processing
 
-ShuttleJob enables parallel processing of collection elements using `map` tasks. Based on the Fork-Join pattern, it provides efficient and safe parallel execution.
+ShuttleJob enables parallel processing of collection elements by specifying the `each:` option in a `task` definition. Based on the Fork-Join pattern, it provides efficient and safe parallel execution.
 
-### Map Task Basics
+### Collection Task Basics
 
 #### Simple Parallel Processing
 
@@ -407,19 +407,19 @@ class BatchProcessingJob < ApplicationJob
   end
   
   # Process each user in parallel
-  map :process_users,
-      collection: :user_ids,
-      depends_on: :fetch_user_ids do |user_id, ctx|
-    user = User.find(user_id)
+  task :process_users,
+       each: :user_ids,
+       depends_on: :fetch_user_ids do |item, ctx|
+    user = User.find(item)
     {
-      user_id: user_id,
+      user_id: item,
       status: user.process!
     }
   end
   
   # Aggregate results
   task :aggregate_results, depends_on: :process_users do |ctx|
-    ctx.results = ctx._map_results[:process_users]
+    ctx.results = ctx.process_users_results
     # => [{ user_id: 1, status: :ok }, { user_id: 2, status: :ok }, ...]
   end
 end
@@ -429,15 +429,15 @@ end
 
 ```ruby
 # Process up to 10 items concurrently
-map :process_items,
-    collection: :items,
-    concurrency: 10 do |item, ctx|
+task :process_items,
+     each: :items,
+     concurrency: 10 do |item, ctx|
   process_item(item)
 end
 
 # Default (unlimited)
-map :unlimited,
-    collection: :items do |item, ctx|
+task :unlimited,
+     each: :items do |item, ctx|
   process_item(item)
 end
 ```
@@ -449,8 +449,8 @@ end
 Each parallel task has an independent Context. This prevents impact on parent Context and avoids data races.
 
 ```ruby
-map :parallel_processing,
-    collection: :items do |item, ctx|
+task :parallel_processing,
+     each: :items do |item, ctx|
   # This ctx is a child Context (Fork)
   # Starts by copying values from parent Context
   
@@ -1159,12 +1159,16 @@ task(name, **options, &block)
 - `name` (Symbol): Task name
 - `options` (Hash): Task options
   - `depends_on` (Symbol | Array<Symbol>): Dependent tasks
+  - `each` (Symbol): Context field name (Array) for parallel processing
+  - `concurrency` (Integer): Concurrency limit for parallel processing (default: unlimited)
   - `retry_count` (Integer): Number of retries
   - `retry_options` (Hash): Advanced retry settings
   - `timeout` (ActiveSupport::Duration): Timeout duration
   - `condition` (Proc): Execute only if returns true (default: `->(_ctx) { true }`)
   - `throttle` (Hash): Throttling settings
-- `block` (Proc): Task implementation (takes `|ctx|`)
+- `block` (Proc): Task implementation
+  - Without `each`: takes `|ctx|`
+  - With `each`: takes `|item, ctx|` (each array element)
 
 **Example**:
 
@@ -1189,33 +1193,25 @@ task :throttled,
      throttle: { key: "api", limit: 10, lease_ttl: 60 } do |ctx|
   ExternalAPI.call(ctx.data)
 end
+
+# Parallel processing with collection
+task :process_items,
+     each: :items,
+     concurrency: 5 do |item, ctx|
+  ProcessService.handle(item)
+end
 ```
 
-#### map
-
-Execute parallel processing over a collection.
-
-```ruby
-map(name, collection:, concurrency: 10, **options, &block)
-```
-
-**Parameters**:
-- `name` (Symbol): Task name
-- `collection` (Symbol): Context field name (array)
-- `concurrency` (Integer): Concurrency limit (default: 10)
-- `options` (Hash): Same as `task` options
-- `block` (Proc): Per-item processing (takes `|ctx, item|`)
-
-**Result**: Results stored in `#{name}_results`
+**Map Task Result**: When `each:` is specified, results are automatically stored in `ctx.#{name}_results`.
 
 **Example**:
 
 ```ruby
 context :items, Array[String]
 
-map :process_items,
-    collection: :items,
-    concurrency: 5 do |ctx, item|
+task :process_items,
+     each: :items,
+     concurrency: 5 do |item, ctx|
   ProcessService.handle(item)
 end
 
