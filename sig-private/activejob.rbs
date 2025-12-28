@@ -1,0 +1,4 @@
+module ActiveJob
+  module Continuable
+  end
+end

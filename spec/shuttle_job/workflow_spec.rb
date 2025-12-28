@@ -74,41 +74,6 @@ RSpec.describe ShuttleJob::Workflow do
     it { expect(contexts).to eq(context_instances) }
   end
 
-  describe "#build_runner" do
-    subject(:build_runner) { workflow.build_runner(ctx) }
-
-    let(:workflow) do
-      workflow = described_class.new
-      workflow.add_context(ShuttleJob::ContextDef.new(name: :value, type: "Integer", default: 0))
-      workflow.add_task(ShuttleJob::Task.new(name: :increment, block: ->(ctx) { ctx.value += 1 }))
-      workflow.add_task(ShuttleJob::Task.new(name: :double, block: ->(ctx) { ctx.value *= 2 }))
-      workflow.add_task(
-        ShuttleJob::Task.new(name: :ignore, block: ->(ctx) { ctx.value *= 100 }, condition: ->(_ctx) { false })
-      )
-      workflow
-    end
-
-    context "when initial context is a Hash" do
-      let(:ctx) { { value: 1 } }
-
-      it { expect(build_runner).to have_attributes(class: ShuttleJob::Runner, context: have_attributes(value: 1)) }
-
-      it { expect { build_runner.run }.to change { build_runner.context.value }.from(1).to(4) }
-    end
-
-    context "when initial context is a Context" do
-      let(:ctx) do
-        ctx = ShuttleJob::Context.from_workflow(workflow)
-        ctx.value = 1
-        ctx
-      end
-
-      it { expect(build_runner).to have_attributes(class: ShuttleJob::Runner, context: have_attributes(value: 1)) }
-
-      it { expect { build_runner.run }.to change { build_runner.context.value }.from(1).to(4) }
-    end
-  end
-
   describe "#build_context" do
     subject(:build_context) { workflow.build_context(initial_context) }
 
