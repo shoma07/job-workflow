@@ -24,16 +24,12 @@ RSpec.describe ShuttleJob::DSL do
     let(:initial_context_hash) { { a: 0 } }
     let(:ctx) { ShuttleJob::Context.from_workflow(klass._workflow) }
 
-    before do
-      allow(ShuttleJob::Context).to receive(:from_workflow).with(klass._workflow).and_return(ctx)
-    end
+    before { allow(ShuttleJob::Context).to receive(:from_workflow).with(klass._workflow).and_return(ctx) }
 
     it { expect { perform }.to change(ctx, :a).from(0).to(3) }
 
     context "when given a Context object" do
-      subject(:perform) do
-        klass.new.perform(ctx)
-      end
+      subject(:perform) { klass.new.perform(ctx) }
 
       let(:ctx) do
         ctx = ShuttleJob::Context.from_workflow(klass._workflow)
@@ -109,12 +105,7 @@ RSpec.describe ShuttleJob::DSL do
     context "when given a Hash" do
       subject(:build_context) { klass._build_context({ example: 1 }) }
 
-      # rubocop:disable RSpec/MultipleExpectations
-      it "returns a Context with merged values" do
-        expect(build_context).to be_a(ShuttleJob::Context)
-        expect(build_context.example).to eq(1)
-      end
-      # rubocop:enable RSpec/MultipleExpectations
+      it { expect(build_context).to have_attributes(class: ShuttleJob::Context, example: 1) }
     end
 
     context "when given a Context" do
@@ -126,12 +117,7 @@ RSpec.describe ShuttleJob::DSL do
         ctx
       end
 
-      # rubocop:disable RSpec/MultipleExpectations
-      it "returns the same Context" do
-        expect(build_context).to be(ctx)
-        expect(build_context.example).to eq(2)
-      end
-      # rubocop:enable RSpec/MultipleExpectations
+      it { expect(build_context).to eq(ctx) }
     end
   end
 
