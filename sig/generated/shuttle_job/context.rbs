@@ -10,6 +10,12 @@ module ShuttleJob
     # :  (Hash[Symbol, untyped]) -> void
     def merge!: (Hash[Symbol, untyped]) -> void
 
+    # :  (Symbol) -> Enumerator[Context]
+    def _with_each_value: (Symbol) -> Enumerator[Context]
+
+    # :  () -> untyped
+    def each_value: () -> untyped
+
     # :  ...
     def method_missing: ...
 
@@ -18,8 +24,17 @@ module ShuttleJob
 
     private
 
-    attr_reader reader_names: Set[Symbol]
+    attr_writer raw_data: Hash[Symbol, untyped]
 
-    attr_reader writer_names: Set[Symbol]
+    attr_accessor reader_names: Set[Symbol]
+
+    attr_accessor writer_names: Set[Symbol]
+
+    attr_accessor enabled_each_value: bool
+
+    attr_writer each_value: untyped
+
+    # :  (Symbol, Enumerator::Yielder) -> void
+    def iterate_each_value: (Symbol, Enumerator::Yielder) -> void
   end
 end
