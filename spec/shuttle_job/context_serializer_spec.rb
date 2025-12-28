@@ -8,6 +8,12 @@ RSpec.describe ShuttleJob::ContextSerializer do
     )
   end
 
+  describe ".instance" do
+    subject(:instance) { described_class.instance }
+
+    it { is_expected.to be_a(described_class) }
+  end
+
   describe "#klass" do
     subject(:klass) { described_class.instance.klass }
 

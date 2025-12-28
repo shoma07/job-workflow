@@ -2,11 +2,13 @@
 
 module ShuttleJob
   class Runner
-    # :  (Workflow) -> void
-    def initialize: (Workflow) -> void
+    attr_reader context: Context
 
-    # :  (Context) -> void
-    def run: (Context) -> void
+    # :  (workflow: Workflow, context: Context) -> void
+    def initialize: (workflow: Workflow, context: Context) -> void
+
+    # :  () -> void
+    def run: () -> void
 
     private
 

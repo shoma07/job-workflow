@@ -2,6 +2,8 @@
 
 module ShuttleJob
   class ContextSerializer < ActiveJob::Serializers::ObjectSerializer
+    def self.instance: () -> ContextSerializer
+
     # :  (Context) -> Hash[String, untyped]
     def serialize: (Context) -> Hash[String, untyped]
 

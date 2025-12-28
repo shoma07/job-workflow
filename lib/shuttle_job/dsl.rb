@@ -14,14 +14,39 @@ module ShuttleJob
     end
 
     #:  (Hash[untyped, untyped] | Context) -> void
-    def perform(context)
-      self.class._workflow.run(self.class._build_context(context))
+    def perform(initial_context)
+      @_runner ||= self.class._workflow.build_runner(initial_context)
+      @_runner.run
+    end
+
+    #:  () -> Runner?
+    def _runner
+      @_runner
+    end
+
+    #:  () -> Hash[String, untyped]
+    def serialize
+      runner = _runner
+      if runner.nil?
+        super
+      else
+        super.merge("shuttle_job_context" => ContextSerializer.instance.serialize(runner.context))
+      end
+    end
+
+    #:  (Hash[String, untyped]) -> void
+    def deserialize(job_data)
+      super
+
+      job_data["shuttle_job_context"]&.then do |context_data|
+        @_runner = self.class._workflow.build_runner(ContextSerializer.instance.deserialize(context_data))
+      end
     end
 
     module ClassMethods
       #:  (?Hash[untyped, untyped]) -> void
-      def perform_later(initial_ctx = {})
-        super(_build_context(initial_ctx))
+      def perform_later(initial_context = {})
+        super(_workflow.build_context(initial_context))
       end
 
       #:  (Symbol context_name, String type, ?default: untyped) -> void
@@ -47,15 +72,6 @@ module ShuttleJob
             condition:
           )
         )
-      end
-
-      #:  (Hash[untyped, untyped] | Context) -> Context
-      def _build_context(initial_ctx)
-        return initial_ctx if initial_ctx.is_a?(Context)
-
-        ctx = Context.from_workflow(_workflow)
-        ctx.merge!(initial_ctx.symbolize_keys)
-        ctx
       end
     end
   end
