@@ -8,7 +8,10 @@ RSpec.describe ShuttleJob::Workflow do
   end
 
   describe "#run" do
-    subject(:run) { workflow.run({ value: 1 }) }
+    subject(:run) do
+      ctx.value = 1
+      workflow.run(ctx)
+    end
 
     let(:workflow) do
       workflow = described_class.new
@@ -21,8 +24,6 @@ RSpec.describe ShuttleJob::Workflow do
       workflow
     end
     let(:ctx) { ShuttleJob::Context.from_workflow(workflow) }
-
-    before { allow(ShuttleJob::Context).to receive(:from_workflow).with(workflow).and_return(ctx) }
 
     it { expect { run }.to change(ctx, :value).from(0).to(4) }
   end

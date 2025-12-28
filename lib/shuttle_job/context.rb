@@ -3,6 +3,7 @@
 module ShuttleJob
   class Context
     attr_reader :raw_data #: Hash[Symbol, untyped]
+    attr_reader :reader_names #: Set[Symbol]
 
     class << self
       #:  (Workflow) -> Context
@@ -56,7 +57,7 @@ module ShuttleJob
     private
 
     attr_writer :raw_data #: Hash[Symbol, untyped]
-    attr_accessor :reader_names #: Set[Symbol]
+    attr_writer :reader_names #: Set[Symbol]
     attr_accessor :writer_names #: Set[Symbol]
     attr_accessor :enabled_each_value #: bool
     attr_writer :each_value #: untyped
