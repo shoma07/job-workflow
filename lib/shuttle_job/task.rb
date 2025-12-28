@@ -4,14 +4,14 @@ module ShuttleJob
   class Task
     attr_reader :name #: Symbol
     attr_reader :block #: ^(untyped) -> void
-    attr_reader :each #: Symbol
+    attr_reader :each #: Symbol?
     attr_reader :depends_on #: Array[Symbol]
     attr_reader :condition #: ^(Context) -> bool
 
     #:  (
     #     name: Symbol,
     #     block: ^(untyped) -> void,
-    #     each: Symbol | nil,
+    #     ?each: Symbol?,
     #     ?depends_on: Array[Symbol],
     #     condition: ^(Context) -> bool
     #   ) -> void
