@@ -4,8 +4,11 @@ module ShuttleJob
   class Context
     attr_reader raw_data: Hash[Symbol, untyped]
 
-    # :  (Workflow) -> void
-    def initialize: (Workflow) -> void
+    # :  (Workflow) -> Context
+    def self.from_workflow: (Workflow) -> Context
+
+    # :  (raw_data: Hash[Symbol, untyped], attribute_names: Set[Symbol]) -> void
+    def initialize: (raw_data: Hash[Symbol, untyped], attribute_names: Set[Symbol]) -> void
 
     # :  (Hash[Symbol, untyped]) -> void
     def merge!: (Hash[Symbol, untyped]) -> void

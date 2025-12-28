@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe ShuttleJob::Context do
-  let(:ctx) { described_class.new(workflow) }
+  let(:ctx) { described_class.from_workflow(workflow) }
   let(:workflow) do
     workflow = ShuttleJob::Workflow.new
     workflow.add_context(ShuttleJob::ContextDef.new(name: :ctx_one, type: "String", default: nil))
@@ -9,10 +9,33 @@ RSpec.describe ShuttleJob::Context do
     workflow
   end
 
-  describe ".initialize" do
-    subject(:init) { ctx }
+  describe ".from_workflow" do
+    subject(:from_workflow) { described_class.from_workflow(workflow) }
 
-    it { expect(ctx).to have_attributes(raw_data: { ctx_one: nil, ctx_two: 1 }) }
+    it "creates a context with raw_data from workflow contexts" do
+      expect(from_workflow).to have_attributes(
+        raw_data: { ctx_one: nil, ctx_two: 1 },
+        ctx_one: nil,
+        ctx_two: 1
+      )
+    end
+  end
+
+  describe ".initialize" do
+    subject(:init) do
+      described_class.new(
+        raw_data: { ctx_one: nil, ctx_two: 1 },
+        attribute_names: Set[:ctx_one, :ctx_two]
+      )
+    end
+
+    it "creates a context with given raw_data and attribute_names" do
+      expect(init).to have_attributes(
+        raw_data: { ctx_one: nil, ctx_two: 1 },
+        ctx_one: nil,
+        ctx_two: 1
+      )
+    end
   end
 
   describe "#merge!" do
