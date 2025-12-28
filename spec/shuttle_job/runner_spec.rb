@@ -2,7 +2,10 @@
 
 RSpec.describe ShuttleJob::Runner do
   describe "#run" do
-    subject(:run) { described_class.new(workflow).run({ a: 0 }) }
+    subject(:run) do
+      ctx.a = 0
+      described_class.new(workflow).run(ctx)
+    end
 
     let(:workflow) do
       workflow = ShuttleJob::Workflow.new
@@ -20,12 +23,13 @@ RSpec.describe ShuttleJob::Runner do
     end
     let(:ctx) { ShuttleJob::Context.from_workflow(workflow) }
 
-    before { allow(ShuttleJob::Context).to receive(:from_workflow).with(workflow).and_return(ctx) }
-
     it { expect { run }.to change(ctx, :a).from(0).to(3) }
 
     context "when task has each option" do
-      subject(:run) { described_class.new(workflow).run({ items: [1, 2, 3], sum: 0 }) }
+      subject(:run) do
+        ctx.merge!({ items: [1, 2, 3], sum: 0 })
+        described_class.new(workflow).run(ctx)
+      end
 
       let(:workflow) do
         workflow = ShuttleJob::Workflow.new
@@ -42,13 +46,14 @@ RSpec.describe ShuttleJob::Runner do
       end
       let(:ctx) { ShuttleJob::Context.from_workflow(workflow) }
 
-      before { allow(ShuttleJob::Context).to receive(:from_workflow).with(workflow).and_return(ctx) }
-
       it { expect { run }.to change(ctx, :sum).from(0).to(6) }
     end
 
     context "when mixing regular and each tasks" do
-      subject(:run) { described_class.new(workflow).run({ items: [10, 20], multiplier: 2, result: [] }) }
+      subject(:run) do
+        ctx.merge!({ items: [10, 20], multiplier: 2, result: [] })
+        described_class.new(workflow).run(ctx)
+      end
 
       let(:workflow) do
         workflow = ShuttleJob::Workflow.new
@@ -72,13 +77,14 @@ RSpec.describe ShuttleJob::Runner do
       end
       let(:ctx) { ShuttleJob::Context.from_workflow(workflow) }
 
-      before { allow(ShuttleJob::Context).to receive(:from_workflow).with(workflow).and_return(ctx) }
-
       it { expect { run }.to change(ctx, :result).from([]).to([30, 60]) }
     end
 
     context "when each task with condition" do
-      subject(:run) { described_class.new(workflow).run({ items: [1, 2, 3], sum: 0, enabled: false }) }
+      subject(:run) do
+        ctx.merge!({ items: [1, 2, 3], sum: 0, enabled: false })
+        described_class.new(workflow).run(ctx)
+      end
 
       let(:workflow) do
         workflow = ShuttleJob::Workflow.new
@@ -96,8 +102,6 @@ RSpec.describe ShuttleJob::Runner do
         workflow
       end
       let(:ctx) { ShuttleJob::Context.from_workflow(workflow) }
-
-      before { allow(ShuttleJob::Context).to receive(:from_workflow).with(workflow).and_return(ctx) }
 
       it "does not execute the each task" do
         expect { run }.not_to change(ctx, :sum)

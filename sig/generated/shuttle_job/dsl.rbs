@@ -4,14 +4,17 @@ module ShuttleJob
   module DSL
     extend ActiveSupport::Concern
 
+    extend ClassMethods
+
     def self.class_attribute: (Symbol, default: untyped) -> void
 
-    def self._workflow: () -> Workflow
-
-    # :  (?Hash[untyped, untyped] context) -> void
-    def perform: (?Hash[untyped, untyped] context) -> void
+    # :  (Hash[untyped, untyped] | Context) -> void
+    def perform: (Hash[untyped, untyped] | Context) -> void
 
     module ClassMethods
+      # :  (?Hash[untyped, untyped]) -> void
+      def perform_later: (?Hash[untyped, untyped]) -> void
+
       # :  (Symbol context_name, String type, ?default: untyped) -> void
       def context: (Symbol context_name, String type, ?default: untyped) -> void
 
@@ -25,6 +28,9 @@ module ShuttleJob
       #      ?condition: ^(Context) -> bool,
       #    ) { (untyped) -> void } -> void
       def task: (Symbol task_name, ?depends_on: Array[Symbol], ?condition: ^(Context) -> bool) { (untyped) -> void } -> void
+
+      # :  (Hash[untyped, untyped] | Context) -> Context
+      def _build_context: (Hash[untyped, untyped] | Context) -> Context
     end
   end
 end
