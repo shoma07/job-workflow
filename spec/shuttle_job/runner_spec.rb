@@ -18,9 +18,9 @@ RSpec.describe ShuttleJob::Runner do
       )
       workflow
     end
-    let(:ctx) { ShuttleJob::Context.new(workflow) }
+    let(:ctx) { ShuttleJob::Context.from_workflow(workflow) }
 
-    before { allow(ShuttleJob::Context).to receive(:new).with(workflow).and_return(ctx) }
+    before { allow(ShuttleJob::Context).to receive(:from_workflow).with(workflow).and_return(ctx) }
 
     it { expect { run }.to change(ctx, :a).from(0).to(3) }
 
@@ -40,9 +40,9 @@ RSpec.describe ShuttleJob::Runner do
         )
         workflow
       end
-      let(:ctx) { ShuttleJob::Context.new(workflow) }
+      let(:ctx) { ShuttleJob::Context.from_workflow(workflow) }
 
-      before { allow(ShuttleJob::Context).to receive(:new).with(workflow).and_return(ctx) }
+      before { allow(ShuttleJob::Context).to receive(:from_workflow).with(workflow).and_return(ctx) }
 
       it { expect { run }.to change(ctx, :sum).from(0).to(6) }
     end
@@ -70,9 +70,9 @@ RSpec.describe ShuttleJob::Runner do
         )
         workflow
       end
-      let(:ctx) { ShuttleJob::Context.new(workflow) }
+      let(:ctx) { ShuttleJob::Context.from_workflow(workflow) }
 
-      before { allow(ShuttleJob::Context).to receive(:new).with(workflow).and_return(ctx) }
+      before { allow(ShuttleJob::Context).to receive(:from_workflow).with(workflow).and_return(ctx) }
 
       it { expect { run }.to change(ctx, :result).from([]).to([30, 60]) }
     end
@@ -95,9 +95,9 @@ RSpec.describe ShuttleJob::Runner do
         )
         workflow
       end
-      let(:ctx) { ShuttleJob::Context.new(workflow) }
+      let(:ctx) { ShuttleJob::Context.from_workflow(workflow) }
 
-      before { allow(ShuttleJob::Context).to receive(:new).with(workflow).and_return(ctx) }
+      before { allow(ShuttleJob::Context).to receive(:from_workflow).with(workflow).and_return(ctx) }
 
       it "does not execute the each task" do
         expect { run }.not_to change(ctx, :sum)

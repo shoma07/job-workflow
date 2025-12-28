@@ -19,7 +19,7 @@ RSpec.describe ShuttleJob::Task do
     )
     workflow
   end
-  let(:ctx) { ShuttleJob::Context.new(workflow) }
+  let(:ctx) { ShuttleJob::Context.from_workflow(workflow) }
 
   describe "#initialize" do
     let(:task) { described_class.new(**arguments) }

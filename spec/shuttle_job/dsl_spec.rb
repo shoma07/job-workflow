@@ -22,10 +22,10 @@ RSpec.describe ShuttleJob::DSL do
       end
     end
     let(:initial_context_hash) { { a: 0 } }
-    let(:ctx) { ShuttleJob::Context.new(klass._workflow) }
+    let(:ctx) { ShuttleJob::Context.from_workflow(klass._workflow) }
 
     before do
-      allow(ShuttleJob::Context).to receive(:new).with(klass._workflow).and_return(ctx)
+      allow(ShuttleJob::Context).to receive(:from_workflow).with(klass._workflow).and_return(ctx)
     end
 
     it { expect { perform }.to change(ctx, :a).from(0).to(3) }
@@ -67,7 +67,7 @@ RSpec.describe ShuttleJob::DSL do
 
     it do
       task
-      ctx = ShuttleJob::Context.new(klass._workflow)
+      ctx = ShuttleJob::Context.from_workflow(klass._workflow)
       ctx.merge!({ example: 1 }) # rubocop:disable Performance/RedundantMerge
       expect(klass._workflow.tasks[0].block.call(ctx)).to eq(1)
     end

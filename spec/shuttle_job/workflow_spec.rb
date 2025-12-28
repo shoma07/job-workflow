@@ -20,9 +20,9 @@ RSpec.describe ShuttleJob::Workflow do
       )
       workflow
     end
-    let(:ctx) { ShuttleJob::Context.new(workflow) }
+    let(:ctx) { ShuttleJob::Context.from_workflow(workflow) }
 
-    before { allow(ShuttleJob::Context).to receive(:new).with(workflow).and_return(ctx) }
+    before { allow(ShuttleJob::Context).to receive(:from_workflow).with(workflow).and_return(ctx) }
 
     it { expect { run }.to change(ctx, :value).from(0).to(4) }
   end
