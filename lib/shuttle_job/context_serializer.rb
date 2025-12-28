@@ -2,6 +2,9 @@
 
 module ShuttleJob
   class ContextSerializer < ActiveJob::Serializers::ObjectSerializer
+    # @rbs!
+    #   def self.instance: () -> ContextSerializer
+
     #:  (Context) -> Hash[String, untyped]
     def serialize(context)
       raw_data = ActiveJob::Arguments.serialize([context.raw_data.transform_keys(&:to_s)]).first

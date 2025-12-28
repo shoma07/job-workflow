@@ -93,34 +93,6 @@ RSpec.describe ShuttleJob::DSL do
     end
   end
 
-  describe "._build_context" do
-    let(:klass) do
-      Class.new do
-        include ShuttleJob::DSL
-
-        context :example, "Integer", default: 0
-      end
-    end
-
-    context "when given a Hash" do
-      subject(:build_context) { klass._build_context({ example: 1 }) }
-
-      it { expect(build_context).to have_attributes(class: ShuttleJob::Context, example: 1) }
-    end
-
-    context "when given a Context" do
-      subject(:build_context) { klass._build_context(ctx) }
-
-      let(:ctx) do
-        ctx = ShuttleJob::Context.from_workflow(klass._workflow)
-        ctx.example = 2
-        ctx
-      end
-
-      it { expect(build_context).to eq(ctx) }
-    end
-  end
-
   describe "self.context" do
     let(:klass) do
       Class.new do
@@ -160,6 +132,134 @@ RSpec.describe ShuttleJob::DSL do
       ctx = ShuttleJob::Context.from_workflow(klass._workflow)
       ctx.merge!({ example: 1 }) # rubocop:disable Performance/RedundantMerge
       expect(klass._workflow.tasks[0].block.call(ctx)).to eq(1)
+    end
+  end
+
+  describe "#_runner" do
+    subject(:_runner) { job._runner }
+
+    let(:job_class) do
+      Class.new(ActiveJob::Base) do
+        include ShuttleJob::DSL
+
+        context :value, "Integer", default: 0
+
+        task :increment do |ctx|
+          ctx.value += 10
+        end
+
+        def self.name
+          "TestJob"
+        end
+      end
+    end
+    let(:job) { job_class.new }
+
+    context "when job has not been performed" do
+      it { is_expected.to be_nil }
+    end
+
+    context "when job has been performed" do
+      before { job.perform({ value: 42 }) }
+
+      it { is_expected.to have_attributes(class: ShuttleJob::Runner, context: have_attributes(value: 52)) }
+    end
+  end
+
+  describe "#serialize" do
+    subject(:serialize) { job.serialize }
+
+    let(:job) do
+      klass = Class.new(ActiveJob::Base) do
+        include ShuttleJob::DSL
+
+        context :value, "Integer", default: 0
+
+        task :increment do |ctx|
+          ctx.value += 10
+        end
+
+        def self.name
+          "TestJob"
+        end
+      end
+      klass.new
+    end
+
+    context "when job has not been performed" do
+      it { is_expected.not_to have_key("shuttle_job_context") }
+    end
+
+    context "when job has been performed" do
+      before { job.perform({ value: 42 }) }
+
+      it do
+        expect(serialize).to include(
+          "shuttle_job_context" => {
+            "_aj_serialized" => "ShuttleJob::ContextSerializer",
+            "raw_data" => {
+              "_aj_symbol_keys" => [],
+              "value" => 52
+            },
+            "attribute_names" => %w[value]
+          }
+        )
+      end
+    end
+  end
+
+  describe "#deserialize" do
+    subject(:deserialize) { job.deserialize(job_data) }
+
+    let(:job) do
+      klass = Class.new(ActiveJob::Base) do
+        include ShuttleJob::DSL
+
+        context :value, "Integer", default: 0
+
+        task :increment do |ctx|
+          ctx.value += 10
+        end
+
+        def self.name
+          "TestJob"
+        end
+      end
+      klass.new
+    end
+
+    context "when job_data contains shuttle_job_context" do
+      let(:job_data) do
+        {
+          "shuttle_job_context" => {
+            "_aj_serialized" => "ShuttleJob::ContextSerializer",
+            "raw_data" => {
+              "_aj_symbol_keys" => [],
+              "value" => 100
+            },
+            "attribute_names" => %w[value]
+          }
+        }
+      end
+
+      it do
+        deserialize
+        expect(job._runner.context).to have_attributes(
+          class: ShuttleJob::Context,
+          raw_data: { value: 100 },
+          reader_names: Set[:value],
+          value: 100
+        )
+      end
+    end
+
+    context "when job_data does not contain shuttle_job_context" do
+      let(:job_data) { {} }
+
+      it do
+        deserialize
+        expect(job._runner).to be_nil
+      end
     end
   end
 end

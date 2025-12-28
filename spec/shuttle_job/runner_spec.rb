@@ -4,7 +4,7 @@ RSpec.describe ShuttleJob::Runner do
   describe "#run" do
     subject(:run) do
       ctx.a = 0
-      described_class.new(workflow).run(ctx)
+      described_class.new(workflow:, context: ctx).run
     end
 
     let(:workflow) do
@@ -28,7 +28,7 @@ RSpec.describe ShuttleJob::Runner do
     context "when task has each option" do
       subject(:run) do
         ctx.merge!({ items: [1, 2, 3], sum: 0 })
-        described_class.new(workflow).run(ctx)
+        described_class.new(workflow:, context: ctx).run
       end
 
       let(:workflow) do
@@ -52,7 +52,7 @@ RSpec.describe ShuttleJob::Runner do
     context "when mixing regular and each tasks" do
       subject(:run) do
         ctx.merge!({ items: [10, 20], multiplier: 2, result: [] })
-        described_class.new(workflow).run(ctx)
+        described_class.new(workflow:, context: ctx).run
       end
 
       let(:workflow) do
@@ -83,7 +83,7 @@ RSpec.describe ShuttleJob::Runner do
     context "when each task with condition" do
       subject(:run) do
         ctx.merge!({ items: [1, 2, 3], sum: 0, enabled: false })
-        described_class.new(workflow).run(ctx)
+        described_class.new(workflow:, context: ctx).run
       end
 
       let(:workflow) do

@@ -2,21 +2,24 @@
 
 module ShuttleJob
   class Runner
-    #:  (Workflow) -> void
-    def initialize(workflow)
+    attr_reader :context #: Context
+
+    #:  (workflow: Workflow, context: Context) -> void
+    def initialize(workflow:, context:)
       @workflow = workflow
+      @context = context
     end
 
-    #:  (Context) -> void
-    def run(ctx)
+    #:  () -> void
+    def run
       workflow.tasks.each do |task|
-        next unless task.condition.call(ctx)
+        next unless task.condition.call(context)
 
         block = task.block
 
-        next block.call(ctx) if task.each.nil?
+        next block.call(context) if task.each.nil?
 
-        ctx._with_each_value(task.each).each { |each_ctx| block.call(each_ctx) }
+        context._with_each_value(task.each).each { |each_ctx| block.call(each_ctx) }
       end
     end
 
