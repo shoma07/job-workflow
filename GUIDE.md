@@ -409,10 +409,11 @@ class BatchProcessingJob < ApplicationJob
   # Process each user in parallel
   task :process_users,
        each: :user_ids,
-       depends_on: :fetch_user_ids do |item, ctx|
-    user = User.find(item)
+       depends_on: :fetch_user_ids do |ctx|
+    user_id = ctx.each_value
+    user = User.find(user_id)
     {
-      user_id: item,
+      user_id: user_id,
       status: user.process!
     }
   end
@@ -431,14 +432,14 @@ end
 # Process up to 10 items concurrently
 task :process_items,
      each: :items,
-     concurrency: 10 do |item, ctx|
-  process_item(item)
+     concurrency: 10 do |ctx|
+  process_item(ctx.each_value)
 end
 
 # Default (unlimited)
 task :unlimited,
-     each: :items do |item, ctx|
-  process_item(item)
+     each: :items do |ctx|
+  process_item(ctx.each_value)
 end
 ```
 
@@ -450,20 +451,47 @@ Each parallel task has an independent Context. This prevents impact on parent Co
 
 ```ruby
 task :parallel_processing,
-     each: :items do |item, ctx|
-  # This ctx is a child Context (Fork)
-  # Starts by copying values from parent Context
+     each: :items do |ctx|
+  # This ctx is the same Context instance (not a copy)
+  # Access current element via ctx.each_value
+  item = ctx.each_value
   
   ctx.item_result = process(item)
   
   # Can read from parent Context
   shared_config = ctx.shared_config
   
-  # Changes to child Context don't affect other parallel tasks
+  # Changes to Context are visible across iterations
+  # (be careful with shared state)
   ctx.local_temp = "temporary data"
   
   # Return value is collected as result (Join)
   { item_id: item.id, result: ctx.item_result }
+end
+```
+
+#### Accessing Current Element
+
+When using `each:` option, access the current element via `ctx.each_value`:
+
+```ruby
+task :process_items,
+     each: :items do |ctx|
+  item = ctx.each_value  # Get current element
+  process(item)
+end
+```
+
+**Important**: `ctx.each_value` can only be called within Map Tasks (tasks with `each:` option). Calling it in regular tasks will raise an error:
+
+```ruby
+task :regular_task do |ctx|
+  ctx.each_value  # ❌ Error: "each_value can be called only within each_values block"
+end
+
+task :map_task,
+     each: :items do |ctx|
+  ctx.each_value  # ✅ OK: Returns current element
 end
 ```
 
@@ -1166,9 +1194,9 @@ task(name, **options, &block)
   - `timeout` (ActiveSupport::Duration): Timeout duration
   - `condition` (Proc): Execute only if returns true (default: `->(_ctx) { true }`)
   - `throttle` (Hash): Throttling settings
-- `block` (Proc): Task implementation
-  - Without `each`: takes `|ctx|`
-  - With `each`: takes `|item, ctx|` (each array element)
+- `block` (Proc): Task implementation (always takes `|ctx|`)
+  - Without `each`: regular task execution
+  - With `each`: access current element via `ctx.each_value`
 
 **Example**:
 
@@ -1197,8 +1225,8 @@ end
 # Parallel processing with collection
 task :process_items,
      each: :items,
-     concurrency: 5 do |item, ctx|
-  ProcessService.handle(item)
+     concurrency: 5 do |ctx|
+  ProcessService.handle(ctx.each_value)
 end
 ```
 
@@ -1211,8 +1239,8 @@ context :items, Array[String]
 
 task :process_items,
      each: :items,
-     concurrency: 5 do |item, ctx|
-  ProcessService.handle(item)
+     concurrency: 5 do |ctx|
+  ProcessService.handle(ctx.each_value)
 end
 
 task :summarize, depends_on: :process_items do |ctx|

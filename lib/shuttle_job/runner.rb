@@ -14,7 +14,11 @@ module ShuttleJob
       workflow.tasks.each do |task|
         next unless task.condition.call(ctx)
 
-        task.block.call(ctx)
+        block = task.block
+
+        next block.call(ctx) if task.each.nil?
+
+        ctx._with_each_value(task.each).each { |each_ctx| block.call(each_ctx) }
       end
     end
 
