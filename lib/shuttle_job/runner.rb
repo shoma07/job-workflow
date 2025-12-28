@@ -7,10 +7,8 @@ module ShuttleJob
       @workflow = workflow
     end
 
-    #:  (Hash[untyped, untyped] initial_context_hash) -> void
-    def run(initial_context_hash)
-      ctx = Context.from_workflow(workflow)
-      ctx.merge!(initial_context_hash)
+    #:  (Context) -> void
+    def run(ctx)
       workflow.tasks.each do |task|
         next unless task.condition.call(ctx)
 

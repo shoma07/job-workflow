@@ -5,19 +5,25 @@ module ShuttleJob
     extend ActiveSupport::Concern
 
     # @rbs!
+    #   extend ClassMethods
+    #
     #   def self.class_attribute: (Symbol, default: untyped) -> void
-    #   def self._workflow: () -> Workflow
 
     included do
       class_attribute :_workflow, default: Workflow.new
     end
 
-    #:  (?Hash[untyped, untyped] context) -> void
-    def perform(context = {})
-      self.class._workflow.run(context)
+    #:  (Hash[untyped, untyped] | Context) -> void
+    def perform(context)
+      self.class._workflow.run(self.class._build_context(context))
     end
 
     module ClassMethods
+      #:  (?Hash[untyped, untyped]) -> void
+      def perform_later(initial_ctx = {})
+        super(_build_context(initial_ctx))
+      end
+
       #:  (Symbol context_name, String type, ?default: untyped) -> void
       def context(context_name, type, default: nil)
         _workflow.add_context(ContextDef.new(name: context_name, type:, default:))
@@ -41,6 +47,15 @@ module ShuttleJob
             condition:
           )
         )
+      end
+
+      #:  (Hash[untyped, untyped] | Context) -> Context
+      def _build_context(initial_ctx)
+        return initial_ctx if initial_ctx.is_a?(Context)
+
+        ctx = Context.from_workflow(_workflow)
+        ctx.merge!(initial_ctx.symbolize_keys)
+        ctx
       end
     end
   end

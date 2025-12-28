@@ -4,6 +4,8 @@ module ShuttleJob
   class Context
     attr_reader raw_data: Hash[Symbol, untyped]
 
+    attr_reader reader_names: Set[Symbol]
+
     # :  (Workflow) -> Context
     def self.from_workflow: (Workflow) -> Context
 
@@ -29,7 +31,7 @@ module ShuttleJob
 
     attr_writer raw_data: Hash[Symbol, untyped]
 
-    attr_accessor reader_names: Set[Symbol]
+    attr_writer reader_names: Set[Symbol]
 
     attr_accessor writer_names: Set[Symbol]
 

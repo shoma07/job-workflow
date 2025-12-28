@@ -24,11 +24,101 @@ RSpec.describe ShuttleJob::DSL do
     let(:initial_context_hash) { { a: 0 } }
     let(:ctx) { ShuttleJob::Context.from_workflow(klass._workflow) }
 
-    before do
-      allow(ShuttleJob::Context).to receive(:from_workflow).with(klass._workflow).and_return(ctx)
-    end
+    before { allow(ShuttleJob::Context).to receive(:from_workflow).with(klass._workflow).and_return(ctx) }
 
     it { expect { perform }.to change(ctx, :a).from(0).to(3) }
+
+    context "when given a Context object" do
+      subject(:perform) { klass.new.perform(ctx) }
+
+      let(:ctx) do
+        ctx = ShuttleJob::Context.from_workflow(klass._workflow)
+        ctx.a = 0
+        ctx
+      end
+
+      it { expect { perform }.to change(ctx, :a).from(0).to(3) }
+    end
+  end
+
+  describe ".perform_later" do
+    subject(:perform_later) { job_class.perform_later({ example: 1 }) }
+
+    let(:job_class) do
+      Class.new(ActiveJob::Base) do
+        include ShuttleJob::DSL
+
+        context :example, "Integer", default: 0
+
+        task :process do |ctx|
+          ctx.example += 1
+        end
+
+        def self.name
+          "TestJob"
+        end
+      end
+    end
+
+    around do |example|
+      original_adapter = ActiveJob::Base.queue_adapter
+
+      ActiveJob::Base.queue_adapter = :test
+      ActiveJob::Base.queue_adapter.enqueued_jobs.clear
+
+      example.run
+
+      ActiveJob::Base.queue_adapter.enqueued_jobs.clear
+      ActiveJob::Base.queue_adapter = original_adapter
+    end
+
+    it "enqueues the job" do
+      perform_later
+      expect(ActiveJob::Base.queue_adapter.enqueued_jobs).to have_attributes(
+        size: 1,
+        first: hash_including(
+          job: job_class,
+          args: [
+            {
+              "_aj_serialized" => "ShuttleJob::ContextSerializer",
+              "attribute_names" => %w[example],
+              "raw_data" => {
+                "_aj_symbol_keys" => [],
+                "example" => 1
+              }
+            }
+          ]
+        )
+      )
+    end
+  end
+
+  describe "._build_context" do
+    let(:klass) do
+      Class.new do
+        include ShuttleJob::DSL
+
+        context :example, "Integer", default: 0
+      end
+    end
+
+    context "when given a Hash" do
+      subject(:build_context) { klass._build_context({ example: 1 }) }
+
+      it { expect(build_context).to have_attributes(class: ShuttleJob::Context, example: 1) }
+    end
+
+    context "when given a Context" do
+      subject(:build_context) { klass._build_context(ctx) }
+
+      let(:ctx) do
+        ctx = ShuttleJob::Context.from_workflow(klass._workflow)
+        ctx.example = 2
+        ctx
+      end
+
+      it { expect(build_context).to eq(ctx) }
+    end
   end
 
   describe "self.context" do

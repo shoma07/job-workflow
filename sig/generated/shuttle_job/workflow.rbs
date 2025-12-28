@@ -5,8 +5,8 @@ module ShuttleJob
     # :  () -> void
     def initialize: () -> void
 
-    # :  (Hash[untyped, untyped] initial_context_hash) -> void
-    def run: (Hash[untyped, untyped] initial_context_hash) -> void
+    # :  (Context) -> void
+    def run: (Context) -> void
 
     # :  (Task) -> void
     def add_task: (Task) -> void

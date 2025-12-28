@@ -5,8 +5,8 @@ module ShuttleJob
     # :  (Workflow) -> void
     def initialize: (Workflow) -> void
 
-    # :  (Hash[untyped, untyped] initial_context_hash) -> void
-    def run: (Hash[untyped, untyped] initial_context_hash) -> void
+    # :  (Context) -> void
+    def run: (Context) -> void
 
     private
 
