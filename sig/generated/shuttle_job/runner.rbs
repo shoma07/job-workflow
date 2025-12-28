@@ -16,5 +16,11 @@ module ShuttleJob
 
     # :  () -> Workflow
     def workflow: () -> Workflow
+
+    # :  () -> Array[Task]
+    def tasks: () -> Array[Task]
+
+    # :  (Task, ActiveJob::Continuation::Step) -> void
+    def run_task: (Task, ActiveJob::Continuation::Step) -> void
   end
 end

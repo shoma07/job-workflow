@@ -133,7 +133,7 @@ RSpec.describe ShuttleJob::DSL do
       it do
         task
         ctx = ShuttleJob::Context.from_workflow(klass._workflow)
-        ctx.merge!({ sum: 1 }) # rubocop:disable Performance/RedundantMerge
+        ctx.sum = 1
         expect(klass._workflow.tasks[0].block.call(ctx)).to eq(1)
       end
     end
@@ -142,7 +142,6 @@ RSpec.describe ShuttleJob::DSL do
       subject(:task) do
         klass.task :example_task, each: :items do |ctx|
           ctx.sum = ctx.sum + ctx.each_value
-          puts ctx.sum
         end
       end
 
@@ -151,8 +150,7 @@ RSpec.describe ShuttleJob::DSL do
       it do
         task
         ctx = ShuttleJob::Context.from_workflow(klass._workflow)
-        klass.new.perform(ctx)
-        expect(ctx.sum).to eq(6)
+        expect { klass.new.perform(ctx) }.to change(ctx, :sum).from(0).to(6)
       end
     end
   end
@@ -322,6 +320,131 @@ RSpec.describe ShuttleJob::DSL do
       it do
         deserialize
         expect(job._runner).to be_nil
+      end
+    end
+  end
+
+  describe "ActiveJob::Continuable integration" do
+    let(:job_class) do
+      Class.new(ActiveJob::Base) do
+        include ShuttleJob::DSL
+
+        context :tasks_completed, "Array[Symbol]", default: []
+        context :value, "Integer", default: 0
+        context :items, "Array[Integer]", default: []
+        context :processed_count, "Integer", default: 0
+
+        task :task_one do |ctx|
+          ctx.tasks_completed << :task_one
+          ctx.value += 1
+        end
+
+        task :task_two, each: :items do |ctx|
+          ctx.tasks_completed << :task_two
+          ctx.value += ctx.each_value
+          ctx.processed_count += 1
+        end
+
+        task :task_three do |ctx|
+          ctx.tasks_completed << :task_three
+          ctx.value += 100
+        end
+
+        def self.name
+          "TestJob"
+        end
+      end
+    end
+
+    context "when serializing continuation data" do
+      it do
+        job = job_class.new
+        job.perform({ value: 0, tasks_completed: [] })
+        expect(job.serialize).to include(
+          "continuation" => { "completed" => %w[task_one task_two task_three] },
+          "resumptions" => 0
+        )
+      end
+    end
+
+    context "when executing all steps on first run" do
+      it do
+        job = job_class.new
+        job.perform({ value: 0, tasks_completed: [], items: [10], processed_count: 0 })
+        expect(job._runner).to have_attributes(
+          context: have_attributes(
+            value: 111,
+            tasks_completed: %i[task_one task_two task_three],
+            items: [10],
+            processed_count: 1
+          )
+        )
+      end
+    end
+
+    context "when resuming from last completed step" do
+      let(:job_one) { job_class.new }
+      let(:job_two) { job_class.new }
+
+      it do
+        job_one.perform({ value: 0, tasks_completed: [], items: [10], processed_count: 0 })
+        job_two.deserialize(
+          job_one.serialize.merge("continuation" => job_one.serialize["continuation"].merge("steps" => []))
+        )
+        expect(job_two).to have_attributes(continuation: have_attributes(nil?: false))
+      end
+    end
+
+    context "when tracking step progress" do
+      it do
+        job = job_class.new
+        job.perform({ value: 0, tasks_completed: [], items: [10], processed_count: 0 })
+        expect(job).to have_attributes(
+          serialize: include("continuation" => { "completed" => %w[task_one task_two task_three] })
+        )
+      end
+    end
+
+    context "when tracking progress within each iteration" do
+      it do
+        job = job_class.new
+        job.perform({ value: 0, tasks_completed: [], items: [1, 2, 3, 4, 5], processed_count: 0 })
+        expect(job).to have_attributes(
+          serialize: include("continuation" => { "completed" => %w[task_one task_two task_three] }),
+          _runner: have_attributes(context: have_attributes(value: 116, processed_count: 5))
+        )
+      end
+    end
+
+    context "when resuming within each iteration" do
+      it do
+        job_one = job_class.new
+        job_one.perform({ value: 0, tasks_completed: [], items: [10, 20, 30], processed_count: 0 })
+        job_two = job_class.new
+        job_two.deserialize(job_one.serialize)
+        expect([job_one, job_two]).to have_attributes(
+          first: have_attributes(
+            serialize: include("continuation" => { "completed" => %w[task_one task_two task_three] })
+          ),
+          last: have_attributes(
+            _runner: have_attributes(context: have_attributes(value: 161))
+          )
+        )
+      end
+    end
+
+    context "when preserving context across resumption" do
+      it do
+        job_one = job_class.new
+        job_one.perform({ value: 5, tasks_completed: [], items: [10], processed_count: 0 })
+        job_two = job_class.new
+        job_two.deserialize(job_one.serialize)
+        expect(job_two._runner.context).to have_attributes(
+          value: 116,
+          tasks_completed: %i[task_one task_two task_three],
+          items: [10],
+          processed_count: 1
+        )
       end
     end
   end
