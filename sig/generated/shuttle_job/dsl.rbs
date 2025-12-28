@@ -11,6 +11,15 @@ module ShuttleJob
     # :  (Hash[untyped, untyped] | Context) -> void
     def perform: (Hash[untyped, untyped] | Context) -> void
 
+    # :  () -> Runner?
+    def _runner: () -> Runner?
+
+    # :  () -> Hash[String, untyped]
+    def serialize: () -> Hash[String, untyped]
+
+    # :  (Hash[String, untyped]) -> void
+    def deserialize: (Hash[String, untyped]) -> void
+
     module ClassMethods
       # :  (?Hash[untyped, untyped]) -> void
       def perform_later: (?Hash[untyped, untyped]) -> void
@@ -28,9 +37,6 @@ module ShuttleJob
       #      ?condition: ^(Context) -> bool,
       #    ) { (untyped) -> void } -> void
       def task: (Symbol task_name, ?depends_on: Array[Symbol], ?condition: ^(Context) -> bool) { (untyped) -> void } -> void
-
-      # :  (Hash[untyped, untyped] | Context) -> Context
-      def _build_context: (Hash[untyped, untyped] | Context) -> Context
     end
   end
 end
