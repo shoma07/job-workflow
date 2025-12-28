@@ -23,5 +23,85 @@ RSpec.describe ShuttleJob::Runner do
     before { allow(ShuttleJob::Context).to receive(:new).with(workflow).and_return(ctx) }
 
     it { expect { run }.to change(ctx, :a).from(0).to(3) }
+
+    context "when task has each option" do
+      subject(:run) { described_class.new(workflow).run({ items: [1, 2, 3], sum: 0 }) }
+
+      let(:workflow) do
+        workflow = ShuttleJob::Workflow.new
+        workflow.add_context(ShuttleJob::ContextDef.new(name: :items, type: "Array[Integer]", default: []))
+        workflow.add_context(ShuttleJob::ContextDef.new(name: :sum, type: "Integer", default: 0))
+        workflow.add_task(
+          ShuttleJob::Task.new(
+            name: :process_items,
+            each: :items,
+            block: ->(ctx) { ctx.sum += ctx.each_value }
+          )
+        )
+        workflow
+      end
+      let(:ctx) { ShuttleJob::Context.new(workflow) }
+
+      before { allow(ShuttleJob::Context).to receive(:new).with(workflow).and_return(ctx) }
+
+      it { expect { run }.to change(ctx, :sum).from(0).to(6) }
+    end
+
+    context "when mixing regular and each tasks" do
+      subject(:run) { described_class.new(workflow).run({ items: [10, 20], multiplier: 2, result: [] }) }
+
+      let(:workflow) do
+        workflow = ShuttleJob::Workflow.new
+        workflow.add_context(ShuttleJob::ContextDef.new(name: :items, type: "Array[Integer]", default: []))
+        workflow.add_context(ShuttleJob::ContextDef.new(name: :multiplier, type: "Integer", default: 1))
+        workflow.add_context(ShuttleJob::ContextDef.new(name: :result, type: "Array[Integer]", default: []))
+        workflow.add_task(
+          ShuttleJob::Task.new(
+            name: :setup,
+            block: ->(ctx) { ctx.multiplier = 3 }
+          )
+        )
+        workflow.add_task(
+          ShuttleJob::Task.new(
+            name: :process_items,
+            each: :items,
+            block: ->(ctx) { ctx.result << (ctx.each_value * ctx.multiplier) }
+          )
+        )
+        workflow
+      end
+      let(:ctx) { ShuttleJob::Context.new(workflow) }
+
+      before { allow(ShuttleJob::Context).to receive(:new).with(workflow).and_return(ctx) }
+
+      it { expect { run }.to change(ctx, :result).from([]).to([30, 60]) }
+    end
+
+    context "when each task with condition" do
+      subject(:run) { described_class.new(workflow).run({ items: [1, 2, 3], sum: 0, enabled: false }) }
+
+      let(:workflow) do
+        workflow = ShuttleJob::Workflow.new
+        workflow.add_context(ShuttleJob::ContextDef.new(name: :items, type: "Array[Integer]", default: []))
+        workflow.add_context(ShuttleJob::ContextDef.new(name: :sum, type: "Integer", default: 0))
+        workflow.add_context(ShuttleJob::ContextDef.new(name: :enabled, type: "Boolean", default: false))
+        workflow.add_task(
+          ShuttleJob::Task.new(
+            name: :process_items,
+            each: :items,
+            block: ->(ctx) { ctx.sum += ctx.each_value },
+            condition: lambda(&:enabled)
+          )
+        )
+        workflow
+      end
+      let(:ctx) { ShuttleJob::Context.new(workflow) }
+
+      before { allow(ShuttleJob::Context).to receive(:new).with(workflow).and_return(ctx) }
+
+      it "does not execute the each task" do
+        expect { run }.not_to change(ctx, :sum)
+      end
+    end
   end
 end
