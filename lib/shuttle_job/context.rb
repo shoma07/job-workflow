@@ -4,12 +4,20 @@ module ShuttleJob
   class Context
     attr_reader :raw_data #: Hash[Symbol, untyped]
 
-    #:  (Workflow) -> void
-    def initialize(workflow)
-      self.raw_data = {} #: Hash[Symbol, untyped]
-      workflow.contexts.each { |context_def| raw_data[context_def.name] = context_def.default }
-      self.reader_names = workflow.contexts.to_set(&:name)
-      self.writer_names = reader_names.to_set { |n| :"#{n}=" }
+    class << self
+      #:  (Workflow) -> Context
+      def from_workflow(workflow)
+        raw_data = workflow.contexts.to_h { |context_def| [context_def.name, context_def.default] }
+        attribute_names = workflow.contexts.to_set(&:name)
+        new(raw_data:, attribute_names:)
+      end
+    end
+
+    #:  (raw_data: Hash[Symbol, untyped], attribute_names: Set[Symbol]) -> void
+    def initialize(raw_data:, attribute_names:)
+      self.raw_data = raw_data
+      self.reader_names = attribute_names
+      self.writer_names = attribute_names.to_set { |n| :"#{n}=" }
       self.enabled_each_value = false
     end
 
