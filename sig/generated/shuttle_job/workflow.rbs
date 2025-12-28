@@ -17,9 +17,6 @@ module ShuttleJob
     # :  () -> Array[ContextDef]
     def contexts: () -> Array[ContextDef]
 
-    # :  (Hash[untyped, untyped] | Context) -> Runner
-    def build_runner: (Hash[untyped, untyped] | Context) -> Runner
-
     # :  (Hash[untyped, untyped] | Context) -> Context
     def build_context: (Hash[untyped, untyped] | Context) -> Context
   end

@@ -4,9 +4,9 @@ module ShuttleJob
   class Runner
     attr_reader :context #: Context
 
-    #:  (workflow: Workflow, context: Context) -> void
-    def initialize(workflow:, context:)
-      @workflow = workflow
+    #:  (job: DSL::_InstanceMethods, context: Context) -> void
+    def initialize(job:, context:)
+      @job = job
       @context = context
     end
 
@@ -25,6 +25,11 @@ module ShuttleJob
 
     private
 
-    attr_reader :workflow #: Workflow
+    attr_reader :job #: DSL::_InstanceMethods
+
+    #:  () -> Workflow
+    def workflow
+      job.class._workflow
+    end
   end
 end

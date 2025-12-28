@@ -7,7 +7,7 @@ RSpec.describe ShuttleJob::DSL do
     end
 
     let(:klass) do
-      Class.new do
+      Class.new(ActiveJob::Base) do
         include ShuttleJob::DSL
 
         context :a, "Integer", default: 0
@@ -95,7 +95,7 @@ RSpec.describe ShuttleJob::DSL do
 
   describe "self.context" do
     let(:klass) do
-      Class.new do
+      Class.new(ActiveJob::Base) do
         include ShuttleJob::DSL
       end
     end
@@ -114,24 +114,46 @@ RSpec.describe ShuttleJob::DSL do
   end
 
   describe "self.task" do
-    subject(:task) do
-      klass.context :example, "Integer"
-      klass.task :example_task, &:example
-    end
-
     let(:klass) do
-      Class.new do
+      Class.new(ActiveJob::Base) do
         include ShuttleJob::DSL
       end
     end
 
-    it { expect { task }.to change { klass._workflow.tasks.size }.from(0).to(1) }
+    before do
+      klass.context :sum, "Integer", default: 0
+      klass.context :items, "Array[Integer]", default: [1, 2, 3]
+    end
 
-    it do
-      task
-      ctx = ShuttleJob::Context.from_workflow(klass._workflow)
-      ctx.merge!({ example: 1 }) # rubocop:disable Performance/RedundantMerge
-      expect(klass._workflow.tasks[0].block.call(ctx)).to eq(1)
+    context "without options" do
+      subject(:task) { klass.task :example_task, &:sum }
+
+      it { expect { task }.to change { klass._workflow.tasks.size }.from(0).to(1) }
+
+      it do
+        task
+        ctx = ShuttleJob::Context.from_workflow(klass._workflow)
+        ctx.merge!({ sum: 1 }) # rubocop:disable Performance/RedundantMerge
+        expect(klass._workflow.tasks[0].block.call(ctx)).to eq(1)
+      end
+    end
+
+    context "with each options" do
+      subject(:task) do
+        klass.task :example_task, each: :items do |ctx|
+          ctx.sum = ctx.sum + ctx.each_value
+          puts ctx.sum
+        end
+      end
+
+      it { expect { task }.to change { klass._workflow.tasks.size }.from(0).to(1) }
+
+      it do
+        task
+        ctx = ShuttleJob::Context.from_workflow(klass._workflow)
+        klass.new.perform(ctx)
+        expect(ctx.sum).to eq(6)
+      end
     end
   end
 
@@ -163,6 +185,47 @@ RSpec.describe ShuttleJob::DSL do
       before { job.perform({ value: 42 }) }
 
       it { is_expected.to have_attributes(class: ShuttleJob::Runner, context: have_attributes(value: 52)) }
+    end
+  end
+
+  describe "#_build_runner" do
+    subject(:_build_runner) { job._build_runner(ctx) }
+
+    let(:job) do
+      klass = Class.new(ActiveJob::Base) do
+        include ShuttleJob::DSL
+
+        context :value, "Integer", default: 0
+
+        task :increment do |ctx|
+          ctx.value += 10
+        end
+
+        def self.name
+          "TestJob"
+        end
+      end
+      klass.new
+    end
+
+    context "when initial context is a Hash" do
+      let(:ctx) { { value: 1 } }
+
+      it { expect(_build_runner).to have_attributes(class: ShuttleJob::Runner, context: have_attributes(value: 1)) }
+
+      it { expect { _build_runner.run }.to change { _build_runner.context.value }.from(1).to(11) }
+    end
+
+    context "when initial context is a Context" do
+      let(:ctx) do
+        ctx = ShuttleJob::Context.from_workflow(job._workflow)
+        ctx.value = 1
+        ctx
+      end
+
+      it { expect(_build_runner).to have_attributes(class: ShuttleJob::Runner, context: have_attributes(value: 1)) }
+
+      it { expect { _build_runner.run }.to change { _build_runner.context.value }.from(1).to(11) }
     end
   end
 
