@@ -1,4 +1,30 @@
 module ActiveJob
   module Continuable
+    def step: (Symbol, ?start: ActiveJob::Continuation::_Succ, ?isolated: bool) -> void
+            | (Symbol, ?start: ActiveJob::Continuation::_Succ, ?isolated: bool) { (ActiveJob::Continuation::Step) -> void } -> void
+  end
+
+  module Continuation
+    interface _Succ
+      def succ: () -> self
+    end
+
+    class Step
+      def advance!: (?from: _Succ?) -> void
+
+      def advanced?: () -> bool
+
+      def checkpoint!: () -> void
+
+      def description: () -> String
+
+      def initialize: (Symbol, _Succ, job: ActiveJob::Base, resumed: bool) -> void
+
+      def resumed?: () -> bool
+
+      def set!: (_Succ) -> void
+
+      def to_a: () -> [String, _Succ]
+    end
   end
 end
