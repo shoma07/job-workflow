@@ -9,11 +9,15 @@ module ShuttleJob
     # @rbs!
     #   interface _ClassMethods
     #     def class_attribute: (Symbol, default: untyped) -> void
+    #
     #     def _workflow: () -> Workflow
     #   end
     #
     #   interface _InstanceMethods
     #     def class: () -> _ClassMethods
+    #
+    #     def step: (Symbol, ?start: ActiveJob::Continuation::_Succ, ?isolated: bool) -> void
+    #             | (Symbol, ?start: ActiveJob::Continuation::_Succ, ?isolated: bool) { (ActiveJob::Continuation::Step) -> void } -> void
     #   end
 
     # @rbs!
