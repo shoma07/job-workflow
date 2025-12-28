@@ -4,6 +4,7 @@
 #
 target :lib do
   signature "sig"
+  signature "sig-private"
 
   check "lib"
 end

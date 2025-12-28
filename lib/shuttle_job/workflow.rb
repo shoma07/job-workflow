@@ -28,11 +28,6 @@ module ShuttleJob
       @context_defs.values
     end
 
-    #:  (Hash[untyped, untyped] | Context) -> Runner
-    def build_runner(initial_context)
-      ShuttleJob::Runner.new(workflow: self, context: build_context(initial_context))
-    end
-
     #:  (Hash[untyped, untyped] | Context) -> Context
     def build_context(initial_context)
       return initial_context if initial_context.is_a?(Context)
