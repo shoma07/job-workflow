@@ -10,7 +10,8 @@ Welcome to the comprehensive guide for ShuttleJob. This document provides inform
 
 1. [Getting Started](#getting-started)
 2. [DSL Basics](#dsl-basics)
-3. [Parallel Processing](#parallel-processing)
+3. [Task Outputs](#task-outputs)
+4. [Parallel Processing](#parallel-processing)
 
 ### Intermediate
 
@@ -116,9 +117,9 @@ class DataPipelineJob < ApplicationJob
   include ShuttleJob::DSL
   
   # Define Context fields
-  context :source_id, Integer
-  context :raw_data, String
-  context :transformed_data, Hash
+  context :source_id, "Integer"
+  context :raw_data, "String"
+  context :transformed_data, "Hash"
   
   # Task 1: Data extraction
   task :extract do |ctx|
@@ -126,12 +127,12 @@ class DataPipelineJob < ApplicationJob
   end
   
   # Task 2: Data transformation (depends on extract)
-  task :transform, depends_on: :extract do |ctx|
+  task :transform, depends_on: [:extract] do |ctx|
     ctx.transformed_data = JSON.parse(ctx.raw_data)
   end
   
   # Task 3: Data loading (depends on transform)
-  task :load, depends_on: :transform do |ctx|
+  task :load, depends_on: [:transform] do |ctx|
     DataModel.create!(ctx.transformed_data)
   end
 end
@@ -199,7 +200,7 @@ task :fetch_data do |ctx|
   ctx.data = API.fetch
 end
 
-task :process_data, depends_on: :fetch_data do |ctx|
+task :process_data, depends_on: [:fetch_data] do |ctx|
   ctx.result = process(ctx.data)
 end
 ```
@@ -226,7 +227,7 @@ ShuttleJob automatically topologically sorts dependencies.
 
 ```ruby
 # Correct order is executed regardless of definition order
-task :step3, depends_on: :step2 do |ctx|
+task :step3, depends_on: [:step2] do |ctx|
   ctx.final = true
 end
 
@@ -234,7 +235,7 @@ task :step1 do |ctx|
   ctx.initial = true
 end
 
-task :step2, depends_on: :step1 do |ctx|
+task :step2, depends_on: [:step1] do |ctx|
   ctx.middle = true
 end
 
@@ -280,8 +281,8 @@ class TypedWorkflowJob < ApplicationJob
   context :items, "Array[String]"
   context :config, "Hash[Symbol, String]"
   
-  # Optional fields
-  context :optional_field, String, optional: true
+  # Fields with default values
+  context :optional_field, "String", default: ""
 end
 ```
 
@@ -297,8 +298,8 @@ task :example do |ctx|
   # Writing
   ctx.result = "completed"
   
-  # Nil checking
-  if ctx.optional_field
+  # Check if field has value
+  if ctx.optional_field.present?
     # Process
   end
 end
@@ -386,6 +387,251 @@ end
 
 ---
 
+## Task Outputs
+
+ShuttleJob allows tasks to define and collect outputs, making it easy to access task execution results. This is particularly useful when you need to use results from previous tasks in subsequent tasks or when collecting results from parallel map tasks.
+
+### Defining Task Outputs
+
+Use the `output:` option to define the structure of task outputs. Specify output field names and their types as a hash.
+
+#### Basic Output Definition
+
+```ruby
+class DataProcessingJob < ApplicationJob
+  include ShuttleJob::DSL
+  
+  context :input_value, "Integer", default: 0
+  
+  # Define task with outputs
+  task :calculate, output: { result: "Integer", message: "String" } do |ctx|
+    # Return a hash with the defined keys
+    {
+      result: ctx.input_value * 2,
+      message: "Calculation complete"
+    }
+  end
+  
+  # Access the output from another task
+  task :report, depends_on: [:calculate] do |ctx|
+    puts "Result: #{ctx.output.calculate.result}"
+    puts "Message: #{ctx.output.calculate.message}"
+  end
+end
+```
+
+#### Output with Map Tasks
+
+Outputs from map tasks are collected as an array, with one output per iteration.
+
+```ruby
+class BatchCalculationJob < ApplicationJob
+  include ShuttleJob::DSL
+  
+  context :numbers, "Array[Integer]", default: []
+  
+  # Map task with output definition
+  task :double_numbers, 
+    each: :numbers,
+    output: { doubled: "Integer", original: "Integer" } do |ctx|
+    value = ctx.each_value
+    {
+      doubled: value * 2,
+      original: value
+    }
+  end
+  
+  # Access all outputs from the map task
+  task :summarize, depends_on: [:double_numbers] do |ctx|
+    ctx.output.double_numbers.each do |output|
+      puts "Original: #{output.original}, Doubled: #{output.doubled}"
+    end
+    
+    # Calculate total
+    total = ctx.output.double_numbers.sum(&:doubled)
+    puts "Total: #{total}"
+  end
+end
+
+# Execution
+BatchCalculationJob.perform_now(numbers: [1, 2, 3, 4, 5])
+# Output:
+# Original: 1, Doubled: 2
+# Original: 2, Doubled: 4
+# Original: 3, Doubled: 6
+# Original: 4, Doubled: 8
+# Original: 5, Doubled: 10
+# Total: 30
+```
+
+### Accessing Task Outputs
+
+Task outputs are accessible through `ctx.output` using the task name as a method. The output object provides dynamic accessor methods for each defined output field.
+
+#### Regular Task Output
+
+```ruby
+task :fetch_data, output: { count: "Integer", items: "Array" } do |ctx|
+  data = ExternalAPI.fetch
+  {
+    count: data.size,
+    items: data
+  }
+end
+
+task :process, depends_on: [:fetch_data] do |ctx|
+  # Access output fields directly
+  puts "Received #{ctx.output.fetch_data.count} items"
+  ctx.output.fetch_data.items.each do |item|
+    process_item(item)
+  end
+end
+```
+
+#### Map Task Output Array
+
+```ruby
+task :process_items, 
+  each: :items,
+  output: { result: "String", status: "String" } do |ctx|
+  item = ctx.each_value
+  {
+    result: transform(item),
+    status: "success"
+  }
+end
+
+task :verify, depends_on: [:process_items] do |ctx|
+  # outputs is an array of TaskOutput objects
+  outputs = ctx.output.process_items
+  
+  successful = outputs.count { |o| o.status == "success" }
+  puts "Processed #{outputs.size} items, #{successful} successful"
+  
+  # Access individual outputs by index
+  first_result = outputs[0].result
+  last_result = outputs[-1].result
+end
+```
+
+### Output Field Normalization
+
+Task outputs are automatically normalized based on the output definition:
+
+1. **Only defined fields are collected**: Fields not in the output definition are ignored
+2. **Missing fields default to nil**: If a defined field is not returned, it defaults to `nil`
+3. **Type safety**: Output definitions document expected types for better code clarity
+
+```ruby
+task :example, output: { required: "String", optional: "Integer" } do |ctx|
+  # Only return one field
+  { required: "value" }
+  # optional will be nil
+end
+
+task :check_output, depends_on: [:example] do |ctx|
+  puts ctx.output.example.required  # => "value"
+  puts ctx.output.example.optional  # => nil
+end
+```
+
+### Output Persistence
+
+Task outputs are automatically serialized and persisted with the Context, allowing them to:
+
+- **Survive job restarts**: Outputs are preserved across job retries
+- **Resume correctly**: When using continuations, outputs from completed tasks are available
+- **Pass between jobs**: In map tasks with concurrency, outputs from subjobs are collected
+
+### Output Design Guidelines
+
+#### When to Use Outputs
+
+Use task outputs when you need to:
+
+- **Extract structured data** from a task for use in later tasks
+- **Collect results** from parallel map task executions
+- **Document return values** with types for better code clarity
+- **Separate concerns** between task execution and result usage
+
+#### When to Use Context Instead
+
+Use Context fields when you need to:
+
+- **Share mutable state** that tasks modify incrementally
+- **Pass configuration** or settings through the workflow
+- **Store final results** that are the primary goal of the workflow
+
+#### Best Practices
+
+```ruby
+class WellDesignedJob < ApplicationJob
+  include ShuttleJob::DSL
+  
+  # Context for configuration and final results
+  context :user_id, "Integer"
+  context :final_report, "Hash", default: {}
+  
+  # Use outputs for intermediate structured data
+  task :fetch_user, 
+    output: { name: "String", email: "String", role: "String" } do |ctx|
+    user = User.find(ctx.user_id)
+    {
+      name: user.name,
+      email: user.email,
+      role: user.role
+    }
+  end
+  
+  task :fetch_permissions,
+    depends_on: [:fetch_user],
+    output: { permissions: "Array[String]" } do |ctx|
+    role = ctx.output.fetch_user.role
+    {
+      permissions: PermissionService.get_permissions(role)
+    }
+  end
+  
+  # Build final report in Context
+  task :generate_report,
+    depends_on: [:fetch_user, :fetch_permissions] do |ctx|
+    user = ctx.output.fetch_user
+    perms = ctx.output.fetch_permissions
+    
+    ctx.final_report = {
+      user: { name: user.name, email: user.email },
+      permissions: perms.permissions,
+      generated_at: Time.current
+    }
+  end
+end
+```
+
+### Limitations
+
+#### Concurrent Map Tasks
+
+Currently, outputs from map tasks with `concurrency:` specified are **not automatically collected**. This is a known limitation and will be addressed in a future release.
+
+```ruby
+# This works - outputs are collected
+task :process, each: :items, output: { result: "String" } do |ctx|
+  { result: process(ctx.each_value) }
+end
+
+# This doesn't collect outputs (yet)
+task :process_parallel,
+  each: :items,
+  concurrency: 5,
+  output: { result: "String" } do |ctx|
+  { result: process(ctx.each_value) }
+end
+```
+
+**Workaround**: For now, if you need outputs from concurrent map tasks, use Context fields to collect results manually.
+
+---
+
 ## Parallel Processing
 
 ShuttleJob enables parallel processing of collection elements by specifying the `each:` option in a `task` definition. Based on the Fork-Join pattern, it provides efficient and safe parallel execution.
@@ -398,8 +644,8 @@ ShuttleJob enables parallel processing of collection elements by specifying the 
 class BatchProcessingJob < ApplicationJob
   include ShuttleJob::DSL
   
-  context :user_ids, Array
-  context :results, Hash
+  context :user_ids, "Array"
+  context :results, "Hash"
   
   # Prepare user IDs
   task :fetch_user_ids do |ctx|
@@ -409,7 +655,7 @@ class BatchProcessingJob < ApplicationJob
   # Process each user in parallel
   task :process_users,
        each: :user_ids,
-       depends_on: :fetch_user_ids do |ctx|
+       depends_on: [:fetch_user_ids] do |ctx|
     user_id = ctx.each_value
     user = User.find(user_id)
     {
@@ -419,7 +665,7 @@ class BatchProcessingJob < ApplicationJob
   end
   
   # Aggregate results
-  task :aggregate_results, depends_on: :process_users do |ctx|
+  task :aggregate_results, depends_on: [:process_users] do |ctx|
     ctx.results = ctx.process_users_results
     # => [{ user_id: 1, status: :ok }, { user_id: 2, status: :ok }, ...]
   end
@@ -635,14 +881,14 @@ class UserNotificationJob < ApplicationJob
   
   # Execute only for premium users
   task :send_premium_notification,
-       depends_on: :load_user_preferences,
+       depends_on: [:load_user_preferences],
        condition: ->(ctx) { ctx.user.premium? } do |ctx|
     PremiumNotificationService.send(ctx.user, ctx.notification_type)
   end
   
   # Send simple notification to standard users
   task :send_standard_notification,
-       depends_on: :load_user_preferences,
+       depends_on: [:load_user_preferences],
        condition: ->(ctx) { !ctx.user.premium? } do |ctx|
     StandardNotificationService.send(ctx.user, ctx.notification_type)
   end
@@ -657,8 +903,8 @@ You can use any Ruby expression in the condition lambda.
 class DataSyncJob < ApplicationJob
   include ShuttleJob::DSL
   
-  context :force_sync, "TrueClass | FalseClass", optional: true
-  context :last_sync_at, "Time", optional: true
+  context :force_sync, "TrueClass | FalseClass", default: false
+  context :last_sync_at, "Time", default: nil
   
   # Execute only if more than 1 hour since last sync
   task :sync_data,
@@ -688,8 +934,8 @@ Execute processing before task execution.
 class ValidationWorkflowJob < ApplicationJob
   include ShuttleJob::DSL
   
-  context :order_id, Integer
-  context :order, Hash, optional: true
+  context :order_id, "Integer"
+  context :order, "Hash", default: nil
   
   # Run validation in before hook
   before :charge_payment do |ctx|
@@ -717,8 +963,8 @@ Execute processing after task execution.
 class NotificationWorkflowJob < ApplicationJob
   include ShuttleJob::DSL
   
-  context :user_id, Integer
-  context :action_result, Hash
+  context :user_id, "Integer"
+  context :action_result, "Hash"
   
   task :perform_action do |ctx|
     ctx.action_result = SomeService.perform(ctx.user_id)
@@ -789,9 +1035,9 @@ class ECommerceOrderJob < ApplicationJob
   include ShuttleJob::DSL
   
   context :order, "Order"
-  context :payment_result, "Hash", optional: true
-  context :inventory_reserved, "TrueClass | FalseClass", optional: true
-  context :shipping_label, "String", optional: true
+  context :payment_result, "Hash", default: nil
+  context :inventory_reserved, "TrueClass | FalseClass", default: false
+  context :shipping_label, "String", default: nil
   
   # Payment-related tasks
   namespace :payment do
@@ -799,11 +1045,11 @@ class ECommerceOrderJob < ApplicationJob
       PaymentValidator.validate(ctx.order)
     end
     
-    task :charge, depends_on: :validate do |ctx|
+    task :charge, depends_on: [:validate] do |ctx|
       ctx.payment_result = PaymentProcessor.charge(ctx.order)
     end
     
-    task :send_receipt, depends_on: :charge do |ctx|
+    task :send_receipt, depends_on: [:charge] do |ctx|
       ReceiptMailer.send(ctx.order, ctx.payment_result)
     end
   end
@@ -814,7 +1060,7 @@ class ECommerceOrderJob < ApplicationJob
       InventoryService.check(ctx.order.items)
     end
     
-    task :reserve, depends_on: :check_availability do |ctx|
+    task :reserve, depends_on: [:check_availability] do |ctx|
       ctx.inventory_reserved = InventoryService.reserve(ctx.order.items)
     end
   end
@@ -825,7 +1071,7 @@ class ECommerceOrderJob < ApplicationJob
       ctx.shipping_cost = ShippingCalculator.calculate(ctx.order)
     end
     
-    task :create_label, depends_on: :calculate_cost do |ctx|
+    task :create_label, depends_on: [:calculate_cost] do |ctx|
       ctx.shipping_label = ShippingService.create_label(ctx.order)
     end
   end
@@ -875,9 +1121,9 @@ class BookingWorkflowJob < ApplicationJob
   include ShuttleJob::DSL
   include ShuttleJob::Saga
   
-  context :user_id, Integer
-  context :hotel_booking_id, Integer, optional: true
-  context :flight_booking_id, Integer, optional: true
+  context :user_id, "Integer"
+  context :hotel_booking_id, "Integer", default: nil
+  context :flight_booking_id, "Integer", default: nil
   
   # Hotel reservation
   task :reserve_hotel do |ctx|
@@ -896,7 +1142,7 @@ class BookingWorkflowJob < ApplicationJob
   end
   
   # Flight reservation
-  task :reserve_flight, depends_on: :reserve_hotel do |ctx|
+  task :reserve_flight, depends_on: [:reserve_hotel] do |ctx|
     ctx.flight_booking_id = FlightService.reserve(
       user_id: ctx.user_id,
       dates: ctx.dates
@@ -912,7 +1158,7 @@ class BookingWorkflowJob < ApplicationJob
   end
   
   # Payment processing
-  task :charge_payment, depends_on: :reserve_flight do |ctx|
+  task :charge_payment, depends_on: [:reserve_flight] do |ctx|
     ctx.payment_id = PaymentService.charge(
       user_id: ctx.user_id,
       amount: ctx.total_amount
@@ -946,7 +1192,7 @@ class ExternalAPIJob < ApplicationJob
   include ShuttleJob::DSL
   
   context :user_ids, "Array[Integer]"
-  context :api_results, "Array", optional: true
+  context :api_results, "Array", default: []
   
   # External API allows up to 10 concurrent requests
   task :fetch_user_data,
@@ -1125,11 +1371,11 @@ This section covers common issues encountered during ShuttleJob operation and th
 
 ```ruby
 # ❌ Circular dependency
-task :a, depends_on: :b do |ctx|
+task :a, depends_on: [:b] do |ctx|
   # ...
 end
 
-task :b, depends_on: :a do |ctx|
+task :b, depends_on: [:a] do |ctx|
   # ...
 end
 ```
@@ -1142,7 +1388,7 @@ task :a do |ctx|
   # ...
 end
 
-task :b, depends_on: :a do |ctx|
+task :b, depends_on: [:a] do |ctx|
   # ...
 end
 ```
@@ -1153,7 +1399,7 @@ end
 
 ```ruby
 # ❌ Depending on non-existent task
-task :process, depends_on: :typo_task do |ctx|
+task :process, depends_on: [:typo_task] do |ctx|
   # ...
 end
 ```
@@ -1162,7 +1408,7 @@ end
 
 ```ruby
 # ✅ Correct task name
-task :process, depends_on: :correct_task do |ctx|
+task :process, depends_on: [:correct_task] do |ctx|
   # ...
 end
 ```
@@ -1206,7 +1452,7 @@ task :simple do |ctx|
 end
 
 task :with_dependencies,
-     depends_on: :simple,
+     depends_on: [:simple],
      retry_count: 3,
      timeout: 30.seconds do |ctx|
   ctx.final = process(ctx.result)
@@ -1235,7 +1481,7 @@ end
 **Example**:
 
 ```ruby
-context :items, Array[String]
+context :items, "Array[String]"
 
 task :process_items,
      each: :items,
@@ -1243,7 +1489,7 @@ task :process_items,
   ProcessService.handle(ctx.each_value)
 end
 
-task :summarize, depends_on: :process_items do |ctx|
+task :summarize, depends_on: [:process_items] do |ctx|
   # Access results with ctx.process_items_results
   ctx.summary = ctx.process_items_results.sum
 end
@@ -1313,17 +1559,17 @@ class WellDesignedWorkflowJob < ApplicationJob
     raise "Invalid" unless ctx.data.valid?
   end
   
-  task :fetch_dependencies, depends_on: :validate_input do |ctx|
+  task :fetch_dependencies, depends_on: [:validate_input] do |ctx|
     # Only fetch data
     ctx.dependencies = fetch_required_data
   end
   
-  task :transform_data, depends_on: :fetch_dependencies do |ctx|
+  task :transform_data, depends_on: [:fetch_dependencies] do |ctx|
     # Only transform
     ctx.transformed = transform(ctx.data, ctx.dependencies)
   end
   
-  task :save_result, depends_on: :transform_data do |ctx|
+  task :save_result, depends_on: [:transform_data] do |ctx|
     # Only save
     save_to_database(ctx.transformed)
   end
@@ -1351,7 +1597,7 @@ task :prepare_data do |ctx|
   ctx.prepared = prepare(ctx.raw_data)
 end
 
-task :process_data, depends_on: :prepare_data do |ctx|
+task :process_data, depends_on: [:prepare_data] do |ctx|
   ctx.result = process(ctx.prepared)
 end
 
