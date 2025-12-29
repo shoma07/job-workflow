@@ -34,5 +34,8 @@ module ShuttleJob
 
     # :  () -> void
     def run_each_task_in_map: () -> void
+
+    # :  (ctx: Context, task: Task, ?each_index: Integer?, data: untyped) -> void
+    def add_task_output: (ctx: Context, task: Task, data: untyped, ?each_index: Integer?) -> void
   end
 end

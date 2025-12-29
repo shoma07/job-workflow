@@ -2,6 +2,20 @@
 
 module ShuttleJob
   class Output
+    class << self
+      #:  (Array[Hash[untyped, untyped]]) -> Output
+      def from_hash_array(array)
+        task_outputs = array.map do |hash|
+          normalized_hash = hash.transform_keys(&:to_sym)
+          task_name = normalized_hash[:task_name]
+          each_index = normalized_hash[:each_index]
+          data = normalized_hash[:data]
+          TaskOutput.new(task_name:, each_index:, data:)
+        end
+        new(task_outputs:)
+      end
+    end
+
     #:  (?task_outputs: Array[TaskOutput]) -> void
     def initialize(task_outputs: [])
       self.task_outputs = {}
@@ -14,6 +28,11 @@ module ShuttleJob
       task_outputs[task_output.task_name] ||= []
       task_outputs[task_output.task_name][task_output.each_index || 0] = task_output
       each_task_names << task_output.task_name if task_output.each_index
+    end
+
+    #:  () -> Array[TaskOutput]
+    def flat_task_outputs
+      task_outputs.values.flatten
     end
 
     #:  ...

@@ -12,5 +12,13 @@ module ShuttleJob
 
     # :  () -> Class
     def klass: () -> Class
+
+    private
+
+    # :  (untyped) -> Hash[String, untyped]
+    def argument_serialize: (untyped) -> Hash[String, untyped]
+
+    # :  (Hash[String, untyped]) -> untyped
+    def argument_deserialize: (Hash[String, untyped]) -> untyped
   end
 end
