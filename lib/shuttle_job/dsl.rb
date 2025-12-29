@@ -61,6 +61,10 @@ module ShuttleJob
       #
       #   def _workflow: () -> Workflow
       #
+      #   def new: (Context) -> DSL
+      #
+      #   def perform_all_later: (Array[DSL]) -> void
+      #
       #   def limits_concurrency: (
       #     to: Integer,
       #     key: ^(untyped) -> untyped,

@@ -35,6 +35,10 @@ module ShuttleJob
 
       def _workflow: () -> Workflow
 
+      def new: (Context) -> DSL
+
+      def perform_all_later: (Array[DSL]) -> void
+
       def limits_concurrency: (to: Integer, key: ^(untyped) -> untyped, ?duration: ActiveSupport::Duration?, ?group: String?, ?on_conflict: Symbol?) -> void
 
       # :  (?Hash[untyped, untyped]) -> void
