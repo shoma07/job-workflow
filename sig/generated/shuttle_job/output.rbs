@@ -2,11 +2,17 @@
 
 module ShuttleJob
   class Output
+    # :  (Array[Hash[untyped, untyped]]) -> Output
+    def self.from_hash_array: (Array[Hash[untyped, untyped]]) -> Output
+
     # :  (?task_outputs: Array[TaskOutput]) -> void
     def initialize: (?task_outputs: Array[TaskOutput]) -> void
 
     # :  (TaskOutput) -> void
     def add_task_output: (TaskOutput) -> void
+
+    # :  () -> Array[TaskOutput]
+    def flat_task_outputs: () -> Array[TaskOutput]
 
     # :  ...
     def method_missing: ...

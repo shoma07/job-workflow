@@ -71,6 +71,27 @@ RSpec.describe ShuttleJob::Context do
         expect { init._with_each_value(task) }.to raise_error("Nested _with_each_value calls are not allowed")
       end
     end
+
+    context "when task_outputs is provided" do
+      let(:arguments) do
+        {
+          raw_data: { ctx_one: nil, ctx_two: 1 },
+          task_outputs: [
+            { task_name: :task_one, each_index: nil, data: { result: 100 } },
+            { task_name: :task_two, each_index: nil, data: { result: 200 } }
+          ]
+        }
+      end
+
+      it "creates a context with task outputs" do
+        expect(init).to have_attributes(
+          output: have_attributes(
+            task_one: have_attributes(result: 100),
+            task_two: have_attributes(result: 200)
+          )
+        )
+      end
+    end
   end
 
   describe "#merge!" do
@@ -270,6 +291,67 @@ RSpec.describe ShuttleJob::Context do
       subject(:writer) { ctx.public_send(:ctx_two=, 2, 3) }
 
       it { expect { writer }.to raise_error(NoMethodError) }
+    end
+  end
+
+  describe "#output" do
+    subject(:output) { ctx.output }
+
+    it "returns an Output instance" do
+      expect(output).to be_a(ShuttleJob::Output)
+    end
+  end
+
+  describe "#_add_task_output" do
+    subject(:add_task_output) { ctx._add_task_output(task_output) }
+
+    context "when adding a regular task output" do
+      let(:task_output) do
+        ShuttleJob::TaskOutput.new(
+          task_name: :sample_task,
+          data: { result: 42, message: "success" }
+        )
+      end
+
+      it "adds the task output to the output" do
+        add_task_output
+        expect(ctx.output.sample_task).to have_attributes(
+          result: 42,
+          message: "success"
+        )
+      end
+    end
+
+    context "when adding multiple outputs for a map task" do
+      let(:task_outputs) do
+        [
+          ShuttleJob::TaskOutput.new(
+            task_name: :map_task,
+            each_index: 0,
+            data: { result: 10 }
+          ),
+          ShuttleJob::TaskOutput.new(
+            task_name: :map_task,
+            each_index: 1,
+            data: { result: 20 }
+          ),
+          ShuttleJob::TaskOutput.new(
+            task_name: :map_task,
+            each_index: 2,
+            data: { result: 30 }
+          )
+        ]
+      end
+
+      before { task_outputs.each { |task_output| ctx._add_task_output(task_output) } }
+
+      it "adds all task outputs as an array" do
+        expect(ctx.output.map_task).to contain_exactly(
+          have_attributes(result: 10),
+          have_attributes(result: 20),
+          have_attributes(result: 30)
+        )
+      end
     end
   end
 
