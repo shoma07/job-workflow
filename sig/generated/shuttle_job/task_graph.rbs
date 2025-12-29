@@ -12,6 +12,9 @@ module ShuttleJob
     # :  (Task) -> void
     def add: (Task) -> void
 
+    # :  (Symbol) -> Task
+    def fetch: (Symbol) -> Task
+
     # :  () { (Task) -> void } -> void
     def each: () { (Task) -> void } -> void
 

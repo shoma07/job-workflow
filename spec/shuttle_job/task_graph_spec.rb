@@ -16,6 +16,35 @@ RSpec.describe ShuttleJob::TaskGraph do
     it { expect { add }.to change { graph.each.to_a }.from([]).to([task]) }
   end
 
+  describe "#fetch" do
+    subject(:fetch) { graph.fetch(task_name) }
+
+    let(:graph) do
+      graph = described_class.new
+      graph.add(task)
+      graph
+    end
+    let(:task) do
+      ShuttleJob::Task.new(
+        name: :sample_task,
+        block: ->(ctx) { ctx },
+        depends_on: []
+      )
+    end
+
+    context "when task exists" do
+      let(:task_name) { :sample_task }
+
+      it { is_expected.to eq(task) }
+    end
+
+    context "when task does not exist" do
+      let(:task_name) { :missing_task }
+
+      it { expect { fetch }.to raise_error(KeyError) }
+    end
+  end
+
   describe "#each" do
     subject(:each) { graph.each }
 

@@ -14,6 +14,9 @@ module ShuttleJob
     # :  () -> Array[Task]
     def tasks: () -> Array[Task]
 
+    # :  (Symbol) -> Task
+    def fetch_task: (Symbol) -> Task
+
     # :  () -> Array[ContextDef]
     def contexts: () -> Array[ContextDef]
 
