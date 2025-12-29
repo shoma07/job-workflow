@@ -164,7 +164,7 @@ RSpec.describe ShuttleJob::Runner do
       end
     end
 
-    context "when context has sub_task_concurrency_key" do
+    context "when context has each_task_concurrency_key" do
       let(:job) do
         klass = Class.new(ActiveJob::Base) do
           include ShuttleJob::DSL
@@ -180,10 +180,12 @@ RSpec.describe ShuttleJob::Runner do
       let(:ctx) do
         ctx = ShuttleJob::Context.new(
           raw_data: { value: 5 },
-          current_task_name: :process_item,
-          parent_job_id: "parent-job-id",
-          each_index: 0,
-          each_value: 10
+          each_context: {
+            task_name: :process_item,
+            parent_job_id: "parent-job-id",
+            index: 0,
+            value: 10
+          }
         )
         ctx._current_job = job
         ctx
@@ -192,42 +194,6 @@ RSpec.describe ShuttleJob::Runner do
       it "executes the task as a sub task" do
         expect { run }.to change(ctx, :value).from(5).to(10)
       end
-    end
-  end
-
-  describe "set current_task with task" do
-    subject(:run) { described_class.new(job:, context: ctx).run }
-
-    let(:job) do
-      klass = Class.new(ActiveJob::Base) do
-        include ShuttleJob::DSL
-
-        context :result_task_name, "String", default: nil
-
-        task :task_one do |ctx|
-          ctx.result_task_name = ctx.current_task_name
-        end
-      end
-      klass.new
-    end
-    let(:ctx) do
-      ShuttleJob::Context.from_workflow(job.class._workflow)
-    end
-
-    it "sets current_task during task execution" do
-      expect { run }.to(change do
-        ctx.result_task_name
-      rescue StandardError
-        nil
-      end.from(nil).to(:task_one))
-    end
-
-    it "clears current_task after task execution" do
-      expect { run }.not_to(change do
-        ctx.current_task_name
-      rescue StandardError
-        nil
-      end.from(nil))
     end
   end
 end

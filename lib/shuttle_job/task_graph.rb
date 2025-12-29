@@ -15,7 +15,7 @@ module ShuttleJob
       @tasks[task.name] = task
     end
 
-    #:  (Symbol) -> Task
+    #:  (Symbol?) -> Task
     def fetch(task_name)
       @tasks.fetch(task_name)
     end

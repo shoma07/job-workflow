@@ -12,6 +12,7 @@ require_relative "shuttle_job/dsl"
 require_relative "shuttle_job/runner"
 require_relative "shuttle_job/workflow"
 require_relative "shuttle_job/context_def"
+require_relative "shuttle_job/each_context"
 require_relative "shuttle_job/context"
 require_relative "shuttle_job/context_serializer"
 

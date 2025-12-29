@@ -2,10 +2,10 @@
 
 RSpec.describe ShuttleJob::ContextSerializer do
   let(:context) do
-    ShuttleJob::Context.new(raw_data:, **ctx_options)
+    ShuttleJob::Context.new(raw_data:, each_context: ctx_options)
   end
   let(:raw_data) { { string_value: "test", integer_value: 42, array_value: [1, 2, 3], hash_value: { key: "value" } } }
-  let(:ctx_options) { { current_task_name: nil, parent_job_id: nil, each_index: nil, each_value: nil } }
+  let(:ctx_options) { {} }
 
   describe ".instance" do
     subject(:instance) { described_class.instance }
@@ -53,10 +53,13 @@ RSpec.describe ShuttleJob::ContextSerializer do
                 "key" => "value"
               }
             },
-            "current_task_name" => nil,
-            "parent_job_id" => nil,
-            "each_index" => nil,
-            "each_value" => nil
+            "each_context" => {
+              "_aj_symbol_keys" => [],
+              "parent_job_id" => nil,
+              "task_name" => nil,
+              "index" => nil,
+              "value" => nil
+            }
           }
         )
       end
@@ -64,7 +67,7 @@ RSpec.describe ShuttleJob::ContextSerializer do
 
     context "when parent_job_id is set" do
       let(:ctx_options) do
-        { current_task_name: nil, parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076", each_index: 1, each_value: 10 }
+        { parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076", task_name: :task_one, index: 1, value: 10 }
       end
 
       it do
@@ -81,17 +84,23 @@ RSpec.describe ShuttleJob::ContextSerializer do
                 "key" => "value"
               }
             },
-            "current_task_name" => nil,
-            "parent_job_id" => ctx_options[:parent_job_id],
-            "each_index" => 1,
-            "each_value" => 10
+            "each_context" => {
+              "_aj_symbol_keys" => [],
+              "parent_job_id" => ctx_options[:parent_job_id],
+              "task_name" => {
+                "_aj_serialized" => "ActiveJob::Serializers::SymbolSerializer",
+                "value" => "task_one"
+              },
+              "index" => 1,
+              "value" => 10
+            }
           }
         )
       end
     end
 
-    context "when current_task_name is set" do
-      let(:ctx_options) { { current_task_name: "task_name", parent_job_id: nil, each_index: nil, each_value: nil } }
+    context "when task_name is set" do
+      let(:ctx_options) { { task_name: :task_one } }
 
       it do
         expect(serialized).to eq(
@@ -107,10 +116,16 @@ RSpec.describe ShuttleJob::ContextSerializer do
                 "key" => "value"
               }
             },
-            "current_task_name" => ctx_options[:current_task_name],
-            "parent_job_id" => nil,
-            "each_index" => nil,
-            "each_value" => nil
+            "each_context" => {
+              "_aj_symbol_keys" => [],
+              "parent_job_id" => nil,
+              "task_name" => {
+                "_aj_serialized" => "ActiveJob::Serializers::SymbolSerializer",
+                "value" => "task_one"
+              },
+              "index" => nil,
+              "value" => nil
+            }
           }
         )
       end
@@ -134,10 +149,13 @@ RSpec.describe ShuttleJob::ContextSerializer do
               "key" => "value"
             }
           },
-          "current_task_name" => nil,
-          "parent_job_id" => nil,
-          "each_index" => nil,
-          "each_value" => nil
+          "each_context" => {
+            "_aj_symbol_keys" => %w[parent_job_id task_name index value],
+            "parent_job_id" => nil,
+            "task_name" => nil,
+            "index" => nil,
+            "value" => nil
+          }
         }
       end
 
@@ -153,9 +171,16 @@ RSpec.describe ShuttleJob::ContextSerializer do
           string_value: "test",
           integer_value: 42,
           array_value: [1, 2, 3],
-          hash_value: { key: "value" },
-          exist_current_task_name?: false,
-          enabled_each_value: false
+          hash_value: { key: "value" }
+        ).and(
+          have_attributes(
+            _each_context: have_attributes(
+              parent_job_id: nil,
+              task_name: nil,
+              index: nil,
+              value: nil
+            )
+          )
         )
       end
     end
@@ -174,10 +199,13 @@ RSpec.describe ShuttleJob::ContextSerializer do
               "key" => "value"
             }
           },
-          "current_task_name" => nil,
-          "parent_job_id" => "019b6901-8bdf-7fd4-83aa-6c18254fe076",
-          "each_index" => nil,
-          "each_value" => nil
+          "each_context" => {
+            "_aj_symbol_keys" => %w[parent_job_id task_name index value],
+            "parent_job_id" => "019b6901-8bdf-7fd4-83aa-6c18254fe076",
+            "task_name" => nil,
+            "index" => nil,
+            "value" => nil
+          }
         }
       end
 
@@ -193,15 +221,21 @@ RSpec.describe ShuttleJob::ContextSerializer do
           string_value: "test",
           integer_value: 42,
           array_value: [1, 2, 3],
-          hash_value: { key: "value" },
-          exist_current_task_name?: false,
-          enabled_each_value: true,
-          parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076"
+          hash_value: { key: "value" }
+        ).and(
+          have_attributes(
+            _each_context: have_attributes(
+              parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076",
+              task_name: nil,
+              index: nil,
+              value: nil
+            )
+          )
         )
       end
     end
 
-    context "when current_task_name is set" do
+    context "when task_name is set" do
       let(:serialized_hash) do
         {
           "_aj_serialized" => "ShuttleJob::ContextSerializer",
@@ -215,10 +249,13 @@ RSpec.describe ShuttleJob::ContextSerializer do
               "key" => "value"
             }
           },
-          "current_task_name" => "task_name",
-          "parent_job_id" => nil,
-          "each_index" => nil,
-          "each_value" => nil
+          "each_context" => {
+            "_aj_symbol_keys" => %w[parent_job_id task_name index value],
+            "parent_job_id" => nil,
+            "task_name" => "task_one",
+            "index" => nil,
+            "value" => nil
+          }
         }
       end
 
@@ -234,10 +271,16 @@ RSpec.describe ShuttleJob::ContextSerializer do
           string_value: "test",
           integer_value: 42,
           array_value: [1, 2, 3],
-          hash_value: { key: "value" },
-          exist_current_task_name?: true,
-          current_task_name: "task_name",
-          enabled_each_value: false
+          hash_value: { key: "value" }
+        ).and(
+          have_attributes(
+            _each_context: have_attributes(
+              parent_job_id: nil,
+              task_name: "task_one",
+              index: nil,
+              value: nil
+            )
+          )
         )
       end
     end

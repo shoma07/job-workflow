@@ -20,8 +20,7 @@ RSpec.describe ShuttleJob::Context do
       expect(from_workflow).to have_attributes(
         raw_data: { ctx_one: nil, ctx_two: 1 },
         ctx_one: nil,
-        ctx_two: 1,
-        enabled_each_value: false
+        ctx_two: 1
       )
     end
   end
@@ -36,47 +35,41 @@ RSpec.describe ShuttleJob::Context do
         expect(init).to have_attributes(
           raw_data: { ctx_one: nil, ctx_two: 1 },
           ctx_one: nil,
-          ctx_two: 1,
-          enabled_each_value: false
+          ctx_two: 1
         )
       end
-
-      it { expect { init.parent_job_id }.to raise_error("parent_job_id is not set") }
-
-      it { expect { init.current_task_name }.to raise_error("current_task_name is not set") }
     end
 
-    context "when parent_job_id and each_index is provided" do
+    context "when each_context is provided" do
       let(:arguments) do
         {
           raw_data: { ctx_one: nil, ctx_two: [1, 2] },
-          parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076",
-          each_index: 1
+          each_context: {
+            parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076",
+            index: 1
+          }
         }
       end
 
-      it "creates a context with given raw_data and parent_job_id" do
+      it "creates a context with given raw_data and each_context" do
         expect(init).to have_attributes(
           raw_data: { ctx_one: nil, ctx_two: [1, 2] },
           ctx_one: nil,
-          ctx_two: [1, 2],
-          enabled_each_value: true,
-          parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076",
-          _each_index: 1
+          ctx_two: [1, 2]
+        ).and(
+          have_attributes(
+            _each_context: have_attributes(
+              parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076",
+              index: 1
+            )
+          )
         )
       end
 
-      it do
-        expect { init._with_each_value(:ctx_two) }.to raise_error("Nested _with_each_value calls are not allowed")
+      it "raises error on nested _with_each_value" do
+        task = ShuttleJob::Task.new(name: :ctx_two, each: :ctx_two, block: ->(_ctx) {})
+        expect { init._with_each_value(task) }.to raise_error("Nested _with_each_value calls are not allowed")
       end
-    end
-
-    context "when current_task_name is provided" do
-      let(:arguments) do
-        { raw_data: { ctx_one: nil, ctx_two: [1, 2] }, current_task_name: "task_one" }
-      end
-
-      it { expect(init).to have_attributes(current_task_name: "task_one") }
     end
   end
 
@@ -137,66 +130,8 @@ RSpec.describe ShuttleJob::Context do
     end
   end
 
-  describe "#exist_current_task_name?" do
-    subject(:exist_current_task_name?) { described_class.new(**arguments).exist_current_task_name? }
-
-    context "when current task is not assigned" do
-      let(:arguments) { { raw_data: {} } }
-
-      it { is_expected.to be false }
-    end
-
-    context "when current task is assigned" do
-      let(:arguments) { { raw_data: {}, current_task_name: "task_name" } }
-
-      it { is_expected.to be true }
-    end
-  end
-
-  describe "#_current_task=" do
-    subject(:assign_current_task) { ctx._current_task = task }
-
-    let(:task) { ShuttleJob::Task.new(name: :sample_task, block: ->(_ctx) {}) }
-
-    it do
-      expect { assign_current_task }.to(change do
-        ctx.current_task_name
-      rescue StandardError
-        nil
-      end.from(nil).to(:sample_task))
-    end
-  end
-
-  describe "_clear_current_task" do
-    subject(:_clear_current_task) { ctx._clear_current_task }
-
-    let(:task) { ShuttleJob::Task.new(name: :sample_task, block: ->(_ctx) {}) }
-
-    context "when current task is assigned" do
-      before { ctx._current_task = task }
-
-      it do
-        expect { _clear_current_task }.to(change do
-          ctx.current_task_name
-        rescue StandardError
-          nil
-        end.from(:sample_task).to(nil))
-      end
-    end
-
-    context "when current task is not assigned" do
-      it do
-        expect { _clear_current_task }.not_to(change do
-          ctx.current_task_name
-        rescue StandardError
-          nil
-        end.from(nil))
-      end
-    end
-  end
-
   describe "#parent_job_id" do
-    subject(:parent_job_id) { ctx.parent_job_id }
+    subject(:parent_job_id) { ctx._each_context.parent_job_id }
 
     let(:job) do
       klass = Class.new(ActiveJob::Base) do
@@ -210,53 +145,60 @@ RSpec.describe ShuttleJob::Context do
     before { ctx._current_job = job }
 
     context "when parent_job_id is not set" do
-      it "raises an error" do
-        expect { parent_job_id }.to raise_error("parent_job_id is not set")
+      it "is nil" do
+        expect(parent_job_id).to be_nil
       end
     end
 
     context "when called inside _with_each_value" do
+      let(:task) { ShuttleJob::Task.new(name: :process_items, each: :items, block: ->(_ctx) {}) }
+
       it "returns the parent job id" do
-        ctx._with_each_value(:items).each do |each_ctx|
-          expect(each_ctx.parent_job_id).to be_in([job.job_id, job.job_id])
+        ctx._with_each_value(task).each do |each_ctx|
+          expect(each_ctx._each_context.parent_job_id).to eq(job.job_id)
         end
       end
 
       it "resets each_value state after iteration" do
-        ctx._with_each_value(:items).to_a
-        expect { parent_job_id }.to raise_error("parent_job_id is not set")
+        ctx._with_each_value(task).to_a
+        expect(parent_job_id).to be_nil
       end
     end
   end
 
-  describe "#sub_task_concurrency_key" do
-    subject(:sub_task_concurrency_key) { ctx.sub_task_concurrency_key }
+  describe "#each_task_concurrency_key" do
+    subject(:each_task_concurrency_key) { ctx.each_task_concurrency_key }
 
-    let(:ctx) { described_class.new(raw_data: {}, current_task_name:, parent_job_id:) }
+    let(:ctx) do
+      described_class.new(
+        raw_data: {},
+        each_context: { parent_job_id:, task_name: }
+      )
+    end
 
-    context "when enabled_each_value is true and current_task_name is set" do
-      let(:current_task_name) { "task_name" }
+    context "when enabled and task_name is set" do
+      let(:task_name) { "task_name" }
       let(:parent_job_id) { "019b6901-8bdf-7fd4-83aa-6c18254fe076" }
 
       it { is_expected.to eq("019b6901-8bdf-7fd4-83aa-6c18254fe076/task_name") }
     end
 
-    context "when enabled_each_value is false and current_task_name is not set" do
-      let(:current_task_name) { nil }
+    context "when not enabled and task_name is not set" do
+      let(:task_name) { nil }
       let(:parent_job_id) { nil }
 
       it { is_expected.to be_nil }
     end
 
-    context "when enabled_each_value is false and current_task_name is set" do
-      let(:current_task_name) { "task_name" }
+    context "when not enabled and task_name is set" do
+      let(:task_name) { "task_name" }
       let(:parent_job_id) { nil }
 
       it { is_expected.to be_nil }
     end
 
-    context "when enabled_each_value is true and current_task_name is not set" do
-      let(:current_task_name) { nil }
+    context "when enabled and task_name is not set" do
+      let(:task_name) { nil }
       let(:parent_job_id) { "019b6901-8bdf-7fd4-83aa-6c18254fe076" }
 
       it { is_expected.to be_nil }
@@ -332,7 +274,7 @@ RSpec.describe ShuttleJob::Context do
   end
 
   describe "#_with_each_value" do
-    subject(:with_each_value) { ctx._with_each_value(:items) }
+    subject(:with_each_value) { ctx._with_each_value(task) }
 
     let(:workflow) { job.class._workflow }
     let(:job) do
@@ -344,6 +286,7 @@ RSpec.describe ShuttleJob::Context do
       end
       klass.new
     end
+    let(:task) { ShuttleJob::Task.new(name: :process_items, each: :items, block: ->(_ctx) {}) }
 
     before { ctx._current_job = job }
 
@@ -381,70 +324,6 @@ RSpec.describe ShuttleJob::Context do
     end
   end
 
-  describe "#enabled_each_value" do
-    subject(:enabled_each_value) { ctx.enabled_each_value }
-
-    let(:job) do
-      klass = Class.new(ActiveJob::Base) do
-        include ShuttleJob::DSL
-
-        context :items, "Array[Integer]", default: [1, 2, 3]
-      end
-      klass.new
-    end
-
-    before { ctx._current_job = job }
-
-    context "when not in _with_each_value block" do
-      it "is false" do
-        expect(enabled_each_value).to be(false)
-      end
-    end
-
-    context "when in _with_each_value block" do
-      it "is true within the block" do
-        ctx._with_each_value(:items).each do |each_ctx|
-          expect([ctx.enabled_each_value, each_ctx.enabled_each_value]).to eq([true, true])
-        end
-      end
-    end
-
-    context "when after exiting _with_each_value block" do
-      it "is false again" do
-        ctx._with_each_value(:items).each.to_a
-        expect(ctx.enabled_each_value).to be(false)
-      end
-    end
-  end
-
-  describe "#_each_index" do
-    subject(:_each_index) { described_class.new(raw_data: {}, **arguments)._each_index }
-
-    context "when enabled_each_value is true and each_index is set" do
-      let(:arguments) { { parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076", each_index: 1 } }
-
-      it { is_expected.to eq(1) }
-    end
-
-    context "when enabled_each_value is false and each_index is not set" do
-      let(:arguments) { {} }
-
-      it { expect { _each_index }.to raise_error("each_index can be called only within each_values block") }
-    end
-
-    context "when enabled_each_value is false and each_index is set" do
-      let(:arguments) { { each_index: 1 } }
-
-      it { expect { _each_index }.to raise_error("each_index can be called only within each_values block") }
-    end
-
-    context "when enabled_each_value is true and each_index is not set" do
-      let(:arguments) { { parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076" } }
-
-      it { expect { _each_index }.to raise_error("each_index can be called only within each_values block") }
-    end
-  end
-
   describe "#each_value" do
     subject(:each_value) { ctx.each_value }
 
@@ -456,6 +335,7 @@ RSpec.describe ShuttleJob::Context do
       end
       klass.new
     end
+    let(:task) { ShuttleJob::Task.new(name: :process_items, each: :items, block: ->(_ctx) {}) }
 
     before { ctx._current_job = job }
 
@@ -467,13 +347,13 @@ RSpec.describe ShuttleJob::Context do
 
     context "when called inside _with_each_value" do
       it "returns the current element value" do
-        ctx._with_each_value(:items).each do |each_ctx|
+        ctx._with_each_value(task).each do |each_ctx|
           expect(each_ctx.each_value).to be_in([10, 20])
         end
       end
 
       it "raises an error after iteration" do
-        ctx._with_each_value(:items).to_a
+        ctx._with_each_value(task).to_a
         expect { each_value }.to raise_error("each_value can be called only within each_values block")
       end
     end
@@ -489,13 +369,15 @@ RSpec.describe ShuttleJob::Context do
       end
       klass.new
     end
+    let(:items_task) { ShuttleJob::Task.new(name: :process_items, each: :items, block: ->(_ctx) {}) }
+    let(:nested_task) { ShuttleJob::Task.new(name: :process_nested, each: :nested, block: ->(_ctx) {}) }
 
     before { ctx._current_job = job }
 
     it "raises an error when nested" do
       expect do
-        ctx._with_each_value(:items).each do |each_ctx|
-          each_ctx._with_each_value(:nested).to_a
+        ctx._with_each_value(items_task).each do |each_ctx|
+          each_ctx._with_each_value(nested_task).to_a
         end
       end.to raise_error("Nested _with_each_value calls are not allowed")
     end

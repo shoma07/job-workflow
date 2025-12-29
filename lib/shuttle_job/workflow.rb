@@ -23,7 +23,7 @@ module ShuttleJob
       @task_graph.to_a
     end
 
-    #:  (Symbol) -> Task
+    #:  (Symbol?) -> Task
     def fetch_task(task_name)
       @task_graph.fetch(task_name)
     end

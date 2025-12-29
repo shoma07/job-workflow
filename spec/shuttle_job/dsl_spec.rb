@@ -85,10 +85,13 @@ RSpec.describe ShuttleJob::DSL do
                 "_aj_symbol_keys" => [],
                 "example" => 1
               },
-              "current_task_name" => nil,
-              "parent_job_id" => nil,
-              "each_index" => nil,
-              "each_value" => nil
+              "each_context" => {
+                "_aj_symbol_keys" => [],
+                "parent_job_id" => nil,
+                "task_name" => nil,
+                "index" => nil,
+                "value" => nil
+              }
             }
           ]
         )
@@ -298,10 +301,13 @@ RSpec.describe ShuttleJob::DSL do
               "_aj_symbol_keys" => [],
               "value" => 52
             },
-            "current_task_name" => nil,
-            "parent_job_id" => nil,
-            "each_index" => nil,
-            "each_value" => nil
+            "each_context" => {
+              "_aj_symbol_keys" => [],
+              "parent_job_id" => nil,
+              "task_name" => nil,
+              "index" => nil,
+              "value" => nil
+            }
           }
         )
       end
@@ -336,6 +342,13 @@ RSpec.describe ShuttleJob::DSL do
             "raw_data" => {
               "_aj_symbol_keys" => [],
               "value" => 100
+            },
+            "each_context" => {
+              "_aj_symbol_keys" => %w[parent_job_id task_name index value],
+              "parent_job_id" => nil,
+              "task_name" => nil,
+              "index" => nil,
+              "value" => nil
             }
           }
         }
