@@ -23,6 +23,11 @@ module ShuttleJob
       @task_graph.to_a
     end
 
+    #:  (Symbol) -> Task
+    def fetch_task(task_name)
+      @task_graph.fetch(task_name)
+    end
+
     #:  () -> Array[ContextDef]
     def contexts
       @context_defs.values

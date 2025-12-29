@@ -15,6 +15,11 @@ module ShuttleJob
       @tasks[task.name] = task
     end
 
+    #:  (Symbol) -> Task
+    def fetch(task_name)
+      @tasks.fetch(task_name)
+    end
+
     #:  () { (Task) -> void } -> void
     def each(&)
       tsort.each(&)

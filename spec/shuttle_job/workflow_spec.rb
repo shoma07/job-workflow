@@ -39,6 +39,29 @@ RSpec.describe ShuttleJob::Workflow do
     end
   end
 
+  describe "#fetch_task" do
+    subject(:fetch_task) { workflow.fetch_task(task_name) }
+
+    let(:workflow) do
+      workflow = described_class.new
+      workflow.add_task(task)
+      workflow
+    end
+    let(:task) { ShuttleJob::Task.new(name: :task1, block: ->(ctx) { ctx[:a] }) }
+
+    context "when task exists" do
+      let(:task_name) { :task1 }
+
+      it { is_expected.to eq(task) }
+    end
+
+    context "when task does not exist" do
+      let(:task_name) { :missing_task }
+
+      it { expect { fetch_task }.to raise_error(KeyError) }
+    end
+  end
+
   describe "#add_context" do
     subject(:add_context) { workflow.add_context(context_def) }
 
