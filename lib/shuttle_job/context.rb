@@ -3,6 +3,7 @@
 module ShuttleJob
   class Context
     attr_reader :raw_data #: Hash[Symbol, untyped]
+    attr_reader :enabled_each_value #: bool
 
     class << self
       #:  (Workflow) -> Context
@@ -23,6 +24,31 @@ module ShuttleJob
     #:  (Hash[Symbol, untyped]) -> void
     def merge!(other_raw_data)
       raw_data.merge!(other_raw_data.slice(*reader_names.to_a))
+    end
+
+    #:  (DSL) -> void
+    def _current_job=(job)
+      @current_job = job
+    end
+
+    #:  () -> String
+    def current_job_id
+      current_job.job_id
+    end
+
+    #:  (Task) -> void
+    def _current_task=(task)
+      @current_task = task
+    end
+
+    #:  () -> void
+    def _clear_current_task
+      @current_task = nil
+    end
+
+    #:  () -> Symbol
+    def current_task_name
+      current_task.name
     end
 
     #:  (Symbol) -> Enumerator[Context]
@@ -57,8 +83,24 @@ module ShuttleJob
     attr_writer :raw_data #: Hash[Symbol, untyped]
     attr_accessor :reader_names #: Set[Symbol]
     attr_accessor :writer_names #: Set[Symbol]
-    attr_accessor :enabled_each_value #: bool
+    attr_writer :enabled_each_value #: bool
     attr_writer :each_value #: untyped
+
+    #:  () -> DSL
+    def current_job
+      job = @current_job
+      raise "current_job is not set" if job.nil?
+
+      job
+    end
+
+    #:  () -> Task
+    def current_task
+      task = @current_task
+      raise "current_task is not set" if task.nil?
+
+      task
+    end
 
     #:  (Symbol, Enumerator::Yielder) -> void
     def iterate_each_value(each_key, yielder)

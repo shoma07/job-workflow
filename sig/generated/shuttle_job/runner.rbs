@@ -4,18 +4,15 @@ module ShuttleJob
   class Runner
     attr_reader context: Context
 
-    # :  (job: DSL::_InstanceMethods, context: Context) -> void
-    def initialize: (job: DSL::_InstanceMethods, context: Context) -> void
+    # :  (job: DSL, context: Context) -> void
+    def initialize: (job: DSL, context: Context) -> void
 
     # :  () -> void
     def run: () -> void
 
     private
 
-    attr_reader job: DSL::_InstanceMethods
-
-    # :  () -> Workflow
-    def workflow: () -> Workflow
+    attr_reader job: DSL
 
     # :  () -> Array[Task]
     def tasks: () -> Array[Task]

@@ -6,22 +6,15 @@ module ShuttleJob
 
     include ActiveJob::Continuable
 
-    # @rbs!
-    #   interface _ClassMethods
-    #     def class_attribute: (Symbol, default: untyped) -> void
-    #
-    #     def _workflow: () -> Workflow
-    #   end
-    #
-    #   interface _InstanceMethods
-    #     def class: () -> _ClassMethods
-    #
-    #     def step: (Symbol, ?start: ActiveJob::Continuation::_Succ, ?isolated: bool) -> void
-    #             | (Symbol, ?start: ActiveJob::Continuation::_Succ, ?isolated: bool) { (ActiveJob::Continuation::Step) -> void } -> void
-    #   end
+    # @rbs! extend ClassMethods
 
     # @rbs!
-    #   extend ClassMethods
+    #   def class: () -> ClassMethods
+    #
+    #   def job_id: () -> String
+    #
+    #   def step: (Symbol, ?start: ActiveJob::Continuation::_Succ, ?isolated: bool) -> void
+    #           | (Symbol, ?start: ActiveJob::Continuation::_Succ, ?isolated: bool) { (ActiveJob::Continuation::Step) -> void } -> void
 
     included do
       class_attribute :_workflow, default: Workflow.new
@@ -64,7 +57,9 @@ module ShuttleJob
 
     module ClassMethods
       # @rbs!
-      #   include _ClassMethods
+      #   def class_attribute: (Symbol, default: untyped) -> void
+      #
+      #   def _workflow: () -> Workflow
 
       #:  (?Hash[untyped, untyped]) -> void
       def perform_later(initial_context = {})
