@@ -47,14 +47,17 @@ module ShuttleJob
       # :  (Symbol context_name, String type, ?default: untyped) -> void
       def context: (Symbol context_name, String type, ?default: untyped) -> void
 
+      # rubocop:disable Metrics/ParameterLists
+      #
       # :  (
-      #      Symbol task_name,
-      #      ?each: Symbol?,
-      #      ?concurrency: Integer?,
-      #      ?depends_on: Array[Symbol],
-      #      ?condition: ^(Context) -> bool,
-      #    ) { (untyped) -> void } -> void
-      def task: (Symbol task_name, ?each: Symbol?, ?concurrency: Integer?, ?depends_on: Array[Symbol], ?condition: ^(Context) -> bool) { (untyped) -> void } -> void
+      #     Symbol task_name,
+      #     ?each: Symbol?,
+      #     ?concurrency: Integer?,
+      #     ?output: Hash[Symbol, String],
+      #     ?depends_on: Array[Symbol],
+      #     ?condition: ^(Context) -> bool,
+      #   ) { (untyped) -> void } -> void
+      def task: (Symbol task_name, ?each: Symbol?, ?concurrency: Integer?, ?output: Hash[Symbol, String], ?depends_on: Array[Symbol], ?condition: ^(Context) -> bool) { (untyped) -> void } -> void
     end
   end
 end
