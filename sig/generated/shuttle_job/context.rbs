@@ -9,8 +9,8 @@ module ShuttleJob
     # :  (Workflow) -> Context
     def self.from_workflow: (Workflow) -> Context
 
-    # :  (raw_data: Hash[Symbol, untyped]) -> void
-    def initialize: (raw_data: Hash[Symbol, untyped]) -> void
+    # :  (raw_data: Hash[Symbol, untyped], ?parent_job_id: String?) -> void
+    def initialize: (raw_data: Hash[Symbol, untyped], ?parent_job_id: String?) -> void
 
     # :  (Hash[Symbol, untyped]) -> void
     def merge!: (Hash[Symbol, untyped]) -> void
@@ -29,6 +29,9 @@ module ShuttleJob
 
     # :  () -> Symbol
     def current_task_name: () -> Symbol
+
+    # :  () -> String
+    def parent_job_id: () -> String
 
     # :  (Symbol) -> Enumerator[Context]
     def _with_each_value: (Symbol) -> Enumerator[Context]
@@ -51,6 +54,8 @@ module ShuttleJob
     attr_accessor writer_names: Set[Symbol]
 
     attr_writer enabled_each_value: bool
+
+    attr_writer parent_job_id: String?
 
     attr_writer each_value: untyped
 
