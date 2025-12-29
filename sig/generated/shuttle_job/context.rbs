@@ -2,22 +2,16 @@
 
 module ShuttleJob
   class Context
-    # rubocop:disable Metrics/ClassLength
     attr_reader raw_data: Hash[Symbol, untyped]
-
-    attr_reader enabled_each_value: bool
 
     # :  (Workflow) -> Context
     def self.from_workflow: (Workflow) -> Context
 
     # :  (
     #      raw_data: Hash[Symbol, untyped],
-    #      ?current_task_name: nil,
-    #      ?parent_job_id: String?,
-    #      ?each_index: Integer?,
-    #      ?each_value: untyped
+    #      ?each_context: Hash[Symbol, untyped]
     #    ) -> void
-    def initialize: (raw_data: Hash[Symbol, untyped], ?current_task_name: nil, ?parent_job_id: String?, ?each_index: Integer?, ?each_value: untyped) -> void
+    def initialize: (raw_data: Hash[Symbol, untyped], ?each_context: Hash[Symbol, untyped]) -> void
 
     # :  (Hash[Symbol, untyped]) -> void
     def merge!: (Hash[Symbol, untyped]) -> void
@@ -28,32 +22,17 @@ module ShuttleJob
     # :  () -> String
     def current_job_id: () -> String
 
-    # :  (Task) -> void
-    def _current_task=: (Task) -> void
-
-    # :  () -> void
-    def _clear_current_task: () -> void
-
-    # :  () -> bool
-    def exist_current_task_name?: () -> bool
-
-    # :  () -> Symbol
-    def current_task_name: () -> Symbol
-
-    # :  () -> String
-    def parent_job_id: () -> String
-
     # :  () -> String?
-    def sub_task_concurrency_key: () -> String?
+    def each_task_concurrency_key: () -> String?
 
-    # :  (Symbol) -> Enumerator[Context]
-    def _with_each_value: (Symbol) -> Enumerator[Context]
-
-    # :  () -> Integer
-    def _each_index: () -> Integer
+    # :  (Task) -> Enumerator[Context]
+    def _with_each_value: (Task) -> Enumerator[Context]
 
     # :  () -> untyped
     def each_value: () -> untyped
+
+    # :  () -> EachContext
+    def _each_context: () -> EachContext
 
     # :  ...
     def method_missing: ...
@@ -69,23 +48,12 @@ module ShuttleJob
 
     attr_accessor writer_names: Set[Symbol]
 
-    attr_writer current_task_name: Symbol?
-
-    attr_writer enabled_each_value: bool
-
-    attr_writer parent_job_id: String?
-
-    attr_writer each_index: Integer?
-
-    attr_writer each_value: untyped
+    attr_accessor each_context: EachContext
 
     # :  () -> DSL
     def current_job: () -> DSL
 
-    # :  (Symbol, Enumerator::Yielder) -> void
-    def iterate_each_value: (Symbol, Enumerator::Yielder) -> void
-
-    # :  () -> void
-    def clear_each_state: () -> void
+    # :  (Task, Enumerator::Yielder) -> void
+    def iterate_each_value: (Task, Enumerator::Yielder) -> void
   end
 end
