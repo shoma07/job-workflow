@@ -46,9 +46,13 @@ RSpec.describe ShuttleJob::Context do
       it { expect { init.current_task_name }.to raise_error("current_task_name is not set") }
     end
 
-    context "when parent_job_id is provided" do
+    context "when parent_job_id and each_index is provided" do
       let(:arguments) do
-        { raw_data: { ctx_one: nil, ctx_two: [1, 2] }, parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076" }
+        {
+          raw_data: { ctx_one: nil, ctx_two: [1, 2] },
+          parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076",
+          each_index: 1
+        }
       end
 
       it "creates a context with given raw_data and parent_job_id" do
@@ -57,7 +61,8 @@ RSpec.describe ShuttleJob::Context do
           ctx_one: nil,
           ctx_two: [1, 2],
           enabled_each_value: true,
-          parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076"
+          parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076",
+          _each_index: 1
         )
       end
 
@@ -409,6 +414,34 @@ RSpec.describe ShuttleJob::Context do
         ctx._with_each_value(:items).each.to_a
         expect(ctx.enabled_each_value).to be(false)
       end
+    end
+  end
+
+  describe "#_each_index" do
+    subject(:_each_index) { described_class.new(raw_data: {}, **arguments)._each_index }
+
+    context "when enabled_each_value is true and each_index is set" do
+      let(:arguments) { { parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076", each_index: 1 } }
+
+      it { is_expected.to eq(1) }
+    end
+
+    context "when enabled_each_value is false and each_index is not set" do
+      let(:arguments) { {} }
+
+      it { expect { _each_index }.to raise_error("each_index can be called only within each_values block") }
+    end
+
+    context "when enabled_each_value is false and each_index is set" do
+      let(:arguments) { { each_index: 1 } }
+
+      it { expect { _each_index }.to raise_error("each_index can be called only within each_values block") }
+    end
+
+    context "when enabled_each_value is true and each_index is not set" do
+      let(:arguments) { { parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076" } }
+
+      it { expect { _each_index }.to raise_error("each_index can be called only within each_values block") }
     end
   end
 
