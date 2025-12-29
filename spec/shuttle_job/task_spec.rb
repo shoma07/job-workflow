@@ -44,6 +44,10 @@ RSpec.describe ShuttleJob::Task do
         )
       end
 
+      it "default condition returns true" do
+        expect(task.condition.call(ctx)).to be true
+      end
+
       it { expect(task.block.call(ctx)).to eq("default_value") }
     end
 
@@ -74,14 +78,58 @@ RSpec.describe ShuttleJob::Task do
           block: lambda(&:ctx_one),
           each: :ctx_two,
           concurrency: 3,
+          output: { result: "Integer", message: "String" },
           depends_on: %i[depend_task],
           condition: ->(ctx) { ctx.ctx_two.size > 2 }
         }
       end
 
-      it { expect(task).to have_attributes(**arguments) }
+      it do
+        expect(task).to have_attributes(
+          name: :sample_task,
+          block: arguments[:block],
+          each: :ctx_two,
+          concurrency: 3,
+          depends_on: %i[depend_task],
+          condition: arguments[:condition]
+        )
+      end
+
+      it "has output definitions" do
+        expect(task.output).to contain_exactly(
+          have_attributes(name: :result, type: "Integer"),
+          have_attributes(name: :message, type: "String")
+        )
+      end
 
       it { expect(task.block.call(ctx)).to eq("default_value") }
+    end
+
+    context "when output parameter is empty" do
+      let(:arguments) do
+        {
+          name: :sample_task,
+          block: lambda(&:ctx_one),
+          output: {}
+        }
+      end
+
+      it "has empty output definitions" do
+        expect(task.output).to eq([])
+      end
+    end
+
+    context "when output parameter is not provided" do
+      let(:arguments) do
+        {
+          name: :sample_task,
+          block: lambda(&:ctx_one)
+        }
+      end
+
+      it "has empty output definitions" do
+        expect(task.output).to eq([])
+      end
     end
   end
 end
