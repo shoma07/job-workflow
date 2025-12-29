@@ -2,11 +2,10 @@
 
 RSpec.describe ShuttleJob::ContextSerializer do
   let(:context) do
-    ShuttleJob::Context.new(raw_data:, current_task_name:, parent_job_id:)
+    ShuttleJob::Context.new(raw_data:, **ctx_options)
   end
   let(:raw_data) { { string_value: "test", integer_value: 42, array_value: [1, 2, 3], hash_value: { key: "value" } } }
-  let(:current_task_name) { nil }
-  let(:parent_job_id) { nil }
+  let(:ctx_options) { { current_task_name: nil, parent_job_id: nil, each_index: nil } }
 
   describe ".instance" do
     subject(:instance) { described_class.instance }
@@ -55,14 +54,17 @@ RSpec.describe ShuttleJob::ContextSerializer do
               }
             },
             "current_task_name" => nil,
-            "parent_job_id" => nil
+            "parent_job_id" => nil,
+            "each_index" => nil
           }
         )
       end
     end
 
     context "when parent_job_id is set" do
-      let(:parent_job_id) { "019b6901-8bdf-7fd4-83aa-6c18254fe076" }
+      let(:ctx_options) do
+        { current_task_name: nil, parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076", each_index: 1 }
+      end
 
       it do
         expect(serialized).to eq(
@@ -79,14 +81,15 @@ RSpec.describe ShuttleJob::ContextSerializer do
               }
             },
             "current_task_name" => nil,
-            "parent_job_id" => parent_job_id
+            "parent_job_id" => ctx_options[:parent_job_id],
+            "each_index" => 1
           }
         )
       end
     end
 
     context "when current_task_name is set" do
-      let(:current_task_name) { "task_name" }
+      let(:ctx_options) { { current_task_name: "task_name", parent_job_id: nil, each_index: nil } }
 
       it do
         expect(serialized).to eq(
@@ -102,8 +105,9 @@ RSpec.describe ShuttleJob::ContextSerializer do
                 "key" => "value"
               }
             },
-            "current_task_name" => current_task_name,
-            "parent_job_id" => nil
+            "current_task_name" => ctx_options[:current_task_name],
+            "parent_job_id" => nil,
+            "each_index" => nil
           }
         )
       end
@@ -128,7 +132,8 @@ RSpec.describe ShuttleJob::ContextSerializer do
             }
           },
           "current_task_name" => nil,
-          "parent_job_id" => nil
+          "parent_job_id" => nil,
+          "each_index" => nil
         }
       end
 
@@ -166,7 +171,8 @@ RSpec.describe ShuttleJob::ContextSerializer do
             }
           },
           "current_task_name" => nil,
-          "parent_job_id" => "019b6901-8bdf-7fd4-83aa-6c18254fe076"
+          "parent_job_id" => "019b6901-8bdf-7fd4-83aa-6c18254fe076",
+          "each_index" => nil
         }
       end
 
@@ -205,7 +211,8 @@ RSpec.describe ShuttleJob::ContextSerializer do
             }
           },
           "current_task_name" => "task_name",
-          "parent_job_id" => nil
+          "parent_job_id" => nil,
+          "each_index" => nil
         }
       end
 
