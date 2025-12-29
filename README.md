@@ -35,20 +35,20 @@ class DataPipelineJob < ApplicationJob
   include ShuttleJob::DSL
   
   # Define context fields
-  context :source_id, Integer
-  context :raw_data, String
-  context :processed_data, Hash
+  context :source_id, "Integer"
+  context :raw_data, "String"
+  context :processed_data, "Hash"
   
   # Define tasks with dependencies
   task :extract do |ctx|
     ctx.raw_data = ExternalAPI.fetch(ctx.source_id)
   end
   
-  task :transform, depends_on: :extract do |ctx|
+  task :transform, depends_on: [:extract] do |ctx|
     ctx.processed_data = JSON.parse(ctx.raw_data)
   end
   
-  task :load, depends_on: :transform do |ctx|
+  task :load, depends_on: [:transform] do |ctx|
     DataModel.create!(ctx.processed_data)
   end
 end
@@ -65,7 +65,7 @@ Collect structured outputs from tasks for use in subsequent steps:
 class AnalyticsJob < ApplicationJob
   include ShuttleJob::DSL
   
-  context :user_ids, Array[Integer], default: []
+  context :user_ids, "Array[Integer]", default: []
   
   # Task with defined output structure
   task :fetch_users, 
@@ -80,7 +80,7 @@ class AnalyticsJob < ApplicationJob
   end
   
   # Access collected outputs
-  task :generate_report, depends_on: :fetch_users do |ctx|
+  task :generate_report, depends_on: [:fetch_users] do |ctx|
     active_users = ctx.output.fetch_users.count(&:active)
     puts "Found #{active_users} active users"
     
@@ -99,7 +99,7 @@ Process collections in parallel with automatic concurrency management:
 class BatchProcessingJob < ApplicationJob
   include ShuttleJob::DSL
   
-  context :items, Array[Integer], default: []
+  context :items, "Array[Integer]", default: []
   
   # Process each item in parallel
   task :process_items, 
@@ -110,7 +110,7 @@ class BatchProcessingJob < ApplicationJob
     { result: expensive_operation(item) }
   end
   
-  task :summarize, depends_on: :process_items do |ctx|
+  task :summarize, depends_on: [:process_items] do |ctx|
     puts "Processed #{ctx.output.process_items.size} items"
   end
 end
@@ -123,8 +123,8 @@ end
 Context is a shared data store for the entire workflow. Each task can read and write Context fields:
 
 ```ruby
-context :user_id, Integer        # Required field
-context :result, String, default: "" # Optional with default
+context :user_id, "Integer"        # Required field
+context :result, "String", default: "" # Optional with default
 ```
 
 ### Tasks
