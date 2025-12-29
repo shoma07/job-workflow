@@ -2,11 +2,15 @@
 
 RSpec.describe ShuttleJob::Context do
   let(:ctx) { described_class.from_workflow(workflow) }
-  let(:workflow) do
-    workflow = ShuttleJob::Workflow.new
-    workflow.add_context(ShuttleJob::ContextDef.new(name: :ctx_one, type: "String", default: nil))
-    workflow.add_context(ShuttleJob::ContextDef.new(name: :ctx_two, type: "Integer", default: 1))
-    workflow
+  let(:workflow) { job.class._workflow }
+  let(:job) do
+    klass = Class.new(ActiveJob::Base) do
+      include ShuttleJob::DSL
+
+      context :ctx_one, "String", default: nil
+      context :ctx_two, "Integer", default: 1
+    end
+    klass.new
   end
 
   describe ".from_workflow" do
@@ -22,14 +26,39 @@ RSpec.describe ShuttleJob::Context do
   end
 
   describe ".initialize" do
-    subject(:init) { described_class.new(raw_data: { ctx_one: nil, ctx_two: 1 }) }
+    subject(:init) { described_class.new(**arguments) }
 
-    it "creates a context with given raw_data" do
-      expect(init).to have_attributes(
-        raw_data: { ctx_one: nil, ctx_two: 1 },
-        ctx_one: nil,
-        ctx_two: 1
-      )
+    context "when parent_job_id is not provided" do
+      let(:arguments) { { raw_data: { ctx_one: nil, ctx_two: 1 } } }
+
+      it "creates a context with given raw_data" do
+        expect(init).to have_attributes(
+          raw_data: { ctx_one: nil, ctx_two: 1 },
+          ctx_one: nil,
+          ctx_two: 1,
+          enabled_each_value: false
+        )
+      end
+    end
+
+    context "when parent_job_id is provided" do
+      let(:arguments) do
+        { raw_data: { ctx_one: nil, ctx_two: [1, 2] }, parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076" }
+      end
+
+      it "creates a context with given raw_data and parent_job_id" do
+        expect(init).to have_attributes(
+          raw_data: { ctx_one: nil, ctx_two: [1, 2] },
+          ctx_one: nil,
+          ctx_two: [1, 2],
+          enabled_each_value: true,
+          parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076"
+        )
+      end
+
+      it do
+        expect { init._with_each_value(:ctx_two) }.to raise_error("Nested _with_each_value calls are not allowed")
+      end
     end
   end
 
@@ -132,6 +161,40 @@ RSpec.describe ShuttleJob::Context do
     end
   end
 
+  describe "#parent_job_id" do
+    subject(:parent_job_id) { ctx.parent_job_id }
+
+    let(:job) do
+      klass = Class.new(ActiveJob::Base) do
+        include ShuttleJob::DSL
+
+        context :items, "Array[Integer]", default: [10, 20]
+      end
+      klass.new
+    end
+
+    before { ctx._current_job = job }
+
+    context "when parent_job_id is not set" do
+      it "raises an error" do
+        expect { parent_job_id }.to raise_error("parent_job_id is not set")
+      end
+    end
+
+    context "when called inside _with_each_value" do
+      it "returns the parent job id" do
+        ctx._with_each_value(:items).each do |each_ctx|
+          expect(each_ctx.parent_job_id).to be_in([job.job_id, job.job_id])
+        end
+      end
+
+      it "resets each_value state after iteration" do
+        ctx._with_each_value(:items).to_a
+        expect { parent_job_id }.to raise_error("parent_job_id is not set")
+      end
+    end
+  end
+
   describe "#respond_to?" do
     subject(:respond_to?) { ctx.respond_to?(method_name) }
 
@@ -203,11 +266,25 @@ RSpec.describe ShuttleJob::Context do
   describe "#_with_each_value" do
     subject(:with_each_value) { ctx._with_each_value(:items) }
 
-    let(:workflow) do
-      workflow = ShuttleJob::Workflow.new
-      workflow.add_context(ShuttleJob::ContextDef.new(name: :items, type: "Array[Integer]", default: [1, 2, 3]))
-      workflow.add_context(ShuttleJob::ContextDef.new(name: :result, type: "String", default: ""))
-      workflow
+    let(:workflow) { job.class._workflow }
+    let(:job) do
+      klass = Class.new(ActiveJob::Base) do
+        include ShuttleJob::DSL
+
+        context :items, "Array[Integer]", default: [1, 2, 3]
+        context :result, "String", default: ""
+      end
+      klass.new
+    end
+
+    before { ctx._current_job = job }
+
+    context "when current_job is not set" do
+      before { ctx._current_job = nil }
+
+      it "raises an error" do
+        expect { with_each_value.to_a }.to raise_error("current_job is not set")
+      end
     end
 
     it "returns an Enumerator" do
@@ -239,11 +316,16 @@ RSpec.describe ShuttleJob::Context do
   describe "#enabled_each_value" do
     subject(:enabled_each_value) { ctx.enabled_each_value }
 
-    let(:workflow) do
-      workflow = ShuttleJob::Workflow.new
-      workflow.add_context(ShuttleJob::ContextDef.new(name: :items, type: "Array[Integer]", default: [1, 2]))
-      workflow
+    let(:job) do
+      klass = Class.new(ActiveJob::Base) do
+        include ShuttleJob::DSL
+
+        context :items, "Array[Integer]", default: [1, 2, 3]
+      end
+      klass.new
     end
+
+    before { ctx._current_job = job }
 
     context "when not in _with_each_value block" do
       it "is false" do
@@ -270,11 +352,16 @@ RSpec.describe ShuttleJob::Context do
   describe "#each_value" do
     subject(:each_value) { ctx.each_value }
 
-    let(:workflow) do
-      workflow = ShuttleJob::Workflow.new
-      workflow.add_context(ShuttleJob::ContextDef.new(name: :items, type: "Array[Integer]", default: [10, 20]))
-      workflow
+    let(:job) do
+      klass = Class.new(ActiveJob::Base) do
+        include ShuttleJob::DSL
+
+        context :items, "Array[Integer]", default: [10, 20]
+      end
+      klass.new
     end
+
+    before { ctx._current_job = job }
 
     context "when called outside with_each_value" do
       it "raises an error" do
@@ -288,16 +375,26 @@ RSpec.describe ShuttleJob::Context do
           expect(each_ctx.each_value).to be_in([10, 20])
         end
       end
+
+      it "raises an error after iteration" do
+        ctx._with_each_value(:items).to_a
+        expect { each_value }.to raise_error("each_value can be called only within each_values block")
+      end
     end
   end
 
   describe "#_with_each_value nested calls" do
-    let(:workflow) do
-      workflow = ShuttleJob::Workflow.new
-      workflow.add_context(ShuttleJob::ContextDef.new(name: :items, type: "Array[Integer]", default: [1, 2]))
-      workflow.add_context(ShuttleJob::ContextDef.new(name: :nested, type: "Array[String]", default: %w[a b]))
-      workflow
+    let(:job) do
+      klass = Class.new(ActiveJob::Base) do
+        include ShuttleJob::DSL
+
+        context :items, "Array[Integer]", default: [1, 2]
+        context :nested, "Array[String]", default: %w[a b]
+      end
+      klass.new
     end
+
+    before { ctx._current_job = job }
 
     it "raises an error when nested" do
       expect do
