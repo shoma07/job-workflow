@@ -1,6 +1,27 @@
 # frozen_string_literal: true
 
 RSpec.describe ShuttleJob::Runner do
+  describe ".new" do
+    subject(:init) { described_class.new(job:, context: ctx) }
+
+    let(:job) do
+      klass = Class.new(ActiveJob::Base) do
+        include ShuttleJob::DSL
+      end
+      klass.new
+    end
+    let(:ctx) do
+      ShuttleJob::Context.from_workflow(job.class._workflow)
+    end
+
+    # NOTE: Could not be verified with change matcher
+    it do # rubocop:disable RSpec/MultipleExpectations
+      expect { ctx.current_job_id }.to raise_error(RuntimeError)
+      init
+      expect(ctx.current_job_id).to eq(job.job_id)
+    end
+  end
+
   describe "#run" do
     subject(:run) { described_class.new(job:, context: ctx).run }
 
@@ -110,6 +131,42 @@ RSpec.describe ShuttleJob::Runner do
       it "does not execute the each task" do
         expect { run }.not_to change(ctx, :sum)
       end
+    end
+  end
+
+  describe "set current_task with task" do
+    subject(:run) { described_class.new(job:, context: ctx).run }
+
+    let(:job) do
+      klass = Class.new(ActiveJob::Base) do
+        include ShuttleJob::DSL
+
+        context :result_task_name, "String", default: nil
+
+        task :task_one do |ctx|
+          ctx.result_task_name = ctx.current_task_name
+        end
+      end
+      klass.new
+    end
+    let(:ctx) do
+      ShuttleJob::Context.from_workflow(job.class._workflow)
+    end
+
+    it "sets current_task during task execution" do
+      expect { run }.to(change do
+        ctx.result_task_name
+      rescue StandardError
+        nil
+      end.from(nil).to(:task_one))
+    end
+
+    it "clears current_task after task execution" do
+      expect { run }.not_to(change do
+        ctx.current_task_name
+      rescue StandardError
+        nil
+      end.from(nil))
     end
   end
 end
