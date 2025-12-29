@@ -81,7 +81,6 @@ RSpec.describe ShuttleJob::DSL do
           args: [
             {
               "_aj_serialized" => "ShuttleJob::ContextSerializer",
-              "attribute_names" => %w[example],
               "raw_data" => {
                 "_aj_symbol_keys" => [],
                 "example" => 1
@@ -261,8 +260,7 @@ RSpec.describe ShuttleJob::DSL do
             "raw_data" => {
               "_aj_symbol_keys" => [],
               "value" => 52
-            },
-            "attribute_names" => %w[value]
+            }
           }
         )
       end
@@ -297,8 +295,7 @@ RSpec.describe ShuttleJob::DSL do
             "raw_data" => {
               "_aj_symbol_keys" => [],
               "value" => 100
-            },
-            "attribute_names" => %w[value]
+            }
           }
         }
       end
@@ -308,7 +305,6 @@ RSpec.describe ShuttleJob::DSL do
         expect(job._runner.context).to have_attributes(
           class: ShuttleJob::Context,
           raw_data: { value: 100 },
-          reader_names: Set[:value],
           value: 100
         )
       end
