@@ -91,7 +91,8 @@ RSpec.describe ShuttleJob::DSL do
                 "task_name" => nil,
                 "index" => nil,
                 "value" => nil
-              }
+              },
+              "task_outputs" => []
             }
           ]
         )
@@ -320,7 +321,8 @@ RSpec.describe ShuttleJob::DSL do
               "task_name" => nil,
               "index" => nil,
               "value" => nil
-            }
+            },
+            "task_outputs" => []
           }
         )
       end
@@ -362,7 +364,8 @@ RSpec.describe ShuttleJob::DSL do
               "task_name" => nil,
               "index" => nil,
               "value" => nil
-            }
+            },
+            "task_outputs" => []
           }
         }
       end

@@ -4,14 +4,17 @@ module ShuttleJob
   class Context
     attr_reader raw_data: Hash[Symbol, untyped]
 
+    attr_reader output: Output
+
     # :  (Workflow) -> Context
     def self.from_workflow: (Workflow) -> Context
 
     # :  (
     #      raw_data: Hash[Symbol, untyped],
-    #      ?each_context: Hash[Symbol, untyped]
+    #      ?each_context: Hash[Symbol, untyped],
+    #      ?task_outputs: Array[Hash[Symbol, untyped]]
     #    ) -> void
-    def initialize: (raw_data: Hash[Symbol, untyped], ?each_context: Hash[Symbol, untyped]) -> void
+    def initialize: (raw_data: Hash[Symbol, untyped], ?each_context: Hash[Symbol, untyped], ?task_outputs: Array[Hash[Symbol, untyped]]) -> void
 
     # :  (Hash[Symbol, untyped]) -> void
     def merge!: (Hash[Symbol, untyped]) -> void
@@ -34,6 +37,9 @@ module ShuttleJob
     # :  () -> EachContext
     def _each_context: () -> EachContext
 
+    # :  (TaskOutput) -> void
+    def _add_task_output: (TaskOutput) -> void
+
     # :  ...
     def method_missing: ...
 
@@ -43,6 +49,8 @@ module ShuttleJob
     private
 
     attr_writer raw_data: Hash[Symbol, untyped]
+
+    attr_writer output: Output
 
     attr_accessor reader_names: Set[Symbol]
 

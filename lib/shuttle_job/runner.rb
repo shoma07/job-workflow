@@ -43,7 +43,11 @@ module ShuttleJob
 
     #:  (Task, ActiveJob::Continuation::Step) -> void
     def run_task(task, step)
-      return task.block.call(context) if task.each.nil?
+      if task.each.nil?
+        data = task.block.call(context)
+        add_task_output(ctx: context, task:, data:)
+        return
+      end
       return run_map_task_with_concurrency(task) if task.concurrency
 
       run_map_task_without_concurrency(task, step)
@@ -58,8 +62,10 @@ module ShuttleJob
     #:  (Task, ActiveJob::Continuation::Step) -> void
     def run_map_task_without_concurrency(task, step)
       context._with_each_value(task).each do |each_ctx|
-        task.block.call(each_ctx)
-        step.advance! from: each_ctx._each_context.index
+        data = task.block.call(each_ctx)
+        each_index = each_ctx._each_context.index
+        add_task_output(ctx: each_ctx, task:, each_index:, data:)
+        step.advance! from: each_index
       end
     end
 
@@ -67,6 +73,13 @@ module ShuttleJob
     def run_each_task_in_map
       task = workflow.fetch_task(context._each_context.task_name)
       task.block.call(context)
+    end
+
+    #:  (ctx: Context, task: Task, ?each_index: Integer?, data: untyped) -> void
+    def add_task_output(ctx:, task:, data:, each_index: nil)
+      return if task.output.empty?
+
+      ctx._add_task_output(TaskOutput.from_task(task:, each_index:, data:))
     end
   end
 end

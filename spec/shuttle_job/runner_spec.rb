@@ -195,5 +195,127 @@ RSpec.describe ShuttleJob::Runner do
         expect { run }.to change(ctx, :value).from(5).to(10)
       end
     end
+
+    context "when task has output defined with regular task" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include ShuttleJob::DSL
+
+          context :multiplier, "Integer", default: 2
+
+          task :calculate, output: { result: "Integer", message: "String" } do |ctx|
+            { result: 42 * ctx.multiplier, message: "done" }
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        ctx = ShuttleJob::Context.from_workflow(job.class._workflow)
+        ctx.multiplier = 3
+        ctx
+      end
+
+      it "collects output from the task" do
+        run
+        expect(ctx.output.calculate).to have_attributes(result: 126, message: "done")
+      end
+    end
+
+    context "when task has output defined with map task (without concurrency)" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include ShuttleJob::DSL
+
+          context :items, "Array[Integer]", default: []
+
+          task :process_items, each: :items, output: { doubled: "Integer" } do |ctx|
+            { doubled: ctx.each_value * 2 }
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        ctx = ShuttleJob::Context.from_workflow(job.class._workflow)
+        ctx.items = [10, 20, 30]
+        ctx
+      end
+
+      it "collects output from each iteration" do
+        run
+        expect(ctx.output.process_items).to contain_exactly(
+          have_attributes(doubled: 20), have_attributes(doubled: 40), have_attributes(doubled: 60)
+        )
+      end
+    end
+
+    context "when task has output defined and output is empty" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include ShuttleJob::DSL
+
+          context :value, "Integer", default: 0
+
+          task :no_output do |ctx|
+            ctx.value = 100
+            "ignored_result"
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        ShuttleJob::Context.from_workflow(job.class._workflow)
+      end
+
+      it "does not collect output" do
+        run
+        expect(ctx.output.respond_to?(:no_output)).to be(false)
+      end
+    end
+
+    context "when task has output defined and task returns non-Hash value" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include ShuttleJob::DSL
+
+          task :simple_value, output: { value: "Integer" } do |_ctx|
+            { value: 42 }
+          end
+        end
+        klass.new
+      end
+      let(:ctx) { ShuttleJob::Context.from_workflow(job.class._workflow) }
+
+      it "wraps value in Hash with :value key" do
+        run
+        expect(ctx.output.simple_value.value).to eq(42)
+      end
+    end
+
+    context "when task has output defined with map task (with concurrency)" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include ShuttleJob::DSL
+
+          context :items, "Array[Integer]", default: []
+
+          task :process_items, each: :items, concurrency: 2, output: { result: "Integer" } do |ctx|
+            { result: ctx.each_value * 2 }
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        ctx = ShuttleJob::Context.from_workflow(job.class._workflow)
+        ctx.items = [1, 2, 3]
+        ctx
+      end
+
+      before { allow(job.class).to receive(:perform_all_later).and_return(nil) }
+
+      it "does not collect output (future enhancement)" do
+        run
+        expect(ctx.output.respond_to?(:process_items)).to be(false)
+      end
+    end
   end
 end

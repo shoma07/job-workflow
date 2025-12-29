@@ -59,7 +59,8 @@ RSpec.describe ShuttleJob::ContextSerializer do
               "task_name" => nil,
               "index" => nil,
               "value" => nil
-            }
+            },
+            "task_outputs" => []
           }
         )
       end
@@ -93,7 +94,8 @@ RSpec.describe ShuttleJob::ContextSerializer do
               },
               "index" => 1,
               "value" => 10
-            }
+            },
+            "task_outputs" => []
           }
         )
       end
@@ -125,8 +127,82 @@ RSpec.describe ShuttleJob::ContextSerializer do
               },
               "index" => nil,
               "value" => nil
-            }
+            },
+            "task_outputs" => []
           }
+        )
+      end
+    end
+
+    context "when context has task_outputs" do
+      let(:context) do
+        ctx = ShuttleJob::Context.new(raw_data:)
+        # Add regular task output
+        ctx._add_task_output(
+          ShuttleJob::TaskOutput.new(
+            task_name: :calculate,
+            data: { result: 42, message: "done" }
+          )
+        )
+        # Add map task outputs
+        ctx._add_task_output(
+          ShuttleJob::TaskOutput.new(
+            task_name: :process_items,
+            each_index: 0,
+            data: { doubled: 20 }
+          )
+        )
+        ctx._add_task_output(
+          ShuttleJob::TaskOutput.new(
+            task_name: :process_items,
+            each_index: 1,
+            data: { doubled: 40 }
+          )
+        )
+        ctx
+      end
+
+      it "serializes task_outputs" do
+        expect(serialized).to include(
+          "task_outputs" => contain_exactly(
+            {
+              "_aj_symbol_keys" => [],
+              "task_name" => {
+                "_aj_serialized" => "ActiveJob::Serializers::SymbolSerializer",
+                "value" => "calculate"
+              },
+              "each_index" => nil,
+              "data" => {
+                "_aj_symbol_keys" => %w[result message],
+                "result" => 42,
+                "message" => "done"
+              }
+            },
+            {
+              "_aj_symbol_keys" => [],
+              "task_name" => {
+                "_aj_serialized" => "ActiveJob::Serializers::SymbolSerializer",
+                "value" => "process_items"
+              },
+              "each_index" => 0,
+              "data" => {
+                "_aj_symbol_keys" => %w[doubled],
+                "doubled" => 20
+              }
+            },
+            {
+              "_aj_symbol_keys" => [],
+              "task_name" => {
+                "_aj_serialized" => "ActiveJob::Serializers::SymbolSerializer",
+                "value" => "process_items"
+              },
+              "each_index" => 1,
+              "data" => {
+                "_aj_symbol_keys" => %w[doubled],
+                "doubled" => 40
+              }
+            }
+          )
         )
       end
     end
@@ -155,7 +231,8 @@ RSpec.describe ShuttleJob::ContextSerializer do
             "task_name" => nil,
             "index" => nil,
             "value" => nil
-          }
+          },
+          "task_outputs" => []
         }
       end
 
@@ -205,7 +282,8 @@ RSpec.describe ShuttleJob::ContextSerializer do
             "task_name" => nil,
             "index" => nil,
             "value" => nil
-          }
+          },
+          "task_outputs" => []
         }
       end
 
@@ -255,7 +333,8 @@ RSpec.describe ShuttleJob::ContextSerializer do
             "task_name" => "task_one",
             "index" => nil,
             "value" => nil
-          }
+          },
+          "task_outputs" => []
         }
       end
 
@@ -282,6 +361,104 @@ RSpec.describe ShuttleJob::ContextSerializer do
             )
           )
         )
+      end
+    end
+
+    context "when task_outputs is provided" do
+      let(:serialized_hash) do
+        {
+          "_aj_serialized" => "ShuttleJob::ContextSerializer",
+          "raw_data" => {
+            "_aj_symbol_keys" => [],
+            "string_value" => "test",
+            "integer_value" => 42,
+            "array_value" => [1, 2, 3],
+            "hash_value" => {
+              "_aj_symbol_keys" => %w[key],
+              "key" => "value"
+            }
+          },
+          "each_context" => {
+            "_aj_symbol_keys" => %w[parent_job_id task_name index value],
+            "parent_job_id" => nil,
+            "task_name" => nil,
+            "index" => nil,
+            "value" => nil
+          },
+          "task_outputs" => [
+            {
+              "task_name" => {
+                "_aj_serialized" => "ActiveJob::Serializers::SymbolSerializer",
+                "value" => "calculate"
+              },
+              "each_index" => nil,
+              "data" => {
+                "_aj_symbol_keys" => %w[result message],
+                "result" => 42,
+                "message" => "done"
+              }
+            },
+            {
+              "task_name" => {
+                "_aj_serialized" => "ActiveJob::Serializers::SymbolSerializer",
+                "value" => "process_items"
+              },
+              "each_index" => 0,
+              "data" => {
+                "_aj_symbol_keys" => %w[doubled],
+                "doubled" => 20
+              }
+            },
+            {
+              "task_name" => {
+                "_aj_serialized" => "ActiveJob::Serializers::SymbolSerializer",
+                "value" => "process_items"
+              },
+              "each_index" => 1,
+              "data" => {
+                "_aj_symbol_keys" => %w[doubled],
+                "doubled" => 40
+              }
+            }
+          ]
+        }
+      end
+
+      it "deserializes task_outputs correctly" do
+        expect(deserialized).to have_attributes(
+          output: have_attributes(
+            calculate: have_attributes(result: 42, message: "done"),
+            process_items: contain_exactly(
+              have_attributes(doubled: 20),
+              have_attributes(doubled: 40)
+            )
+          )
+        )
+      end
+    end
+
+    context "when task_outputs is not provided" do
+      let(:serialized_hash) do
+        {
+          "_aj_serialized" => "ShuttleJob::ContextSerializer",
+          "raw_data" => {
+            "_aj_symbol_keys" => [],
+            "string_value" => "test",
+            "integer_value" => 42
+          },
+          "each_context" => {
+            "_aj_symbol_keys" => %w[parent_job_id task_name index value],
+            "parent_job_id" => nil,
+            "task_name" => nil,
+            "index" => nil,
+            "value" => nil
+          },
+          "task_outputs" => []
+        }
+      end
+
+      it "creates context with empty output" do
+        expect(deserialized.output.flat_task_outputs).to be_empty
       end
     end
   end
