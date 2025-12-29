@@ -2,6 +2,7 @@
 
 module ShuttleJob
   class Context
+    # rubocop:disable Metrics/ClassLength
     attr_reader raw_data: Hash[Symbol, untyped]
 
     attr_reader enabled_each_value: bool
@@ -9,8 +10,8 @@ module ShuttleJob
     # :  (Workflow) -> Context
     def self.from_workflow: (Workflow) -> Context
 
-    # :  (raw_data: Hash[Symbol, untyped], ?current_task_name: nil, ?parent_job_id: String?) -> void
-    def initialize: (raw_data: Hash[Symbol, untyped], ?current_task_name: nil, ?parent_job_id: String?) -> void
+    # :  (raw_data: Hash[Symbol, untyped], ?current_task_name: nil, ?parent_job_id: String?, ?each_index: Integer?) -> void
+    def initialize: (raw_data: Hash[Symbol, untyped], ?current_task_name: nil, ?parent_job_id: String?, ?each_index: Integer?) -> void
 
     # :  (Hash[Symbol, untyped]) -> void
     def merge!: (Hash[Symbol, untyped]) -> void
@@ -42,6 +43,9 @@ module ShuttleJob
     # :  (Symbol) -> Enumerator[Context]
     def _with_each_value: (Symbol) -> Enumerator[Context]
 
+    # :  () -> Integer
+    def _each_index: () -> Integer
+
     # :  () -> untyped
     def each_value: () -> untyped
 
@@ -65,6 +69,8 @@ module ShuttleJob
 
     attr_writer parent_job_id: String?
 
+    attr_writer each_index: Integer?
+
     attr_writer each_value: untyped
 
     # :  () -> DSL
@@ -72,5 +78,8 @@ module ShuttleJob
 
     # :  (Symbol, Enumerator::Yielder) -> void
     def iterate_each_value: (Symbol, Enumerator::Yielder) -> void
+
+    # :  () -> void
+    def clear_each_state: () -> void
   end
 end

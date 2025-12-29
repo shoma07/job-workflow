@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module ShuttleJob
-  class Context
+  class Context # rubocop:disable Metrics/ClassLength
     attr_reader :raw_data #: Hash[Symbol, untyped]
     attr_reader :enabled_each_value #: bool
 
@@ -13,14 +13,15 @@ module ShuttleJob
       end
     end
 
-    #:  (raw_data: Hash[Symbol, untyped], ?current_task_name: nil, ?parent_job_id: String?) -> void
-    def initialize(raw_data:, current_task_name: nil, parent_job_id: nil)
+    #:  (raw_data: Hash[Symbol, untyped], ?current_task_name: nil, ?parent_job_id: String?, ?each_index: Integer?) -> void
+    def initialize(raw_data:, current_task_name: nil, parent_job_id: nil, each_index: nil)
       self.raw_data = raw_data
       self.reader_names = raw_data.keys.to_set
       self.writer_names = raw_data.keys.to_set { |n| :"#{n}=" }
       self.current_task_name = current_task_name
-      self.enabled_each_value = !parent_job_id.nil?
       self.parent_job_id = parent_job_id
+      self.enabled_each_value = !parent_job_id.nil?
+      self.each_index = each_index
     end
 
     #:  (Hash[Symbol, untyped]) -> void
@@ -83,6 +84,14 @@ module ShuttleJob
       Enumerator.new { |y| iterate_each_value(each_key, y) }
     end
 
+    #:  () -> Integer
+    def _each_index
+      index = @each_index
+      raise "each_index can be called only within each_values block" if !enabled_each_value || index.nil?
+
+      index
+    end
+
     #:  () -> untyped
     def each_value
       raise "each_value can be called only within each_values block" unless enabled_each_value
@@ -111,6 +120,7 @@ module ShuttleJob
     attr_writer :current_task_name #: Symbol?
     attr_writer :enabled_each_value #: bool
     attr_writer :parent_job_id #: String?
+    attr_writer :each_index #: Integer?
     attr_writer :each_value #: untyped
 
     #:  () -> DSL
@@ -123,16 +133,23 @@ module ShuttleJob
 
     #:  (Symbol, Enumerator::Yielder) -> void
     def iterate_each_value(each_key, yielder)
-      public_send(each_key).each do |each_value|
+      public_send(each_key).each.with_index do |each_value, index|
         self.enabled_each_value = true
         self.parent_job_id = current_job_id
+        self.each_index = index
         self.each_value = each_value
         yielder << self
       ensure
-        self.enabled_each_value = false
-        self.parent_job_id = nil
-        self.each_value = nil
+        clear_each_state
       end
+    end
+
+    #:  () -> void
+    def clear_each_state
+      self.enabled_each_value = false
+      self.parent_job_id = nil
+      self.each_index = nil
+      self.each_value = nil
     end
   end
 end
