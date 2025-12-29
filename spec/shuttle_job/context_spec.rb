@@ -224,6 +224,40 @@ RSpec.describe ShuttleJob::Context do
     end
   end
 
+  describe "#sub_task_concurrency_key" do
+    subject(:sub_task_concurrency_key) { ctx.sub_task_concurrency_key }
+
+    let(:ctx) { described_class.new(raw_data: {}, current_task_name:, parent_job_id:) }
+
+    context "when enabled_each_value is true and current_task_name is set" do
+      let(:current_task_name) { "task_name" }
+      let(:parent_job_id) { "019b6901-8bdf-7fd4-83aa-6c18254fe076" }
+
+      it { is_expected.to eq("019b6901-8bdf-7fd4-83aa-6c18254fe076/task_name") }
+    end
+
+    context "when enabled_each_value is false and current_task_name is not set" do
+      let(:current_task_name) { nil }
+      let(:parent_job_id) { nil }
+
+      it { is_expected.to be_nil }
+    end
+
+    context "when enabled_each_value is false and current_task_name is set" do
+      let(:current_task_name) { "task_name" }
+      let(:parent_job_id) { nil }
+
+      it { is_expected.to be_nil }
+    end
+
+    context "when enabled_each_value is true and current_task_name is not set" do
+      let(:current_task_name) { nil }
+      let(:parent_job_id) { "019b6901-8bdf-7fd4-83aa-6c18254fe076" }
+
+      it { is_expected.to be_nil }
+    end
+  end
+
   describe "#respond_to?" do
     subject(:respond_to?) { ctx.respond_to?(method_name) }
 

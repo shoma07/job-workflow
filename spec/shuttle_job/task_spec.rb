@@ -47,12 +47,33 @@ RSpec.describe ShuttleJob::Task do
       it { expect(task.block.call(ctx)).to eq("default_value") }
     end
 
+    context "when condition option" do
+      let(:arguments) do
+        {
+          name: :sample_task,
+          block: lambda(&:ctx_one),
+          condition: ->(ctx) { ctx.ctx_two.size > 2 }
+        }
+      end
+
+      it do
+        expect(task).to have_attributes(
+          name: arguments[:name],
+          block: arguments[:block],
+          each: nil,
+          depends_on: [],
+          condition: arguments[:condition]
+        )
+      end
+    end
+
     context "when all parameters are provided" do
       let(:arguments) do
         {
           name: :sample_task,
           block: lambda(&:ctx_one),
           each: :ctx_two,
+          concurrency: 3,
           depends_on: %i[depend_task],
           condition: ->(ctx) { ctx.ctx_two.size > 2 }
         }

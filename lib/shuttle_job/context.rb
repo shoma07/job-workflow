@@ -69,6 +69,13 @@ module ShuttleJob
       job_id
     end
 
+    #:  () -> String?
+    def sub_task_concurrency_key
+      return if !enabled_each_value || !exist_current_task_name?
+
+      "#{parent_job_id}/#{current_task_name}"
+    end
+
     #:  (Symbol) -> Enumerator[Context]
     def _with_each_value(each_key)
       raise "Nested _with_each_value calls are not allowed" if enabled_each_value
