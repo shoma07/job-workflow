@@ -14,10 +14,25 @@ module ShuttleJob
 
     attr_reader job: DSL
 
+    # :  () -> Workflow
+    def workflow: () -> Workflow
+
     # :  () -> Array[Task]
     def tasks: () -> Array[Task]
 
+    # :  () -> void
+    def run_workflow: () -> void
+
     # :  (Task, ActiveJob::Continuation::Step) -> void
     def run_task: (Task, ActiveJob::Continuation::Step) -> void
+
+    # :  (Symbol) -> void
+    def run_map_task_with_concurrency: (Symbol) -> void
+
+    # :  (Task, Symbol, ActiveJob::Continuation::Step) -> void
+    def run_map_task_without_concurrency: (Task, Symbol, ActiveJob::Continuation::Step) -> void
+
+    # :  () -> void
+    def run_sub_task_in_map: () -> void
   end
 end
