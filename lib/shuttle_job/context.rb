@@ -13,8 +13,14 @@ module ShuttleJob
       end
     end
 
-    #:  (raw_data: Hash[Symbol, untyped], ?current_task_name: nil, ?parent_job_id: String?, ?each_index: Integer?) -> void
-    def initialize(raw_data:, current_task_name: nil, parent_job_id: nil, each_index: nil)
+    #:  (
+    #     raw_data: Hash[Symbol, untyped],
+    #     ?current_task_name: nil,
+    #     ?parent_job_id: String?,
+    #     ?each_index: Integer?,
+    #     ?each_value: untyped
+    #   ) -> void
+    def initialize(raw_data:, current_task_name: nil, parent_job_id: nil, each_index: nil, each_value: nil)
       self.raw_data = raw_data
       self.reader_names = raw_data.keys.to_set
       self.writer_names = raw_data.keys.to_set { |n| :"#{n}=" }
@@ -22,6 +28,7 @@ module ShuttleJob
       self.parent_job_id = parent_job_id
       self.enabled_each_value = !parent_job_id.nil?
       self.each_index = each_index
+      self.each_value = each_value
     end
 
     #:  (Hash[Symbol, untyped]) -> void

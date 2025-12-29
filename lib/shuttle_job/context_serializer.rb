@@ -11,11 +11,13 @@ module ShuttleJob
       current_task_name = context.exist_current_task_name? ? context.current_task_name : nil
       parent_job_id = context.enabled_each_value ? context.parent_job_id : nil
       each_index = context.enabled_each_value ? context._each_index : nil
+      each_value = context.enabled_each_value ? context.each_value : nil
       super(
         "raw_data" => raw_data,
         "current_task_name" => current_task_name,
         "parent_job_id" => parent_job_id,
-        "each_index" => each_index
+        "each_index" => each_index,
+        "each_value" => each_value
       )
     end
 
@@ -25,7 +27,8 @@ module ShuttleJob
       current_task_name = hash["current_task_name"]
       parent_job_id = hash["parent_job_id"]
       each_index = hash["each_index"]
-      Context.new(raw_data:, current_task_name:, parent_job_id:, each_index:)
+      each_value = hash["each_value"]
+      Context.new(raw_data:, current_task_name:, parent_job_id:, each_index:, each_value:)
     end
 
     #:  () -> Class

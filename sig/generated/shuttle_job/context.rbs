@@ -10,8 +10,14 @@ module ShuttleJob
     # :  (Workflow) -> Context
     def self.from_workflow: (Workflow) -> Context
 
-    # :  (raw_data: Hash[Symbol, untyped], ?current_task_name: nil, ?parent_job_id: String?, ?each_index: Integer?) -> void
-    def initialize: (raw_data: Hash[Symbol, untyped], ?current_task_name: nil, ?parent_job_id: String?, ?each_index: Integer?) -> void
+    # :  (
+    #      raw_data: Hash[Symbol, untyped],
+    #      ?current_task_name: nil,
+    #      ?parent_job_id: String?,
+    #      ?each_index: Integer?,
+    #      ?each_value: untyped
+    #    ) -> void
+    def initialize: (raw_data: Hash[Symbol, untyped], ?current_task_name: nil, ?parent_job_id: String?, ?each_index: Integer?, ?each_value: untyped) -> void
 
     # :  (Hash[Symbol, untyped]) -> void
     def merge!: (Hash[Symbol, untyped]) -> void
