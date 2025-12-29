@@ -50,6 +50,88 @@ RSpec.describe ShuttleJob::Context do
     end
   end
 
+  describe "#_current_job=" do
+    subject(:assign_current_job) { ctx._current_job = job }
+
+    let(:job) do
+      klass = Class.new(ActiveJob::Base) do
+        include ShuttleJob::DSL
+      end
+      klass.new
+    end
+
+    it do
+      expect { assign_current_job }.to(change do
+        ctx.current_job_id
+      rescue StandardError
+        nil
+      end.from(nil).to(job.job_id))
+    end
+  end
+
+  describe "#current_job_id" do
+    subject(:current_job_id) { ctx.current_job_id }
+
+    context "when current job is assigned" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include ShuttleJob::DSL
+        end
+        klass.new
+      end
+
+      before { ctx._current_job = job }
+
+      it { is_expected.to eq(job.job_id) }
+    end
+
+    context "when current job is not assigned" do
+      it { expect { current_job_id }.to raise_error(RuntimeError) }
+    end
+  end
+
+  describe "#_current_task=" do
+    subject(:assign_current_task) { ctx._current_task = task }
+
+    let(:task) { ShuttleJob::Task.new(name: :sample_task, block: ->(_ctx) {}) }
+
+    it do
+      expect { assign_current_task }.to(change do
+        ctx.current_task_name
+      rescue StandardError
+        nil
+      end.from(nil).to(:sample_task))
+    end
+  end
+
+  describe "_clear_current_task" do
+    subject(:_clear_current_task) { ctx._clear_current_task }
+
+    let(:task) { ShuttleJob::Task.new(name: :sample_task, block: ->(_ctx) {}) }
+
+    context "when current task is assigned" do
+      before { ctx._current_task = task }
+
+      it do
+        expect { _clear_current_task }.to(change do
+          ctx.current_task_name
+        rescue StandardError
+          nil
+        end.from(:sample_task).to(nil))
+      end
+    end
+
+    context "when current task is not assigned" do
+      it do
+        expect { _clear_current_task }.not_to(change do
+          ctx.current_task_name
+        rescue StandardError
+          nil
+        end.from(nil))
+      end
+    end
+  end
+
   describe "#respond_to?" do
     subject(:respond_to?) { ctx.respond_to?(method_name) }
 
@@ -151,6 +233,37 @@ RSpec.describe ShuttleJob::Context do
     it "resets each_value state after iteration" do
       with_each_value.to_a
       expect { ctx.each_value }.to raise_error("each_value can be called only within each_values block")
+    end
+  end
+
+  describe "#enabled_each_value" do
+    subject(:enabled_each_value) { ctx.enabled_each_value }
+
+    let(:workflow) do
+      workflow = ShuttleJob::Workflow.new
+      workflow.add_context(ShuttleJob::ContextDef.new(name: :items, type: "Array[Integer]", default: [1, 2]))
+      workflow
+    end
+
+    context "when not in _with_each_value block" do
+      it "is false" do
+        expect(enabled_each_value).to be(false)
+      end
+    end
+
+    context "when in _with_each_value block" do
+      it "is true within the block" do
+        ctx._with_each_value(:items).each do |each_ctx|
+          expect([ctx.enabled_each_value, each_ctx.enabled_each_value]).to eq([true, true])
+        end
+      end
+    end
+
+    context "when after exiting _with_each_value block" do
+      it "is false again" do
+        ctx._with_each_value(:items).each.to_a
+        expect(ctx.enabled_each_value).to be(false)
+      end
     end
   end
 

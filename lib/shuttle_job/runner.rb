@@ -4,8 +4,9 @@ module ShuttleJob
   class Runner
     attr_reader :context #: Context
 
-    #:  (job: DSL::_InstanceMethods, context: Context) -> void
+    #:  (job: DSL, context: Context) -> void
     def initialize(job:, context:)
+      context._current_job = job
       @job = job
       @context = context
     end
@@ -13,24 +14,22 @@ module ShuttleJob
     #:  () -> void
     def run
       tasks.each do |task|
+        context._current_task = task
         next unless task.condition.call(context)
 
         job.step(task.name) { |step| run_task(task, step) }
+      ensure
+        context._clear_current_task
       end
     end
 
     private
 
-    attr_reader :job #: DSL::_InstanceMethods
-
-    #:  () -> Workflow
-    def workflow
-      job.class._workflow
-    end
+    attr_reader :job #: DSL
 
     #:  () -> Array[Task]
     def tasks
-      workflow.tasks
+      job.class._workflow.tasks
     end
 
     #:  (Task, ActiveJob::Continuation::Step) -> void
