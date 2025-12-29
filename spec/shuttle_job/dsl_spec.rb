@@ -153,6 +153,39 @@ RSpec.describe ShuttleJob::DSL do
         ctx = ShuttleJob::Context.from_workflow(klass._workflow)
         expect { klass.new.perform(ctx) }.to change(ctx, :sum).from(0).to(6)
       end
+
+      it do
+        task
+        expect(klass._workflow.tasks[0]).to have_attributes(each: :items, concurrency: nil)
+      end
+    end
+
+    context "with each and concurrency options without limits_concurrency" do
+      subject(:task) do
+        klass.task :example_task, each: :items, concurrency: 3 do |ctx|
+          ctx.sum = ctx.sum + ctx.each_value
+        end
+      end
+
+      it do
+        task
+        expect(klass._workflow.tasks[0]).to have_attributes(each: :items, concurrency: 3)
+      end
+    end
+
+    context "with each and concurrency options with limits_concurrency" do
+      subject(:task) do
+        klass.task :example_task, each: :items, concurrency: 3 do |ctx|
+          ctx.sum = ctx.sum + ctx.each_value
+        end
+      end
+
+      before { allow(klass).to receive(:limits_concurrency).and_return(nil) }
+
+      it do
+        task
+        expect(klass).to have_received(:limits_concurrency).with(to: 3, key: be_instance_of(Proc))
+      end
     end
   end
 

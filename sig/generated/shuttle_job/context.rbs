@@ -36,6 +36,9 @@ module ShuttleJob
     # :  () -> String
     def parent_job_id: () -> String
 
+    # :  () -> String?
+    def sub_task_concurrency_key: () -> String?
+
     # :  (Symbol) -> Enumerator[Context]
     def _with_each_value: (Symbol) -> Enumerator[Context]
 

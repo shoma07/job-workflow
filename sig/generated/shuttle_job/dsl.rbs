@@ -35,6 +35,8 @@ module ShuttleJob
 
       def _workflow: () -> Workflow
 
+      def limits_concurrency: (to: Integer, key: ^(untyped) -> untyped, ?duration: ActiveSupport::Duration?, ?group: String?, ?on_conflict: Symbol?) -> void
+
       # :  (?Hash[untyped, untyped]) -> void
       def perform_later: (?Hash[untyped, untyped]) -> void
 
@@ -44,10 +46,11 @@ module ShuttleJob
       # :  (
       #      Symbol task_name,
       #      ?each: Symbol?,
+      #      ?concurrency: Integer?,
       #      ?depends_on: Array[Symbol],
       #      ?condition: ^(Context) -> bool,
       #    ) { (untyped) -> void } -> void
-      def task: (Symbol task_name, ?each: Symbol?, ?depends_on: Array[Symbol], ?condition: ^(Context) -> bool) { (untyped) -> void } -> void
+      def task: (Symbol task_name, ?each: Symbol?, ?concurrency: Integer?, ?depends_on: Array[Symbol], ?condition: ^(Context) -> bool) { (untyped) -> void } -> void
     end
   end
 end
