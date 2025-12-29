@@ -83,10 +83,13 @@ module ShuttleJob
         _workflow.add_context(ContextDef.new(name: context_name, type:, default:))
       end
 
+      # rubocop:disable Metrics/ParameterLists
+      #
       #:  (
       #     Symbol task_name,
       #     ?each: Symbol?,
       #     ?concurrency: Integer?,
+      #     ?output: Hash[Symbol, String],
       #     ?depends_on: Array[Symbol],
       #     ?condition: ^(Context) -> bool,
       #   ) { (untyped) -> void } -> void
@@ -94,6 +97,7 @@ module ShuttleJob
         task_name,
         each: nil,
         concurrency: nil,
+        output: {},
         depends_on: [],
         condition: ->(_ctx) { true },
         &block
@@ -104,6 +108,7 @@ module ShuttleJob
             block: block,
             each:,
             concurrency:,
+            output:,
             depends_on:,
             condition:
           )
@@ -112,6 +117,7 @@ module ShuttleJob
           limits_concurrency(to: concurrency, key: ->(ctx) { ctx.each_task_concurrency_key }) # rubocop:disable Style/SymbolProc
         end
       end
+      # rubocop:enable Metrics/ParameterLists
     end
   end
 end

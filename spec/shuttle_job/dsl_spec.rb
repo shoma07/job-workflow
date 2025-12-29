@@ -144,6 +144,19 @@ RSpec.describe ShuttleJob::DSL do
       end
     end
 
+    context "with output option" do
+      subject(:task) { klass.task :example_task, output: { result: "Integer" }, &:sum }
+
+      it do
+        task
+        expect(klass._workflow.tasks[0]).to have_attributes(
+          output: contain_exactly(
+            have_attributes(name: :result, type: "Integer")
+          )
+        )
+      end
+    end
+
     context "with each options" do
       subject(:task) do
         klass.task :example_task, each: :items do |ctx|
@@ -189,7 +202,7 @@ RSpec.describe ShuttleJob::DSL do
 
       it do
         task
-        expect(klass).to have_received(:limits_concurrency).with(to: 3, key: be_instance_of(Proc))
+        expect(klass).to have_received(:limits_concurrency).with(to: 3, key: be_instance_of(Proc)).once
       end
     end
   end
