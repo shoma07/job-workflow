@@ -8,17 +8,22 @@ module ShuttleJob
 
     attr_reader each: Symbol?
 
+    attr_reader concurrency: Integer?
+
     attr_reader depends_on: Array[Symbol]
 
     attr_reader condition: ^(Context) -> bool
 
+    # rubocop:disable Metrics/ParameterLists
+    #
     # :  (
-    #      name: Symbol,
-    #      block: ^(untyped) -> void,
-    #      ?each: Symbol?,
-    #      ?depends_on: Array[Symbol],
-    #      condition: ^(Context) -> bool
-    #    ) -> void
-    def initialize: (name: Symbol, block: ^(untyped) -> void, condition: ^(Context) -> bool, ?each: Symbol?, ?depends_on: Array[Symbol]) -> void
+    #     name: Symbol,
+    #     block: ^(untyped) -> void,
+    #     ?each: Symbol?,
+    #     ?concurrency: Integer?,
+    #     ?depends_on: Array[Symbol],
+    #     condition: ^(Context) -> bool
+    #   ) -> void
+    def initialize: (name: Symbol, block: ^(untyped) -> void, condition: ^(Context) -> bool, ?each: Symbol?, ?concurrency: Integer?, ?depends_on: Array[Symbol]) -> void
   end
 end
