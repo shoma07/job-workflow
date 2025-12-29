@@ -3,8 +3,7 @@
 RSpec.describe ShuttleJob::ContextSerializer do
   let(:context) do
     ShuttleJob::Context.new(
-      raw_data: { string_value: "test", integer_value: 42, array_value: [1, 2, 3], hash_value: { key: "value" } },
-      attribute_names: Set[:string_value, :integer_value, :array_value, :hash_value]
+      raw_data: { string_value: "test", integer_value: 42, array_value: [1, 2, 3], hash_value: { key: "value" } }
     )
   end
 
@@ -52,8 +51,7 @@ RSpec.describe ShuttleJob::ContextSerializer do
               "_aj_symbol_keys" => %w[key],
               "key" => "value"
             }
-          },
-          "attribute_names" => %w[string_value integer_value array_value hash_value]
+          }
         }
       )
     end
@@ -74,8 +72,7 @@ RSpec.describe ShuttleJob::ContextSerializer do
             "_aj_symbol_keys" => %w[key],
             "key" => "value"
           }
-        },
-        "attribute_names" => %w[string_value integer_value array_value hash_value]
+        }
       }
     end
 
@@ -88,7 +85,6 @@ RSpec.describe ShuttleJob::ContextSerializer do
           array_value: [1, 2, 3],
           hash_value: { key: "value" }
         },
-        reader_names: Set[:string_value, :integer_value, :array_value, :hash_value],
         string_value: "test",
         integer_value: 42,
         array_value: [1, 2, 3],

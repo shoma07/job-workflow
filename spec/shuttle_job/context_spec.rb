@@ -15,7 +15,6 @@ RSpec.describe ShuttleJob::Context do
     it "creates a context with raw_data from workflow contexts" do
       expect(from_workflow).to have_attributes(
         raw_data: { ctx_one: nil, ctx_two: 1 },
-        reader_names: Set[:ctx_one, :ctx_two],
         ctx_one: nil,
         ctx_two: 1
       )
@@ -23,17 +22,11 @@ RSpec.describe ShuttleJob::Context do
   end
 
   describe ".initialize" do
-    subject(:init) do
-      described_class.new(
-        raw_data: { ctx_one: nil, ctx_two: 1 },
-        attribute_names: Set[:ctx_one, :ctx_two]
-      )
-    end
+    subject(:init) { described_class.new(raw_data: { ctx_one: nil, ctx_two: 1 }) }
 
-    it "creates a context with given raw_data and attribute_names" do
+    it "creates a context with given raw_data" do
       expect(init).to have_attributes(
         raw_data: { ctx_one: nil, ctx_two: 1 },
-        reader_names: Set[:ctx_one, :ctx_two],
         ctx_one: nil,
         ctx_two: 1
       )
