@@ -2,9 +2,10 @@
 
 RSpec.describe ShuttleJob::ContextSerializer do
   let(:context) do
-    ShuttleJob::Context.new(raw_data:, parent_job_id:)
+    ShuttleJob::Context.new(raw_data:, current_task_name:, parent_job_id:)
   end
   let(:raw_data) { { string_value: "test", integer_value: 42, array_value: [1, 2, 3], hash_value: { key: "value" } } }
+  let(:current_task_name) { nil }
   let(:parent_job_id) { nil }
 
   describe ".instance" do
@@ -53,6 +54,7 @@ RSpec.describe ShuttleJob::ContextSerializer do
                 "key" => "value"
               }
             },
+            "current_task_name" => nil,
             "parent_job_id" => nil
           }
         )
@@ -76,7 +78,32 @@ RSpec.describe ShuttleJob::ContextSerializer do
                 "key" => "value"
               }
             },
+            "current_task_name" => nil,
             "parent_job_id" => parent_job_id
+          }
+        )
+      end
+    end
+
+    context "when current_task_name is set" do
+      let(:current_task_name) { "task_name" }
+
+      it do
+        expect(serialized).to eq(
+          {
+            "_aj_serialized" => "ShuttleJob::ContextSerializer",
+            "raw_data" => {
+              "_aj_symbol_keys" => [],
+              "string_value" => "test",
+              "integer_value" => 42,
+              "array_value" => [1, 2, 3],
+              "hash_value" => {
+                "_aj_symbol_keys" => %w[key],
+                "key" => "value"
+              }
+            },
+            "current_task_name" => current_task_name,
+            "parent_job_id" => nil
           }
         )
       end
@@ -86,7 +113,7 @@ RSpec.describe ShuttleJob::ContextSerializer do
   describe "#deserialize" do
     subject(:deserialized) { described_class.instance.deserialize(serialized_hash) }
 
-    context "when parent_job_id is nil" do
+    context "when option is not provided" do
       let(:serialized_hash) do
         {
           "_aj_serialized" => "ShuttleJob::ContextSerializer",
@@ -100,6 +127,7 @@ RSpec.describe ShuttleJob::ContextSerializer do
               "key" => "value"
             }
           },
+          "current_task_name" => nil,
           "parent_job_id" => nil
         }
       end
@@ -117,6 +145,7 @@ RSpec.describe ShuttleJob::ContextSerializer do
           integer_value: 42,
           array_value: [1, 2, 3],
           hash_value: { key: "value" },
+          exist_current_task_name?: false,
           enabled_each_value: false
         )
       end
@@ -136,6 +165,7 @@ RSpec.describe ShuttleJob::ContextSerializer do
               "key" => "value"
             }
           },
+          "current_task_name" => nil,
           "parent_job_id" => "019b6901-8bdf-7fd4-83aa-6c18254fe076"
         }
       end
@@ -153,8 +183,48 @@ RSpec.describe ShuttleJob::ContextSerializer do
           integer_value: 42,
           array_value: [1, 2, 3],
           hash_value: { key: "value" },
+          exist_current_task_name?: false,
           enabled_each_value: true,
           parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076"
+        )
+      end
+    end
+
+    context "when current_task_name is set" do
+      let(:serialized_hash) do
+        {
+          "_aj_serialized" => "ShuttleJob::ContextSerializer",
+          "raw_data" => {
+            "_aj_symbol_keys" => [],
+            "string_value" => "test",
+            "integer_value" => 42,
+            "array_value" => [1, 2, 3],
+            "hash_value" => {
+              "_aj_symbol_keys" => %w[key],
+              "key" => "value"
+            }
+          },
+          "current_task_name" => "task_name",
+          "parent_job_id" => nil
+        }
+      end
+
+      it do
+        expect(deserialized).to have_attributes(
+          class: ShuttleJob::Context,
+          raw_data: {
+            string_value: "test",
+            integer_value: 42,
+            array_value: [1, 2, 3],
+            hash_value: { key: "value" }
+          },
+          string_value: "test",
+          integer_value: 42,
+          array_value: [1, 2, 3],
+          hash_value: { key: "value" },
+          exist_current_task_name?: true,
+          current_task_name: "task_name",
+          enabled_each_value: false
         )
       end
     end

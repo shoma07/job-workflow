@@ -9,8 +9,8 @@ module ShuttleJob
     # :  (Workflow) -> Context
     def self.from_workflow: (Workflow) -> Context
 
-    # :  (raw_data: Hash[Symbol, untyped], ?parent_job_id: String?) -> void
-    def initialize: (raw_data: Hash[Symbol, untyped], ?parent_job_id: String?) -> void
+    # :  (raw_data: Hash[Symbol, untyped], ?current_task_name: nil, ?parent_job_id: String?) -> void
+    def initialize: (raw_data: Hash[Symbol, untyped], ?current_task_name: nil, ?parent_job_id: String?) -> void
 
     # :  (Hash[Symbol, untyped]) -> void
     def merge!: (Hash[Symbol, untyped]) -> void
@@ -26,6 +26,9 @@ module ShuttleJob
 
     # :  () -> void
     def _clear_current_task: () -> void
+
+    # :  () -> bool
+    def exist_current_task_name?: () -> bool
 
     # :  () -> Symbol
     def current_task_name: () -> Symbol
@@ -53,6 +56,8 @@ module ShuttleJob
 
     attr_accessor writer_names: Set[Symbol]
 
+    attr_writer current_task_name: Symbol?
+
     attr_writer enabled_each_value: bool
 
     attr_writer parent_job_id: String?
@@ -61,9 +66,6 @@ module ShuttleJob
 
     # :  () -> DSL
     def current_job: () -> DSL
-
-    # :  () -> Task
-    def current_task: () -> Task
 
     # :  (Symbol, Enumerator::Yielder) -> void
     def iterate_each_value: (Symbol, Enumerator::Yielder) -> void

@@ -85,6 +85,7 @@ RSpec.describe ShuttleJob::DSL do
                 "_aj_symbol_keys" => [],
                 "example" => 1
               },
+              "current_task_name" => nil,
               "parent_job_id" => nil
             }
           ]
@@ -262,6 +263,7 @@ RSpec.describe ShuttleJob::DSL do
               "_aj_symbol_keys" => [],
               "value" => 52
             },
+            "current_task_name" => nil,
             "parent_job_id" => nil
           }
         )

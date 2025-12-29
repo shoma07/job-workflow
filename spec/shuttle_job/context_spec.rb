@@ -20,7 +20,8 @@ RSpec.describe ShuttleJob::Context do
       expect(from_workflow).to have_attributes(
         raw_data: { ctx_one: nil, ctx_two: 1 },
         ctx_one: nil,
-        ctx_two: 1
+        ctx_two: 1,
+        enabled_each_value: false
       )
     end
   end
@@ -28,7 +29,7 @@ RSpec.describe ShuttleJob::Context do
   describe ".initialize" do
     subject(:init) { described_class.new(**arguments) }
 
-    context "when parent_job_id is not provided" do
+    context "when option is not provided" do
       let(:arguments) { { raw_data: { ctx_one: nil, ctx_two: 1 } } }
 
       it "creates a context with given raw_data" do
@@ -39,6 +40,10 @@ RSpec.describe ShuttleJob::Context do
           enabled_each_value: false
         )
       end
+
+      it { expect { init.parent_job_id }.to raise_error("parent_job_id is not set") }
+
+      it { expect { init.current_task_name }.to raise_error("current_task_name is not set") }
     end
 
     context "when parent_job_id is provided" do
@@ -59,6 +64,14 @@ RSpec.describe ShuttleJob::Context do
       it do
         expect { init._with_each_value(:ctx_two) }.to raise_error("Nested _with_each_value calls are not allowed")
       end
+    end
+
+    context "when current_task_name is provided" do
+      let(:arguments) do
+        { raw_data: { ctx_one: nil, ctx_two: [1, 2] }, current_task_name: "task_one" }
+      end
+
+      it { expect(init).to have_attributes(current_task_name: "task_one") }
     end
   end
 
@@ -116,6 +129,22 @@ RSpec.describe ShuttleJob::Context do
 
     context "when current job is not assigned" do
       it { expect { current_job_id }.to raise_error(RuntimeError) }
+    end
+  end
+
+  describe "#exist_current_task_name?" do
+    subject(:exist_current_task_name?) { described_class.new(**arguments).exist_current_task_name? }
+
+    context "when current task is not assigned" do
+      let(:arguments) { { raw_data: {} } }
+
+      it { is_expected.to be false }
+    end
+
+    context "when current task is assigned" do
+      let(:arguments) { { raw_data: {}, current_task_name: "task_name" } }
+
+      it { is_expected.to be true }
     end
   end
 
