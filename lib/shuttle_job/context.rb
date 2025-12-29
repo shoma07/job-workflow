@@ -13,11 +13,12 @@ module ShuttleJob
       end
     end
 
-    #:  (raw_data: Hash[Symbol, untyped], ?parent_job_id: String?) -> void
-    def initialize(raw_data:, parent_job_id: nil)
+    #:  (raw_data: Hash[Symbol, untyped], ?current_task_name: nil, ?parent_job_id: String?) -> void
+    def initialize(raw_data:, current_task_name: nil, parent_job_id: nil)
       self.raw_data = raw_data
       self.reader_names = raw_data.keys.to_set
       self.writer_names = raw_data.keys.to_set { |n| :"#{n}=" }
+      self.current_task_name = current_task_name
       self.enabled_each_value = !parent_job_id.nil?
       self.parent_job_id = parent_job_id
     end
@@ -39,17 +40,25 @@ module ShuttleJob
 
     #:  (Task) -> void
     def _current_task=(task)
-      @current_task = task
+      self.current_task_name = task.name
     end
 
     #:  () -> void
     def _clear_current_task
-      @current_task = nil
+      self.current_task_name = nil
+    end
+
+    #:  () -> bool
+    def exist_current_task_name?
+      !@current_task_name.nil?
     end
 
     #:  () -> Symbol
     def current_task_name
-      current_task.name
+      task_name = @current_task_name
+      raise "current_task_name is not set" if task_name.nil?
+
+      task_name
     end
 
     #:  () -> String
@@ -92,6 +101,7 @@ module ShuttleJob
     attr_writer :raw_data #: Hash[Symbol, untyped]
     attr_accessor :reader_names #: Set[Symbol]
     attr_accessor :writer_names #: Set[Symbol]
+    attr_writer :current_task_name #: Symbol?
     attr_writer :enabled_each_value #: bool
     attr_writer :parent_job_id #: String?
     attr_writer :each_value #: untyped
@@ -102,14 +112,6 @@ module ShuttleJob
       raise "current_job is not set" if job.nil?
 
       job
-    end
-
-    #:  () -> Task
-    def current_task
-      task = @current_task
-      raise "current_task is not set" if task.nil?
-
-      task
     end
 
     #:  (Symbol, Enumerator::Yielder) -> void
