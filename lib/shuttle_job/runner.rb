@@ -13,7 +13,7 @@ module ShuttleJob
 
     #:  () -> void
     def run
-      return run_sub_task_in_map unless context.sub_task_concurrency_key.nil?
+      return run_each_task_in_map unless context.each_task_concurrency_key.nil?
 
       run_workflow
     end
@@ -35,41 +35,37 @@ module ShuttleJob
     #:  () -> void
     def run_workflow
       tasks.each do |task|
-        context._current_task = task
         next unless task.condition.call(context)
 
         job.step(task.name) { |step| run_task(task, step) }
-      ensure
-        context._clear_current_task
       end
     end
 
     #:  (Task, ActiveJob::Continuation::Step) -> void
     def run_task(task, step)
-      each = task.each
-      return task.block.call(context) if each.nil?
-      return run_map_task_with_concurrency(each) if task.concurrency
+      return task.block.call(context) if task.each.nil?
+      return run_map_task_with_concurrency(task) if task.concurrency
 
-      run_map_task_without_concurrency(task, each, step)
+      run_map_task_without_concurrency(task, step)
     end
 
-    #:  (Symbol) -> void
-    def run_map_task_with_concurrency(each)
-      sub_jobs = context._with_each_value(each).each.map { |each_ctx| job.class.new(each_ctx.dup) }
+    #:  (Task) -> void
+    def run_map_task_with_concurrency(task)
+      sub_jobs = context._with_each_value(task).each.map { |each_ctx| job.class.new(each_ctx.dup) }
       job.class.perform_all_later(sub_jobs)
     end
 
-    #:  (Task, Symbol, ActiveJob::Continuation::Step) -> void
-    def run_map_task_without_concurrency(task, each, step)
-      context._with_each_value(each).each do |each_ctx|
+    #:  (Task, ActiveJob::Continuation::Step) -> void
+    def run_map_task_without_concurrency(task, step)
+      context._with_each_value(task).each do |each_ctx|
         task.block.call(each_ctx)
-        step.advance! from: each_ctx._each_index
+        step.advance! from: each_ctx._each_context.index
       end
     end
 
     #:  () -> void
-    def run_sub_task_in_map
-      task = workflow.fetch_task(context.current_task_name)
+    def run_each_task_in_map
+      task = workflow.fetch_task(context._each_context.task_name)
       task.block.call(context)
     end
   end

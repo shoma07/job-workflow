@@ -26,13 +26,13 @@ module ShuttleJob
     # :  (Task, ActiveJob::Continuation::Step) -> void
     def run_task: (Task, ActiveJob::Continuation::Step) -> void
 
-    # :  (Symbol) -> void
-    def run_map_task_with_concurrency: (Symbol) -> void
+    # :  (Task) -> void
+    def run_map_task_with_concurrency: (Task) -> void
 
-    # :  (Task, Symbol, ActiveJob::Continuation::Step) -> void
-    def run_map_task_without_concurrency: (Task, Symbol, ActiveJob::Continuation::Step) -> void
+    # :  (Task, ActiveJob::Continuation::Step) -> void
+    def run_map_task_without_concurrency: (Task, ActiveJob::Continuation::Step) -> void
 
     # :  () -> void
-    def run_sub_task_in_map: () -> void
+    def run_each_task_in_map: () -> void
   end
 end
