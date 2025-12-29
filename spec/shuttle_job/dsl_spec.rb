@@ -86,7 +86,9 @@ RSpec.describe ShuttleJob::DSL do
                 "example" => 1
               },
               "current_task_name" => nil,
-              "parent_job_id" => nil
+              "parent_job_id" => nil,
+              "each_index" => nil,
+              "each_value" => nil
             }
           ]
         )
@@ -297,7 +299,9 @@ RSpec.describe ShuttleJob::DSL do
               "value" => 52
             },
             "current_task_name" => nil,
-            "parent_job_id" => nil
+            "parent_job_id" => nil,
+            "each_index" => nil,
+            "each_value" => nil
           }
         )
       end
