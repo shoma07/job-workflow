@@ -438,4 +438,74 @@ RSpec.describe ShuttleJob::Output do
       end
     end
   end
+
+  describe "#update_task_outputs_from_db" do
+    subject(:update_task_outputs_from_db) { output.update_task_outputs_from_db(job_ids) }
+
+    let(:output) { described_class.new }
+    let(:job_ids) { %w[job1 job2] }
+    let(:solid_jobs) do
+      stub_const("SolidQueue::Job", Class.new)
+      [SolidQueue::Job.new, SolidQueue::Job.new]
+    end
+
+    before do
+      allow(solid_jobs[0]).to receive(:arguments).and_return(
+        {
+          "shuttle_job_context" => ShuttleJob::ContextSerializer.instance.serialize(
+            ShuttleJob::Context.new(
+              raw_data: {},
+              each_context: { parent_job_id: "parent-id", task_name: :db_task, index: 0, value: 10 },
+              task_outputs: [{ task_name: :db_task, each_index: 0, data: { result: 100 } }]
+            )
+          )
+        }
+      )
+      allow(solid_jobs[1]).to receive(:arguments).and_return(
+        {
+          "shuttle_job_context" => ShuttleJob::ContextSerializer.instance.serialize(
+            ShuttleJob::Context.new(
+              raw_data: {},
+              each_context: { parent_job_id: "parent-id", task_name: :db_task, index: 1, value: 20 },
+              task_outputs: [{ task_name: :db_task, each_index: 1, data: { result: 200 } }]
+            )
+          )
+        }
+      )
+
+      allow(SolidQueue::Job).to receive(:where).with(active_job_id: job_ids).and_return(solid_jobs)
+    end
+
+    context "when job_ids are provided" do
+      it "fetches jobs from DB and updates outputs" do
+        expect { update_task_outputs_from_db }.to(
+          change { output.fetch_all(task_name: :db_task) }.from([]).to(
+            contain_exactly(have_attributes(result: 100), have_attributes(result: 200))
+          )
+        )
+      end
+    end
+
+    context "when no jobs are found in DB" do
+      before do
+        allow(SolidQueue::Job).to receive(:where).with(active_job_id: job_ids).and_return([])
+      end
+
+      it "does not update outputs" do
+        expect { update_task_outputs_from_db }.not_to(change(output, :flat_task_outputs))
+      end
+    end
+
+    context "when job_ids is empty" do
+      let(:job_ids) { [] }
+
+      before do
+        allow(SolidQueue::Job).to receive(:where).with(active_job_id: []).and_return([])
+      end
+
+      it "does not update outputs" do
+        expect { update_task_outputs_from_db }.not_to(change(output, :flat_task_outputs))
+      end
+    end
+  end
 end
