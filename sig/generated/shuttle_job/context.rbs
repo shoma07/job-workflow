@@ -37,6 +37,9 @@ module ShuttleJob
     # :  () -> untyped
     def each_value: () -> untyped
 
+    # :  () -> TaskOutput?
+    def each_task_output: () -> TaskOutput?
+
     # :  () -> EachContext
     def _each_context: () -> EachContext
 

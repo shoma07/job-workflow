@@ -23,6 +23,18 @@ module ShuttleJob
       task_outputs.each { |task_output| add_task_output(task_output) }
     end
 
+    #:  (task_name: Symbol?) -> Array[TaskOutput]
+    def fetch_all(task_name:)
+      fixed_type_task_name = task_name #: Symbol
+      task_outputs.fetch(fixed_type_task_name, []).compact
+    end
+
+    #:  (task_name: Symbol?, ?each_index: Integer?) -> TaskOutput?
+    def fetch(task_name:, each_index: nil)
+      fixed_type_task_name = task_name #: Symbol
+      task_outputs.fetch(fixed_type_task_name, [])[each_index || 0]
+    end
+
     #:  (TaskOutput) -> void
     def add_task_output(task_output)
       task_outputs[task_output.task_name] ||= []
@@ -30,9 +42,20 @@ module ShuttleJob
       each_task_names << task_output.task_name if task_output.each_index
     end
 
+    #:  (Array[SolidQueue::Job]) -> void
+    def update_task_outputs_from_jobs(jobs)
+      jobs.each do |job|
+        context = ContextSerializer.instance.deserialize(job.arguments["shuttle_job_context"])
+        task_output = context.each_task_output
+        next if task_output.nil?
+
+        add_task_output(task_output)
+      end
+    end
+
     #:  () -> Array[TaskOutput]
     def flat_task_outputs
-      task_outputs.values.flatten
+      task_outputs.values.flatten.compact
     end
 
     #:  ...

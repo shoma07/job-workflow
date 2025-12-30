@@ -31,5 +31,7 @@ module SolidQueue
     include Executable
     include Clearable
     include Recurrable
+
+    def arguments: () -> Hash[String, untyped]
   end
 end

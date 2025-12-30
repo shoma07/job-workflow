@@ -8,8 +8,17 @@ module ShuttleJob
     # :  (?task_outputs: Array[TaskOutput]) -> void
     def initialize: (?task_outputs: Array[TaskOutput]) -> void
 
+    # :  (task_name: Symbol?) -> Array[TaskOutput]
+    def fetch_all: (task_name: Symbol?) -> Array[TaskOutput]
+
+    # :  (task_name: Symbol?, ?each_index: Integer?) -> TaskOutput?
+    def fetch: (task_name: Symbol?, ?each_index: Integer?) -> TaskOutput?
+
     # :  (TaskOutput) -> void
     def add_task_output: (TaskOutput) -> void
+
+    # :  (Array[SolidQueue::Job]) -> void
+    def update_task_outputs_from_jobs: (Array[SolidQueue::Job]) -> void
 
     # :  () -> Array[TaskOutput]
     def flat_task_outputs: () -> Array[TaskOutput]
