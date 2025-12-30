@@ -18,6 +18,7 @@ require_relative "shuttle_job/context_serializer"
 require_relative "shuttle_job/output_def"
 require_relative "shuttle_job/task_output"
 require_relative "shuttle_job/output"
+require_relative "shuttle_job/task_job_status"
 
 module ShuttleJob
   class Error < StandardError; end
