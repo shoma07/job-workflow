@@ -11,7 +11,7 @@ RSpec.describe ShuttleJob::Runner do
       klass.new
     end
     let(:ctx) do
-      ShuttleJob::Context.from_workflow(job.class._workflow)
+      job.class._workflow.build_context({})
     end
 
     # NOTE: Could not be verified with change matcher
@@ -32,29 +32,31 @@ RSpec.describe ShuttleJob::Runner do
         klass = Class.new(ActiveJob::Base) do
           include ShuttleJob::DSL
 
-          context :a, "Integer", default: 0
+          argument :a, "Integer", default: 0
 
-          task :task_one do |ctx|
-            ctx.a += 1
+          task :task_one, output: { value: "Integer" } do |ctx|
+            { value: ctx.arguments.a + 1 }
           end
 
-          task :task_two do |ctx|
-            ctx.a += 2
+          task :task_two, output: { value: "Integer" }, depends_on: %i[task_one] do |ctx|
+            { value: ctx.output.task_one.value + 2 }
           end
 
-          task :task_ignore, condition: ->(_ctx) { false } do |ctx|
-            ctx.a += 100
+          task :task_ignore,
+               output: { value: "Integer" },
+               condition: ->(_ctx) { false },
+               depends_on: %i[task_two] do |ctx|
+            { value: ctx.output.task_two.value + 100 }
           end
         end
         klass.new
       end
-      let(:ctx) do
-        ctx = ShuttleJob::Context.from_workflow(job.class._workflow)
-        ctx.a = 0
-        ctx
-      end
+      let(:ctx) { job.class._workflow.build_context({ a: 0 }) }
 
-      it { expect { run }.to change(ctx, :a).from(0).to(3) }
+      it do
+        run
+        expect(ctx.output.task_two.value).to eq(3)
+      end
     end
 
     context "when task has each option" do
@@ -62,23 +64,24 @@ RSpec.describe ShuttleJob::Runner do
         klass = Class.new(ActiveJob::Base) do
           include ShuttleJob::DSL
 
-          context :items, "Array[Integer]", default: []
-          context :sum, "Integer", default: 0
+          argument :items, "Array[Integer]", default: []
 
-          task :process_items, each: :items do |ctx|
-            ctx.sum += ctx.each_value
+          task :process_items, output: { value: "Integer" }, each: :items do |ctx|
+            { value: ctx.each_value }
+          end
+
+          task :aggregate_sum, output: { value: "Integer" }, depends_on: %i[process_items] do |ctx|
+            { value: ctx.output.process_items.sum(&:value) }
           end
         end
         klass.new
       end
-      let(:ctx) do
-        ctx = ShuttleJob::Context.from_workflow(job.class._workflow)
-        ctx.items = [1, 2, 3]
-        ctx.sum = 0
-        ctx
-      end
+      let(:ctx) { job.class._workflow.build_context({ items: [1, 2, 3] }) }
 
-      it { expect { run }.to change(ctx, :sum).from(0).to(6) }
+      it do
+        run
+        expect(ctx.output.aggregate_sum.value).to eq(6)
+      end
     end
 
     context "when mixing regular and each tasks" do
@@ -86,27 +89,28 @@ RSpec.describe ShuttleJob::Runner do
         klass = Class.new(ActiveJob::Base) do
           include ShuttleJob::DSL
 
-          context :items, "Array[Integer]", default: []
-          context :multiplier, "Integer", default: 1
-          context :result, "Array[Integer]", default: []
+          argument :items, "Array[Integer]", default: []
 
-          task :setup do |ctx|
-            ctx.multiplier = 3
+          task :setup, output: { value: "Integer" } do |_ctx|
+            { value: 3 }
           end
 
-          task :process_items, each: :items do |ctx|
-            ctx.result << (ctx.each_value * ctx.multiplier)
+          task :process_items, output: { value: "Integer" }, each: :items, depends_on: %i[setup] do |ctx|
+            { value: ctx.each_value * ctx.output.setup.value }
+          end
+
+          task :finalize, output: { value: "Integer" }, depends_on: %i[process_items] do |ctx|
+            { value: ctx.output.process_items.sum(&:value) }
           end
         end
         klass.new
       end
-      let(:ctx) do
-        ctx = ShuttleJob::Context.from_workflow(job.class._workflow)
-        ctx.merge!({ items: [10, 20], multiplier: 2, result: [] })
-        ctx
-      end
+      let(:ctx) { job.class._workflow.build_context({ items: [10, 20] }) }
 
-      it { expect { run }.to change(ctx, :result).from([]).to([30, 60]) }
+      it do
+        run
+        expect(ctx.output.finalize.value).to eq(90)
+      end
     end
 
     context "when each task with condition" do
@@ -114,24 +118,25 @@ RSpec.describe ShuttleJob::Runner do
         klass = Class.new(ActiveJob::Base) do
           include ShuttleJob::DSL
 
-          context :items, "Array[Integer]", default: []
-          context :sum, "Integer", default: 0
-          context :enabled, "Boolean", default: false
+          argument :items, "Array[Integer]", default: []
+          argument :sum, "Integer", default: 0
+          argument :enabled, "Boolean", default: false
 
-          task :process_items, each: :items, condition: lambda(&:enabled) do |ctx|
-            ctx.sum += ctx.each_value
+          task :process_items, each: :items, condition: lambda { |ctx|
+            ctx.arguments.enabled
+          }, output: { value: "Integer" } do |ctx|
+            { value: ctx.each_value }
           end
         end
         klass.new
       end
       let(:ctx) do
-        ctx = ShuttleJob::Context.from_workflow(job.class._workflow)
-        ctx.merge!({ items: [1, 2, 3], sum: 0, enabled: false })
-        ctx
+        job.class._workflow.build_context({ items: [1, 2, 3], sum: 0, enabled: false })
       end
 
       it "does not execute the each task" do
-        expect { run }.not_to change(ctx, :sum)
+        run
+        expect(ctx.output.respond_to?(:process_items)).to be(false)
       end
     end
 
@@ -140,20 +145,17 @@ RSpec.describe ShuttleJob::Runner do
         klass = Class.new(ActiveJob::Base) do
           include ShuttleJob::DSL
 
-          context :items, "Array[Integer]", default: []
-          context :results, "Array[Integer]", default: []
+          argument :items, "Array[Integer]", default: []
+          argument :results, "Array[Integer]", default: []
 
-          task :process_items, each: :items, concurrency: 2 do |ctx|
-            ctx.results << (ctx.each_value * 2)
+          task :process_items, each: :items, concurrency: 2, output: { doubled: "Integer" } do |ctx|
+            { doubled: (ctx.each_value * 2) }
           end
         end
         klass.new
       end
       let(:ctx) do
-        ctx = ShuttleJob::Context.from_workflow(job.class._workflow)
-        ctx.items = [1, 2, 3]
-        ctx.results = []
-        ctx
+        job.class._workflow.build_context({ items: [1, 2, 3], results: [] })
       end
 
       before { allow(job.class).to receive(:perform_all_later).and_return(nil) }
@@ -171,22 +173,22 @@ RSpec.describe ShuttleJob::Runner do
         klass = Class.new(ActiveJob::Base) do
           include ShuttleJob::DSL
 
-          context :value, "Integer", default: 0
+          argument :items, "Array[Integer]", default: []
 
-          task :process_item do |ctx|
-            ctx.value = ctx.value * 2
+          task :process_items, output: { result: "Integer" }, each: :items do |ctx|
+            { result: ctx.each_value * 2 }
           end
         end
         klass.new
       end
       let(:ctx) do
         ctx = ShuttleJob::Context.new(
-          raw_data: { value: 5 },
+          arguments: { items: [1, 2] },
           each_context: {
-            task_name: :process_item,
+            task_name: :process_items,
             parent_job_id: "parent-job-id",
             index: 0,
-            value: 10
+            value: 1
           }
         )
         ctx._current_job = job
@@ -194,7 +196,8 @@ RSpec.describe ShuttleJob::Runner do
       end
 
       it "executes the task as a sub task" do
-        expect { run }.to change(ctx, :value).from(5).to(10)
+        run
+        expect(ctx.output.process_items).to contain_exactly(have_attributes(result: 2))
       end
     end
 
@@ -203,19 +206,15 @@ RSpec.describe ShuttleJob::Runner do
         klass = Class.new(ActiveJob::Base) do
           include ShuttleJob::DSL
 
-          context :multiplier, "Integer", default: 2
+          argument :multiplier, "Integer", default: 2
 
           task :calculate, output: { result: "Integer", message: "String" } do |ctx|
-            { result: 42 * ctx.multiplier, message: "done" }
+            { result: 42 * ctx.arguments.multiplier, message: "done" }
           end
         end
         klass.new
       end
-      let(:ctx) do
-        ctx = ShuttleJob::Context.from_workflow(job.class._workflow)
-        ctx.multiplier = 3
-        ctx
-      end
+      let(:ctx) { job.class._workflow.build_context({ multiplier: 3 }) }
 
       it "collects output from the task" do
         run
@@ -228,7 +227,7 @@ RSpec.describe ShuttleJob::Runner do
         klass = Class.new(ActiveJob::Base) do
           include ShuttleJob::DSL
 
-          context :items, "Array[Integer]", default: []
+          argument :items, "Array[Integer]", default: []
 
           task :process_items, each: :items, output: { doubled: "Integer" } do |ctx|
             { doubled: ctx.each_value * 2 }
@@ -237,9 +236,7 @@ RSpec.describe ShuttleJob::Runner do
         klass.new
       end
       let(:ctx) do
-        ctx = ShuttleJob::Context.from_workflow(job.class._workflow)
-        ctx.items = [10, 20, 30]
-        ctx
+        job.class._workflow.build_context({ items: [10, 20, 30] })
       end
 
       it "collects output from each iteration" do
@@ -255,17 +252,16 @@ RSpec.describe ShuttleJob::Runner do
         klass = Class.new(ActiveJob::Base) do
           include ShuttleJob::DSL
 
-          context :value, "Integer", default: 0
+          argument :value, "Integer", default: 0
 
-          task :no_output do |ctx|
-            ctx.value = 100
+          task :no_output do |_ctx|
             "ignored_result"
           end
         end
         klass.new
       end
       let(:ctx) do
-        ShuttleJob::Context.from_workflow(job.class._workflow)
+        job.class._workflow.build_context({})
       end
 
       it "does not collect output" do
@@ -285,7 +281,7 @@ RSpec.describe ShuttleJob::Runner do
         end
         klass.new
       end
-      let(:ctx) { ShuttleJob::Context.from_workflow(job.class._workflow) }
+      let(:ctx) { job.class._workflow.build_context({}) }
 
       it "wraps value in Hash with :value key" do
         run
@@ -298,7 +294,7 @@ RSpec.describe ShuttleJob::Runner do
         klass = Class.new(ActiveJob::Base) do
           include ShuttleJob::DSL
 
-          context :items, "Array[Integer]", default: []
+          argument :items, "Array[Integer]", default: []
 
           task :process_items, each: :items, concurrency: 2, output: { result: "Integer" } do |ctx|
             { result: ctx.each_value * 2 }
@@ -307,9 +303,7 @@ RSpec.describe ShuttleJob::Runner do
         klass.new
       end
       let(:ctx) do
-        ctx = ShuttleJob::Context.from_workflow(job.class._workflow)
-        ctx.items = [1, 2, 3]
-        ctx
+        job.class._workflow.build_context({ items: [1, 2, 3] })
       end
 
       before { allow(job.class).to receive(:perform_all_later).and_return(nil) }
@@ -325,25 +319,19 @@ RSpec.describe ShuttleJob::Runner do
         klass = Class.new(ActiveJob::Base) do
           include ShuttleJob::DSL
 
-          context :value, "Integer", default: 0
+          argument :value, "Integer", default: 0
 
-          task :first_task, output: { step1: "Integer" } do |ctx|
-            ctx.value = 10
+          task :first_task, output: { step1: "Integer" } do |_ctx|
             { step1: 10 }
           end
 
           task :second_task, depends_on: [:first_task], output: { step2: "Integer" } do |ctx|
-            ctx.value += ctx.output.first_task.step1
-            { step2: ctx.value }
+            { step2: 10 + ctx.output.first_task.step1 }
           end
         end
         klass.new
       end
-      let(:ctx) { ShuttleJob::Context.from_workflow(job.class._workflow) }
-
-      it "executes dependent tasks in sequence" do
-        expect { run }.to change(ctx, :value).from(0).to(20)
-      end
+      let(:ctx) { job.class._workflow.build_context({}) }
 
       it "has access to dependency outputs" do
         run
@@ -356,23 +344,21 @@ RSpec.describe ShuttleJob::Runner do
         klass = Class.new(ActiveJob::Base) do
           include ShuttleJob::DSL
 
-          context :items, "Array[Integer]", default: []
-          context :result, "Integer", default: 0
+          argument :items, "Array[Integer]", default: []
+          argument :result, "Integer", default: 0
 
           task :parallel_process, each: :items, concurrency: 2, output: { value: "Integer" } do |ctx|
             { value: ctx.each_value * 10 }
           end
 
-          task :summarize, depends_on: [:parallel_process] do |ctx|
-            ctx.result = ctx.output.parallel_process.sum(&:value)
+          task :summarize, depends_on: [:parallel_process], output: { result: "Integer" } do |ctx|
+            { result: ctx.output.parallel_process.sum(&:value) }
           end
         end
         klass.new
       end
       let(:ctx) do
-        ctx = ShuttleJob::Context.from_workflow(job.class._workflow)
-        ctx.items = [1, 2]
-        ctx
+        job.class._workflow.build_context({ items: [1, 2] })
       end
       let(:step_mock) { instance_double(ActiveJob::Continuation::Step) }
       let(:poll_count) { 0 }
@@ -420,7 +406,7 @@ RSpec.describe ShuttleJob::Runner do
                 arguments: {
                   "shuttle_job_context" => ShuttleJob::ContextSerializer.instance.serialize(
                     ShuttleJob::Context.new(
-                      raw_data: {},
+                      arguments: {},
                       each_context: { parent_job_id: job.job_id, task_name: :parallel_process, index: idx,
                                       value: idx + 1 },
                       task_outputs: [{ task_name: :parallel_process, each_index: idx, data: { value: (idx + 1) * 10 } }]
@@ -439,7 +425,7 @@ RSpec.describe ShuttleJob::Runner do
 
       it "waits for concurrent task completion and collects outputs" do
         run
-        expect(ctx.result).to eq(30)
+        expect(ctx.output.summarize.result).to eq(30)
       end
 
       it "polls DB until all jobs are finished" do
@@ -458,27 +444,26 @@ RSpec.describe ShuttleJob::Runner do
         klass = Class.new(ActiveJob::Base) do
           include ShuttleJob::DSL
 
-          context :items, "Array[Integer]", default: []
-          context :total, "Integer", default: 0
+          argument :items, "Array[Integer]", default: []
+          argument :total, "Integer", default: 0
 
           task :sequential_process, each: :items, output: { doubled: "Integer" } do |ctx|
             { doubled: ctx.each_value * 2 }
           end
 
-          task :sum_task, depends_on: [:sequential_process] do |ctx|
-            ctx.total = ctx.output.sequential_process.sum(&:doubled)
+          task :sum_task, depends_on: [:sequential_process], output: { total: "Integer" } do |ctx|
+            { total: ctx.output.sequential_process.sum(&:doubled) }
           end
         end
         klass.new
       end
       let(:ctx) do
-        ctx = ShuttleJob::Context.from_workflow(job.class._workflow)
-        ctx.items = [5, 10]
-        ctx
+        job.class._workflow.build_context({ items: [5, 10] })
       end
 
       it "does not wait for sequential map tasks" do
-        expect { run }.to change(ctx, :total).from(0).to(30)
+        run
+        expect(ctx.output.sum_task.total).to eq(30)
       end
     end
 
@@ -487,23 +472,23 @@ RSpec.describe ShuttleJob::Runner do
         klass = Class.new(ActiveJob::Base) do
           include ShuttleJob::DSL
 
-          context :value, "Integer", default: 0
+          argument :value, "Integer", default: 0
 
-          task :regular_task, output: { num: "Integer" } do |ctx|
-            ctx.value = 5
+          task :regular_task, output: { num: "Integer" } do |_ctx|
             { num: 5 }
           end
 
-          task :dependent_task, depends_on: [:regular_task] do |ctx|
-            ctx.value += ctx.output.regular_task.num
+          task :dependent_task, depends_on: [:regular_task], output: { value: "Integer" } do |ctx|
+            { value: 5 + ctx.output.regular_task.num }
           end
         end
         klass.new
       end
-      let(:ctx) { ShuttleJob::Context.from_workflow(job.class._workflow) }
+      let(:ctx) { job.class._workflow.build_context({}) }
 
       it "does not wait for regular tasks" do
-        expect { run }.to change(ctx, :value).from(0).to(10)
+        run
+        expect(ctx.output.dependent_task.value).to eq(10)
       end
     end
 
@@ -512,23 +497,21 @@ RSpec.describe ShuttleJob::Runner do
         klass = Class.new(ActiveJob::Base) do
           include ShuttleJob::DSL
 
-          context :items, "Array[Integer]", default: []
-          context :sum, "Integer", default: 0
+          argument :items, "Array[Integer]", default: []
+          argument :sum, "Integer", default: 0
 
           task :fast_parallel, each: :items, concurrency: 2, output: { value: "Integer" } do |ctx|
             { value: ctx.each_value }
           end
 
-          task :consume_result, depends_on: [:fast_parallel] do |ctx|
-            ctx.sum = ctx.output.fast_parallel.sum(&:value)
+          task :consume_result, depends_on: [:fast_parallel], output: { sum: "Integer" } do |ctx|
+            { sum: ctx.output.fast_parallel.sum(&:value) }
           end
         end
         klass.new
       end
       let(:ctx) do
-        ctx = ShuttleJob::Context.from_workflow(job.class._workflow)
-        ctx.items = [10, 20]
-        ctx
+        job.class._workflow.build_context({ items: [10, 20] })
       end
       let(:step_mock) { instance_double(ActiveJob::Continuation::Step) }
       let(:created_job_ids) { [] }
@@ -566,7 +549,7 @@ RSpec.describe ShuttleJob::Runner do
               arguments: {
                 "shuttle_job_context" => ShuttleJob::ContextSerializer.instance.serialize(
                   ShuttleJob::Context.new(
-                    raw_data: {},
+                    arguments: {},
                     each_context: { parent_job_id: job.job_id, task_name: :fast_parallel, index: idx,
                                     value: [10, 20][idx] },
                     task_outputs: [{ task_name: :fast_parallel, each_index: idx, data: { value: [10, 20][idx] } }]
@@ -584,7 +567,7 @@ RSpec.describe ShuttleJob::Runner do
 
       it "skips waiting when jobs are already finished" do
         run
-        expect(ctx.sum).to eq(30)
+        expect(ctx.output.consume_result.sum).to eq(30)
       end
 
       it "updates outputs from finished jobs" do
@@ -598,28 +581,26 @@ RSpec.describe ShuttleJob::Runner do
         klass = Class.new(ActiveJob::Base) do
           include ShuttleJob::DSL
 
-          context :numbers, "Array[Integer]", default: []
-          context :result, "String", default: ""
+          argument :numbers, "Array[Integer]", default: []
+          argument :result, "String", default: ""
 
           task :parallel_compute, each: :numbers, concurrency: 2, output: { squared: "Integer" } do |ctx|
             { squared: ctx.each_value**2 }
           end
 
-          task :middle_task do |ctx|
-            ctx.result = "processing"
+          task :middle_task, output: { result: "String" } do |_ctx|
+            { result: "processing" }
           end
 
-          task :final_task, depends_on: [:parallel_compute] do |ctx|
+          task :final_task, depends_on: [:parallel_compute], output: { result: "String" } do |ctx|
             total = ctx.output.parallel_compute.sum(&:squared)
-            ctx.result = "total: #{total}"
+            { result: "total: #{total}" }
           end
         end
         klass.new
       end
       let(:ctx) do
-        ctx = ShuttleJob::Context.from_workflow(job.class._workflow)
-        ctx.numbers = [2, 3]
-        ctx
+        job.class._workflow.build_context({ numbers: [2, 3] })
       end
       let(:step_mock) { instance_double(ActiveJob::Continuation::Step) }
       let(:created_jobs) { [] }
@@ -656,7 +637,7 @@ RSpec.describe ShuttleJob::Runner do
               arguments: {
                 "shuttle_job_context" => ShuttleJob::ContextSerializer.instance.serialize(
                   ShuttleJob::Context.new(
-                    raw_data: {},
+                    arguments: {},
                     each_context: { parent_job_id: job.job_id, task_name: :parallel_compute, index: idx,
                                     value: [2, 3][idx] },
                     task_outputs: [{ task_name: :parallel_compute, each_index: idx,
@@ -675,7 +656,7 @@ RSpec.describe ShuttleJob::Runner do
 
       it "skips waiting for already finished parallel task" do
         run
-        expect(ctx.result).to eq("total: 13")
+        expect(ctx.output.final_task.result).to eq("total: 13")
       end
     end
 
@@ -684,41 +665,41 @@ RSpec.describe ShuttleJob::Runner do
         klass = Class.new(ActiveJob::Base) do
           include ShuttleJob::DSL
 
-          context :items, "Array[Integer]", default: []
-          context :sum, "Integer", default: 0
-          context :skip_parallel, "Boolean", default: false
+          argument :items, "Array[Integer]", default: []
+          argument :sum, "Integer", default: 0
+          argument :skip_parallel, "Boolean", default: false
 
-          task :pre_task do |ctx|
-            ctx.sum = 1
+          task :pre_task, output: { sum: "Integer" } do |ctx|
+            { sum: ctx.arguments.sum }
           end
 
           task :parallel_work,
                each: :items,
                concurrency: 2,
                output: { result: "Integer" },
-               condition: ->(ctx) { !ctx.skip_parallel } do |ctx|
+               condition: ->(ctx) { !ctx.arguments.skip_parallel } do |ctx|
             { result: ctx.each_value * 5 }
           end
 
-          task :post_task, depends_on: [:parallel_work] do |ctx|
-            ctx.sum += ctx.output.parallel_work.sum(&:result)
+          task :post_task, depends_on: [:parallel_work], output: { sum: "Integer" } do |ctx|
+            { sum: ctx.output.parallel_work.sum(&:result) }
           end
         end
         klass.new
       end
       let(:ctx) do
-        ctx = ShuttleJob::Context.from_workflow(job.class._workflow)
-        ctx.items = [1, 2]
-        ctx.skip_parallel = true # Skip re-execution
+        ctx = job.class._workflow.build_context({ items: [1, 2], skip_parallel: true })
 
         # Simulate resuming: parallel_work already completed in previous run
         ctx.job_status.update_task_job_status(
-          ShuttleJob::TaskJobStatus.new(task_name: :parallel_work, job_id: "completed-job-1", each_index: 0,
-                                        status: :succeeded)
+          ShuttleJob::TaskJobStatus.new(
+            task_name: :parallel_work, job_id: "completed-job-1", each_index: 0, status: :succeeded
+          )
         )
         ctx.job_status.update_task_job_status(
-          ShuttleJob::TaskJobStatus.new(task_name: :parallel_work, job_id: "completed-job-2", each_index: 1,
-                                        status: :succeeded)
+          ShuttleJob::TaskJobStatus.new(
+            task_name: :parallel_work, job_id: "completed-job-2", each_index: 1, status: :succeeded
+          )
         )
 
         # Outputs already collected
@@ -747,7 +728,7 @@ RSpec.describe ShuttleJob::Runner do
 
       it "skips waiting when dependent parallel task is already finished" do
         run
-        expect(ctx.sum).to eq(16)
+        expect(ctx.output.post_task.sum).to eq(15)
       end
     end
   end

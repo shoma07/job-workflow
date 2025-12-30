@@ -78,9 +78,15 @@ module ShuttleJob
         super(_workflow.build_context(initial_context))
       end
 
+      #:  (Symbol argument_name, String type, ?default: untyped) -> void
+      def argument(argument_name, type, default: nil)
+        _workflow.add_argument(ArgumentDef.new(name: argument_name, type:, default:))
+      end
+
       #:  (Symbol context_name, String type, ?default: untyped) -> void
       def context(context_name, type, default: nil)
-        _workflow.add_context(ContextDef.new(name: context_name, type:, default:))
+        warn "[ShuttleJob] DEPRECATED: `context` is deprecated, use `argument` instead"
+        argument(context_name, type, default:)
       end
 
       # rubocop:disable Metrics/ParameterLists

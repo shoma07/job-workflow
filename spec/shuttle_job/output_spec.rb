@@ -377,7 +377,7 @@ RSpec.describe ShuttleJob::Output do
         {
           "shuttle_job_context" => ShuttleJob::ContextSerializer.instance.serialize(
             ShuttleJob::Context.new(
-              raw_data: {},
+              arguments: {},
               each_context: { parent_job_id: "parent-id", task_name: :sample_task, index: 0, value: 10 },
               task_outputs: [{ task_name: :sample_task, each_index: 0, data: { result: 42 } }]
             )
@@ -388,7 +388,7 @@ RSpec.describe ShuttleJob::Output do
         {
           "shuttle_job_context" => ShuttleJob::ContextSerializer.instance.serialize(
             ShuttleJob::Context.new(
-              raw_data: {},
+              arguments: {},
               each_context: { parent_job_id: "parent-id", task_name: :sample_task, index: 1, value: 11 },
               task_outputs: [{ task_name: :sample_task, each_index: 1, data: { result: 82 } }]
             )
@@ -399,7 +399,7 @@ RSpec.describe ShuttleJob::Output do
         {
           "shuttle_job_context" => ShuttleJob::ContextSerializer.instance.serialize(
             ShuttleJob::Context.new(
-              raw_data: {},
+              arguments: {},
               each_context: { parent_job_id: "parent-id", task_name: :sample_task, index: 2, value: 12 },
               task_outputs: []
             )
@@ -454,7 +454,7 @@ RSpec.describe ShuttleJob::Output do
         {
           "shuttle_job_context" => ShuttleJob::ContextSerializer.instance.serialize(
             ShuttleJob::Context.new(
-              raw_data: {},
+              arguments: {},
               each_context: { parent_job_id: "parent-id", task_name: :db_task, index: 0, value: 10 },
               task_outputs: [{ task_name: :db_task, each_index: 0, data: { result: 100 } }]
             )
@@ -465,7 +465,7 @@ RSpec.describe ShuttleJob::Output do
         {
           "shuttle_job_context" => ShuttleJob::ContextSerializer.instance.serialize(
             ShuttleJob::Context.new(
-              raw_data: {},
+              arguments: {},
               each_context: { parent_job_id: "parent-id", task_name: :db_task, index: 1, value: 20 },
               task_outputs: [{ task_name: :db_task, each_index: 1, data: { result: 200 } }]
             )

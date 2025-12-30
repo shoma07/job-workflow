@@ -8,9 +8,6 @@ module ShuttleJob
     # :  (Task) -> void
     def add_task: (Task) -> void
 
-    # :  (ContextDef) -> void
-    def add_context: (ContextDef) -> void
-
     # :  (ArgumentDef) -> void
     def add_argument: (ArgumentDef) -> void
 
@@ -23,8 +20,8 @@ module ShuttleJob
     # :  () -> Array[ArgumentDef]
     def arguments: () -> Array[ArgumentDef]
 
-    # :  () -> Array[ContextDef]
-    def contexts: () -> Array[ContextDef]
+    # :  () -> Hash[Symbol, untyped]
+    def build_arguments_hash: () -> Hash[Symbol, untyped]
 
     # :  (Hash[untyped, untyped] | Context) -> Context
     def build_context: (Hash[untyped, untyped] | Context) -> Context

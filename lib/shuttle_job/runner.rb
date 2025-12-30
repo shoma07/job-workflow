@@ -75,7 +75,8 @@ module ShuttleJob
     #:  () -> void
     def run_each_task_in_map
       task = workflow.fetch_task(context._each_context.task_name)
-      task.block.call(context)
+      data = task.block.call(context)
+      add_task_output(ctx: context, task:, data:, each_index: context._each_context.index)
     end
 
     #:  (ctx: Context, task: Task, ?each_index: Integer?, data: untyped) -> void

@@ -2,14 +2,6 @@
 
 module ShuttleJob
   class Arguments
-    class << self
-      #: (Workflow workflow) -> Arguments
-      def from_workflow(workflow)
-        data = workflow.arguments.to_h { |arg_def| [arg_def.name, arg_def.default] }
-        new(data:)
-      end
-    end
-
     #: (data: Hash[Symbol, untyped]) -> void
     def initialize(data:)
       @data = data.freeze
@@ -18,7 +10,6 @@ module ShuttleJob
 
     #: (Hash[Symbol, untyped] other_data) -> Arguments
     def merge(other_data)
-      # イミュータブルなので merge! ではなく新しいインスタンスを返す
       merged = data.merge(other_data.slice(*reader_names.to_a))
       self.class.new(data: merged)
     end
@@ -36,7 +27,6 @@ module ShuttleJob
       reader_names.include?(sym.to_sym) || super
     end
 
-    # シリアライゼーション用
     #: () -> Hash[Symbol, untyped]
     def to_h
       data

@@ -1,33 +1,33 @@
 # frozen_string_literal: true
 
 RSpec.describe ShuttleJob::Arguments do
-  describe ".from_workflow" do
-    subject(:arguments) { described_class.from_workflow(workflow) }
+  # describe ".from_workflow" do
+  #   subject(:arguments) { described_class.from_workflow(workflow) }
 
-    let(:workflow) do
-      workflow = ShuttleJob::Workflow.new
-      workflow.add_argument(ShuttleJob::ArgumentDef.new(name: :user_id, type: "Integer", default: 1))
-      workflow.add_argument(ShuttleJob::ArgumentDef.new(name: :name, type: "String", default: "test"))
-      workflow.add_argument(ShuttleJob::ArgumentDef.new(name: :items, type: "Array[String]", default: []))
-      workflow
-    end
+  #   let(:workflow) do
+  #     workflow = ShuttleJob::Workflow.new
+  #     workflow.add_argument(ShuttleJob::ArgumentDef.new(name: :user_id, type: "Integer", default: 1))
+  #     workflow.add_argument(ShuttleJob::ArgumentDef.new(name: :name, type: "String", default: "test"))
+  #     workflow.add_argument(ShuttleJob::ArgumentDef.new(name: :items, type: "Array[String]", default: []))
+  #     workflow
+  #   end
 
-    it "creates Arguments with default values from workflow" do
-      expect(arguments).to have_attributes(
-        to_h: have_attributes(
-          to_h: {
-            user_id: 1,
-            name: "test",
-            items: []
-          },
-          frozen?: true
-        ),
-        user_id: 1,
-        name: "test",
-        items: []
-      )
-    end
-  end
+  #   it "creates Arguments with default values from workflow" do
+  #     expect(arguments).to have_attributes(
+  #       to_h: have_attributes(
+  #         to_h: {
+  #           user_id: 1,
+  #           name: "test",
+  #           items: []
+  #         },
+  #         frozen?: true
+  #       ),
+  #       user_id: 1,
+  #       name: "test",
+  #       items: []
+  #     )
+  #   end
+  # end
 
   describe "#initialize" do
     subject(:arguments) { described_class.new(data: { user_id: 123, name: "Alice" }) }

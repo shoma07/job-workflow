@@ -44,6 +44,9 @@ module ShuttleJob
       # :  (?Hash[untyped, untyped]) -> void
       def perform_later: (?Hash[untyped, untyped]) -> void
 
+      # :  (Symbol argument_name, String type, ?default: untyped) -> void
+      def argument: (Symbol argument_name, String type, ?default: untyped) -> void
+
       # :  (Symbol context_name, String type, ?default: untyped) -> void
       def context: (Symbol context_name, String type, ?default: untyped) -> void
 

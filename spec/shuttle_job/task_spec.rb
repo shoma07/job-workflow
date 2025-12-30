@@ -3,16 +3,16 @@
 RSpec.describe ShuttleJob::Task do
   let(:workflow) do
     workflow = ShuttleJob::Workflow.new
-    workflow.add_context(
-      ShuttleJob::ContextDef.new(
-        name: :ctx_one,
+    workflow.add_argument(
+      ShuttleJob::ArgumentDef.new(
+        name: :arg_one,
         type: "String",
         default: "default_value"
       )
     )
-    workflow.add_context(
-      ShuttleJob::ContextDef.new(
-        name: :ctx_two,
+    workflow.add_argument(
+      ShuttleJob::ArgumentDef.new(
+        name: :arg_two,
         type: "Array",
         default: [1, 2, 3]
       )
@@ -30,7 +30,7 @@ RSpec.describe ShuttleJob::Task do
       let(:arguments) do
         {
           name: :sample_task,
-          block: lambda(&:ctx_one)
+          block: ->(ctx) { ctx.arguments.arg_one }
         }
       end
 
@@ -55,8 +55,8 @@ RSpec.describe ShuttleJob::Task do
       let(:arguments) do
         {
           name: :sample_task,
-          block: lambda(&:ctx_one),
-          condition: ->(ctx) { ctx.ctx_two.size > 2 }
+          block: lambda(&:arg_one),
+          condition: ->(ctx) { ctx.arguments.arg_two.size > 2 }
         }
       end
 
@@ -75,12 +75,12 @@ RSpec.describe ShuttleJob::Task do
       let(:arguments) do
         {
           name: :sample_task,
-          block: lambda(&:ctx_one),
-          each: :ctx_two,
+          block: ->(ctx) { ctx.arguments.arg_one },
+          each: :arg_two,
           concurrency: 3,
           output: { result: "Integer", message: "String" },
           depends_on: %i[depend_task],
-          condition: ->(ctx) { ctx.ctx_two.size > 2 }
+          condition: ->(ctx) { ctx.arguments.arg_two.size > 2 }
         }
       end
 
@@ -88,7 +88,7 @@ RSpec.describe ShuttleJob::Task do
         expect(task).to have_attributes(
           name: :sample_task,
           block: arguments[:block],
-          each: :ctx_two,
+          each: :arg_two,
           concurrency: 3,
           depends_on: %i[depend_task],
           condition: arguments[:condition]
@@ -109,7 +109,7 @@ RSpec.describe ShuttleJob::Task do
       let(:arguments) do
         {
           name: :sample_task,
-          block: lambda(&:ctx_one),
+          block: ->(ctx) { ctx.arguments.arg_one },
           output: {}
         }
       end
@@ -123,7 +123,7 @@ RSpec.describe ShuttleJob::Task do
       let(:arguments) do
         {
           name: :sample_task,
-          block: lambda(&:ctx_one)
+          block: ->(ctx) { ctx.arguments.arg_one }
         }
       end
 

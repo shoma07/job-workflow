@@ -62,66 +62,29 @@ RSpec.describe ShuttleJob::Workflow do
     end
   end
 
-  describe "#add_context" do
-    subject(:add_context) { workflow.add_context(context_def) }
-
-    let(:workflow) { described_class.new }
-    let(:context_def) do
-      ShuttleJob::ContextDef.new(
-        name: :sample_context,
-        type: "Integer",
-        default: 1
-      )
-    end
-
-    it { expect { add_context }.to change(workflow, :contexts).from([]).to([context_def]) }
-  end
-
-  describe "#contexts" do
-    subject(:contexts) { workflow.contexts }
-
-    let(:workflow) do
-      workflow = described_class.new
-      context_instances.each do |context_def|
-        workflow.add_context(context_def)
-      end
-      workflow
-    end
-    let(:context_instances) do
-      [
-        ShuttleJob::ContextDef.new(name: :context1, type: "String", default: "default1"),
-        ShuttleJob::ContextDef.new(name: :context2, type: "Integer", default: 2)
-      ]
-    end
-
-    it { expect(contexts).to eq(context_instances) }
-  end
-
   describe "#build_context" do
     subject(:build_context) { workflow.build_context(initial_context) }
 
     let(:workflow) do
       workflow = described_class.new
-      workflow.add_context(ShuttleJob::ContextDef.new(name: :example, type: "Integer", default: 0))
+      workflow.add_argument(ShuttleJob::ArgumentDef.new(name: :example, type: "Integer", default: 0))
       workflow
     end
 
     context "when given a Hash" do
       let(:initial_context) { { example: 1 } }
 
-      it { is_expected.to have_attributes(class: ShuttleJob::Context, example: 1) }
+      it { is_expected.to have_attributes(class: ShuttleJob::Context, arguments: have_attributes(example: 1)) }
     end
 
     context "when given a Context" do
       let(:initial_context) do
-        ctx = ShuttleJob::Context.from_workflow(workflow)
-        ctx.example = 2
-        ctx
+        ShuttleJob::Context.new(arguments: { example: 2 })
       end
 
       it { is_expected.to eq(initial_context) }
 
-      it { is_expected.to have_attributes(class: ShuttleJob::Context, example: 2) }
+      it { is_expected.to have_attributes(class: ShuttleJob::Context, arguments: have_attributes(example: 2)) }
     end
   end
 end

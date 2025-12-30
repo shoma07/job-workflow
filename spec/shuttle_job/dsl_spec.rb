@@ -2,42 +2,38 @@
 
 RSpec.describe ShuttleJob::DSL do
   describe "#perform" do
-    subject(:perform) do
-      klass.new.perform(initial_context_hash)
-    end
-
     let(:klass) do
       Class.new(ActiveJob::Base) do
         include ShuttleJob::DSL
 
         context :a, "Integer", default: 0
 
-        task :task_one do |ctx|
-          ctx.a += 1
+        task :task_one, output: { value: "Integer" } do |ctx|
+          { value: ctx.arguments.a + 1 }
         end
 
-        task :task_two do |ctx|
-          ctx.a += 2
+        task :task_two, output: { value: "Integer" }, depends_on: %i[task_one] do |ctx|
+          { value: ctx.output.task_one.value + 2 }
         end
       end
     end
     let(:initial_context_hash) { { a: 0 } }
-    let(:ctx) { ShuttleJob::Context.from_workflow(klass._workflow) }
+    let(:job) { klass.new }
 
-    before { allow(ShuttleJob::Context).to receive(:from_workflow).with(klass._workflow).and_return(ctx) }
-
-    it { expect { perform }.to change(ctx, :a).from(0).to(3) }
+    it "modifies context through tasks" do
+      job.perform(initial_context_hash)
+      expect(job._runner.context.output.task_two.value).to eq(3)
+    end
 
     context "when given a Context object" do
       subject(:perform) { klass.new.perform(ctx) }
 
-      let(:ctx) do
-        ctx = ShuttleJob::Context.from_workflow(klass._workflow)
-        ctx.a = 0
-        ctx
-      end
+      let(:ctx) { klass._workflow.build_context({ a: 0 }) }
 
-      it { expect { perform }.to change(ctx, :a).from(0).to(3) }
+      it do
+        job.perform(ctx)
+        expect(job._runner.context.output.task_two.value).to eq(3)
+      end
     end
   end
 
@@ -111,13 +107,13 @@ RSpec.describe ShuttleJob::DSL do
     context "without default" do
       subject(:context) { klass.context(:example_context, "String") }
 
-      it { expect { context }.to change { klass._workflow.contexts.size }.from(0).to(1) }
+      it { expect { context }.to change { klass._workflow.arguments.size }.from(0).to(1) }
     end
 
     context "with default" do
       subject(:context) { klass.context(:example_context, "String", default: "default") }
 
-      it { expect { context }.to change { klass._workflow.contexts.size }.from(0).to(1) }
+      it { expect { context }.to change { klass._workflow.arguments.size }.from(0).to(1) }
     end
   end
 
@@ -125,24 +121,25 @@ RSpec.describe ShuttleJob::DSL do
     let(:klass) do
       Class.new(ActiveJob::Base) do
         include ShuttleJob::DSL
+
+        argument :sum, "Integer", default: 0
+        argument :items, "Array[Integer]", default: [1, 2, 3]
       end
     end
 
-    before do
-      klass.context :sum, "Integer", default: 0
-      klass.context :items, "Array[Integer]", default: [1, 2, 3]
-    end
-
     context "without options" do
-      subject(:task) { klass.task :example_task, &:sum }
+      subject(:task) do
+        klass.task :example_task, output: { value: "Integer" } do |ctx|
+          { value: ctx.arguments.sum }
+        end
+      end
 
       it { expect { task }.to change { klass._workflow.tasks.size }.from(0).to(1) }
 
       it do
         task
-        ctx = ShuttleJob::Context.from_workflow(klass._workflow)
-        ctx.sum = 1
-        expect(klass._workflow.tasks[0].block.call(ctx)).to eq(1)
+        ctx = klass._workflow.build_context({ sum: 1 })
+        expect(klass._workflow.tasks[0].block.call(ctx)).to eq({ value: 1 })
       end
     end
 
@@ -161,17 +158,21 @@ RSpec.describe ShuttleJob::DSL do
 
     context "with each options" do
       subject(:task) do
-        klass.task :example_task, each: :items do |ctx|
-          ctx.sum = ctx.sum + ctx.each_value
+        klass.task :task_one, output: { value: "Integer" }, each: :items do |ctx|
+          { value: ctx.each_value * 2 }
+        end
+        klass.task :task_two, output: { value: "Integer" }, depends_on: %i[task_one] do |ctx|
+          { value: ctx.output.task_one.sum(&:value) }
         end
       end
 
-      it { expect { task }.to change { klass._workflow.tasks.size }.from(0).to(1) }
+      it { expect { task }.to change { klass._workflow.tasks.size }.from(0).to(2) }
 
       it do
         task
-        ctx = ShuttleJob::Context.from_workflow(klass._workflow)
-        expect { klass.new.perform(ctx) }.to change(ctx, :sum).from(0).to(6)
+        ctx = klass._workflow.build_context({})
+        klass.new.perform(ctx)
+        expect(ctx.output.task_two.value).to eq(12)
       end
 
       it do
@@ -216,10 +217,10 @@ RSpec.describe ShuttleJob::DSL do
       Class.new(ActiveJob::Base) do
         include ShuttleJob::DSL
 
-        context :value, "Integer", default: 0
+        argument :value, "Integer", default: 0
 
-        task :increment do |ctx|
-          ctx.value += 10
+        task :increment, output: { value: "Integer" } do |ctx|
+          { value: ctx.arguments.value + 10 }
         end
 
         def self.name
@@ -236,7 +237,15 @@ RSpec.describe ShuttleJob::DSL do
     context "when job has been performed" do
       before { job.perform({ value: 42 }) }
 
-      it { is_expected.to have_attributes(class: ShuttleJob::Runner, context: have_attributes(value: 52)) }
+      it do
+        expect(_runner).to have_attributes(
+          class: ShuttleJob::Runner,
+          context: have_attributes(
+            arguments: have_attributes(value: 42),
+            output: have_attributes(increment: have_attributes(value: 52))
+          )
+        )
+      end
     end
   end
 
@@ -247,10 +256,10 @@ RSpec.describe ShuttleJob::DSL do
       klass = Class.new(ActiveJob::Base) do
         include ShuttleJob::DSL
 
-        context :value, "Integer", default: 0
+        argument :value, "Integer", default: 0
 
-        task :increment do |ctx|
-          ctx.value += 10
+        task :increment, output: { value: "Integer" } do |ctx|
+          { value: ctx.arguments.value + 10 }
         end
 
         def self.name
@@ -263,21 +272,39 @@ RSpec.describe ShuttleJob::DSL do
     context "when initial context is a Hash" do
       let(:ctx) { { value: 1 } }
 
-      it { expect(_build_runner).to have_attributes(class: ShuttleJob::Runner, context: have_attributes(value: 1)) }
+      it do
+        expect(_build_runner).to have_attributes(
+          class: ShuttleJob::Runner,
+          context: have_attributes(arguments: have_attributes(value: 1))
+        )
+      end
 
-      it { expect { _build_runner.run }.to change { _build_runner.context.value }.from(1).to(11) }
+      it do
+        expect { _build_runner.run }.to(change do
+          _build_runner.context.output.increment.value
+        rescue StandardError
+          nil
+        end.from(nil).to(11))
+      end
     end
 
     context "when initial context is a Context" do
-      let(:ctx) do
-        ctx = ShuttleJob::Context.from_workflow(job._workflow)
-        ctx.value = 1
-        ctx
+      let(:ctx) { job._workflow.build_context({ value: 1 }) }
+
+      it do
+        expect(_build_runner).to have_attributes(
+          class: ShuttleJob::Runner,
+          context: have_attributes(arguments: have_attributes(value: 1))
+        )
       end
 
-      it { expect(_build_runner).to have_attributes(class: ShuttleJob::Runner, context: have_attributes(value: 1)) }
-
-      it { expect { _build_runner.run }.to change { _build_runner.context.value }.from(1).to(11) }
+      it do
+        expect { _build_runner.run }.to(change do
+          _build_runner.context.output.increment.value
+        rescue StandardError
+          nil
+        end.from(nil).to(11))
+      end
     end
   end
 
@@ -288,10 +315,10 @@ RSpec.describe ShuttleJob::DSL do
       klass = Class.new(ActiveJob::Base) do
         include ShuttleJob::DSL
 
-        context :value, "Integer", default: 0
+        argument :value, "Integer", default: 0
 
-        task :increment do |ctx|
-          ctx.value += 10
+        task :increment, output: { value: "Integer" } do |ctx|
+          { value: ctx.arguments.value + 10 }
         end
 
         def self.name
@@ -314,7 +341,7 @@ RSpec.describe ShuttleJob::DSL do
             "_aj_serialized" => "ShuttleJob::ContextSerializer",
             "raw_data" => {
               "_aj_symbol_keys" => [],
-              "value" => 52
+              "value" => 42
             },
             "each_context" => {
               "_aj_symbol_keys" => [],
@@ -323,7 +350,20 @@ RSpec.describe ShuttleJob::DSL do
               "index" => nil,
               "value" => nil
             },
-            "task_outputs" => [],
+            "task_outputs" => [
+              {
+                "_aj_symbol_keys" => [],
+                "data" => {
+                  "_aj_symbol_keys" => %w[value],
+                  "value" => 52
+                },
+                "each_index" => nil,
+                "task_name" => {
+                  "_aj_serialized" => "ActiveJob::Serializers::SymbolSerializer",
+                  "value" => "increment"
+                }
+              }
+            ],
             "task_job_statuses" => []
           }
         )
@@ -376,8 +416,7 @@ RSpec.describe ShuttleJob::DSL do
         deserialize
         expect(job._runner.context).to have_attributes(
           class: ShuttleJob::Context,
-          raw_data: { value: 100 },
-          value: 100
+          arguments: have_attributes(to_h: { value: 100 }, value: 100)
         )
       end
     end
@@ -397,25 +436,19 @@ RSpec.describe ShuttleJob::DSL do
       Class.new(ActiveJob::Base) do
         include ShuttleJob::DSL
 
-        context :tasks_completed, "Array[Symbol]", default: []
-        context :value, "Integer", default: 0
-        context :items, "Array[Integer]", default: []
-        context :processed_count, "Integer", default: 0
+        argument :value, "Integer", default: 0
+        argument :items, "Array[Integer]", default: []
 
-        task :task_one do |ctx|
-          ctx.tasks_completed << :task_one
-          ctx.value += 1
+        task :task_one, output: { value: "Integer" } do |ctx|
+          { value: ctx.arguments.value + 1 }
         end
 
-        task :task_two, each: :items do |ctx|
-          ctx.tasks_completed << :task_two
-          ctx.value += ctx.each_value
-          ctx.processed_count += 1
+        task :task_two, output: { value: "Integer" }, each: :items do |ctx|
+          { value: ctx.each_value }
         end
 
-        task :task_three do |ctx|
-          ctx.tasks_completed << :task_three
-          ctx.value += 100
+        task :task_three, output: { value: "Integer" }, depends_on: %i[task_two] do |ctx|
+          { value: ctx.output.task_two.sum(&:value) }
         end
 
         def self.name
@@ -427,7 +460,7 @@ RSpec.describe ShuttleJob::DSL do
     context "when serializing continuation data" do
       it do
         job = job_class.new
-        job.perform({ value: 0, tasks_completed: [] })
+        job.perform({ value: 0, items: [1, 2, 3] })
         expect(job.serialize).to include(
           "continuation" => { "completed" => %w[task_one task_two task_three] },
           "resumptions" => 0
@@ -438,13 +471,15 @@ RSpec.describe ShuttleJob::DSL do
     context "when executing all steps on first run" do
       it do
         job = job_class.new
-        job.perform({ value: 0, tasks_completed: [], items: [10], processed_count: 0 })
+        job.perform({ value: 0, items: [10, 20] })
         expect(job._runner).to have_attributes(
           context: have_attributes(
-            value: 111,
-            tasks_completed: %i[task_one task_two task_three],
-            items: [10],
-            processed_count: 1
+            arguments: have_attributes(value: 0, items: [10, 20]),
+            output: have_attributes(
+              task_one: have_attributes(value: 1),
+              task_two: contain_exactly(have_attributes(value: 10), have_attributes(value: 20)),
+              task_three: have_attributes(value: 30)
+            )
           )
         )
       end
@@ -476,10 +511,15 @@ RSpec.describe ShuttleJob::DSL do
     context "when tracking progress within each iteration" do
       it do
         job = job_class.new
-        job.perform({ value: 0, tasks_completed: [], items: [1, 2, 3, 4, 5], processed_count: 0 })
+        job.perform({ value: 0, items: [1, 2, 3, 4, 5] })
         expect(job).to have_attributes(
           serialize: include("continuation" => { "completed" => %w[task_one task_two task_three] }),
-          _runner: have_attributes(context: have_attributes(value: 116, processed_count: 5))
+          _runner: have_attributes(
+            context: have_attributes(
+              arguments: have_attributes(value: 0, items: [1, 2, 3, 4, 5]),
+              output: have_attributes(task_three: have_attributes(value: 15))
+            )
+          )
         )
       end
     end
@@ -487,7 +527,7 @@ RSpec.describe ShuttleJob::DSL do
     context "when resuming within each iteration" do
       it do
         job_one = job_class.new
-        job_one.perform({ value: 0, tasks_completed: [], items: [10, 20, 30], processed_count: 0 })
+        job_one.perform({ value: 0, items: [10, 20, 30] })
         job_two = job_class.new
         job_two.deserialize(job_one.serialize)
         expect([job_one, job_two]).to have_attributes(
@@ -495,7 +535,12 @@ RSpec.describe ShuttleJob::DSL do
             serialize: include("continuation" => { "completed" => %w[task_one task_two task_three] })
           ),
           last: have_attributes(
-            _runner: have_attributes(context: have_attributes(value: 161))
+            _runner: have_attributes(
+              context: have_attributes(
+                arguments: have_attributes(value: 0, items: [10, 20, 30]),
+                output: have_attributes(task_three: have_attributes(value: 60))
+              )
+            )
           )
         )
       end
@@ -504,14 +549,14 @@ RSpec.describe ShuttleJob::DSL do
     context "when preserving context across resumption" do
       it do
         job_one = job_class.new
-        job_one.perform({ value: 5, tasks_completed: [], items: [10], processed_count: 0 })
+        job_one.perform({ value: 5, items: [10] })
         job_two = job_class.new
         job_two.deserialize(job_one.serialize)
         expect(job_two._runner.context).to have_attributes(
-          value: 116,
-          tasks_completed: %i[task_one task_two task_three],
-          items: [10],
-          processed_count: 1
+          arguments: have_attributes(
+            value: 5,
+            items: [10]
+          )
         )
       end
     end
