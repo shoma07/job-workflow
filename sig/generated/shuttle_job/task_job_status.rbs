@@ -1,0 +1,39 @@
+# Generated from lib/shuttle_job/task_job_status.rb with RBS::Inline
+
+module ShuttleJob
+  class TaskJobStatus
+    attr_reader task_name: Symbol
+
+    attr_reader job_id: String
+
+    attr_reader provider_job_id: String?
+
+    attr_reader index: Integer?
+
+    attr_reader status: Symbol
+
+    # :  (Hash[Symbol, untyped]) -> TaskJobStatus
+    def self.from_hash: (Hash[Symbol, untyped]) -> TaskJobStatus
+
+    # :  (
+    #       task_name: Symbol,
+    #       job_id: String,
+    #       ?index: Integer?,
+    #       ?provider_job_id: String?,
+    #       ?status: Symbol
+    #     ) -> void
+    def initialize: (task_name: Symbol, job_id: String, ?index: Integer?, ?provider_job_id: String?, ?status: Symbol) -> void
+
+    # :  () -> bool
+    def finished?: () -> bool
+
+    # :  () -> bool
+    def succeeded?: () -> bool
+
+    # :  () -> bool
+    def failed?: () -> bool
+
+    # :  () -> Hash[Symbol, untyped]
+    def to_h: () -> Hash[Symbol, untyped]
+  end
+end
