@@ -132,7 +132,7 @@ RSpec.describe JobFlow::DSL do
 
     context "with each options" do
       subject(:task) do
-        klass.task :task_one, output: { value: "Integer" }, each: :items do |ctx|
+        klass.task :task_one, output: { value: "Integer" }, each: ->(ctx) { ctx.arguments.items } do |ctx|
           { value: ctx.each_value * 2 }
         end
         klass.task :task_two, output: { value: "Integer" }, depends_on: %i[task_one] do |ctx|
@@ -151,26 +151,29 @@ RSpec.describe JobFlow::DSL do
 
       it do
         task
-        expect(klass._workflow.tasks[0]).to have_attributes(each: :items, concurrency: nil)
+        expect(klass._workflow.tasks[0]).to have_attributes(
+          each: be_instance_of(Proc),
+          concurrency: nil
+        )
       end
     end
 
     context "with each and concurrency options without limits_concurrency" do
       subject(:task) do
-        klass.task :example_task, each: :items, concurrency: 3 do |ctx|
+        klass.task :example_task, each: ->(ctx) { ctx.arguments.items }, concurrency: 3 do |ctx|
           ctx.sum = ctx.sum + ctx.each_value
         end
       end
 
       it do
         task
-        expect(klass._workflow.tasks[0]).to have_attributes(each: :items, concurrency: 3)
+        expect(klass._workflow.tasks[0]).to have_attributes(each: be_instance_of(Proc), concurrency: 3)
       end
     end
 
     context "with each and concurrency options with limits_concurrency" do
       subject(:task) do
-        klass.task :example_task, each: :items, concurrency: 3 do |ctx|
+        klass.task :example_task, each: ->(ctx) { ctx.arguments.items }, concurrency: 3 do |ctx|
           ctx.sum = ctx.sum + ctx.each_value
         end
       end
@@ -348,7 +351,7 @@ RSpec.describe JobFlow::DSL do
           { value: ctx.arguments.value + 1 }
         end
 
-        task :task_two, output: { value: "Integer" }, each: :items do |ctx|
+        task :task_two, output: { value: "Integer" }, each: ->(ctx) { ctx.arguments.items } do |ctx|
           { value: ctx.each_value }
         end
 
