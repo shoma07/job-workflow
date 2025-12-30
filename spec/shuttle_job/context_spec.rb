@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe ShuttleJob::Context do
-  let(:ctx) { described_class.from_workflow(workflow) }
+  let(:ctx) { workflow.build_context({}) }
   let(:workflow) { job.class._workflow }
   let(:job) do
     klass = Class.new(ActiveJob::Base) do
@@ -11,20 +11,6 @@ RSpec.describe ShuttleJob::Context do
       context :arg_two, "Integer", default: 1
     end
     klass.new
-  end
-
-  describe ".from_workflow" do
-    subject(:from_workflow) { described_class.from_workflow(workflow) }
-
-    it "creates a context with arguments from workflow contexts" do
-      expect(from_workflow).to have_attributes(
-        arguments: have_attributes(
-          to_h: { arg_one: nil, arg_two: 1 },
-          arg_one: nil,
-          arg_two: 1
-        )
-      )
-    end
   end
 
   describe ".initialize" do
@@ -422,7 +408,7 @@ RSpec.describe ShuttleJob::Context do
     let(:ctx) { described_class.new(arguments: {}, each_context:, task_outputs:) }
 
     context "when called outside with_each_value" do
-      let(:ctx) { described_class.from_workflow(workflow) }
+      let(:ctx) { workflow.build_context({}) }
       let(:each_context) { {} }
       let(:task_outputs) do
         [
