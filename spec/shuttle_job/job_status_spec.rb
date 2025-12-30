@@ -119,6 +119,44 @@ RSpec.describe ShuttleJob::JobStatus do
     end
   end
 
+  describe "#finished_job_ids" do
+    subject(:finished_job_ids) { job_status.finished_job_ids(task_name:) }
+
+    let(:job_status) { described_class.new(task_job_statuses:) }
+    let(:task_name) { :task_a }
+
+    context "when some jobs are finished" do
+      let(:task_job_statuses) do
+        [
+          ShuttleJob::TaskJobStatus.new(task_name: :task_a, job_id: "job1", each_index: 0, status: :succeeded),
+          ShuttleJob::TaskJobStatus.new(task_name: :task_a, job_id: "job2", each_index: 1, status: :pending),
+          ShuttleJob::TaskJobStatus.new(task_name: :task_a, job_id: "job3", each_index: 2, status: :failed)
+        ]
+      end
+
+      it "returns job IDs of finished jobs only" do
+        expect(finished_job_ids).to contain_exactly("job1", "job3")
+      end
+    end
+
+    context "when no jobs are finished" do
+      let(:task_job_statuses) do
+        [
+          ShuttleJob::TaskJobStatus.new(task_name: :task_a, job_id: "job1", each_index: 0, status: :pending),
+          ShuttleJob::TaskJobStatus.new(task_name: :task_a, job_id: "job2", each_index: 1, status: :running)
+        ]
+      end
+
+      it { is_expected.to be_empty }
+    end
+
+    context "when task does not exist" do
+      let(:task_job_statuses) { [] }
+
+      it { is_expected.to be_empty }
+    end
+  end
+
   describe "#flat_task_job_statuses" do
     subject(:flat_statuses) { job_status.flat_task_job_statuses }
 
@@ -219,6 +257,7 @@ RSpec.describe ShuttleJob::JobStatus do
     subject(:update_task_job_statuses_from_jobs) do
       job_status.update_task_job_statuses_from_jobs(task_name: task_name, jobs: jobs)
     end
+
     let(:job_status) { described_class.new }
     let(:task_name) { :my_task }
     let(:klass) do
@@ -228,16 +267,11 @@ RSpec.describe ShuttleJob::JobStatus do
     end
     let(:jobs) { [klass.new, klass.new] }
 
-    before do
-      allow(jobs[0]).to receive_messages(finished?: false, failed?: false, claimed?: true)
-      allow(jobs[1]).to receive_messages(finished?: true, failed?: false, claimed?: false)
-    end
-
     it "creates TaskJobStatus for each job with correct index" do
       update_task_job_statuses_from_jobs
       expect(job_status.flat_task_job_statuses).to contain_exactly(
-        have_attributes(task_name: :my_task, job_id: jobs[0].job_id, each_index: 0, status: :running),
-        have_attributes(task_name: :my_task, job_id: jobs[1].job_id, each_index: 1, status: :succeeded)
+        have_attributes(task_name: :my_task, job_id: jobs[0].job_id, each_index: 0, status: :pending),
+        have_attributes(task_name: :my_task, job_id: jobs[1].job_id, each_index: 1, status: :pending)
       )
     end
   end

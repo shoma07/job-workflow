@@ -18,7 +18,7 @@ module ShuttleJob
         )
       end
 
-      #:  (DSL | SolidQueue::Job) -> Symbol
+      #:  (SolidQueue::Job) -> Symbol
       def status_value_from_job(job)
         return :failed if job.failed?
         return :succeeded if job.finished?

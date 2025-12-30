@@ -13,12 +13,6 @@ module ShuttleJob
     #
     #   def job_id: () -> String
     #
-    #   def finished?: () -> bool
-    #
-    #   def failed?: () -> bool
-    #
-    #   def claimed?: () -> bool
-    #
     #   def step: (Symbol, ?start: ActiveJob::Continuation::_Succ, ?isolated: bool) -> void
     #           | (Symbol, ?start: ActiveJob::Continuation::_Succ, ?isolated: bool) { (ActiveJob::Continuation::Step) -> void } -> void
 
