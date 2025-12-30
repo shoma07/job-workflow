@@ -1,0 +1,24 @@
+# Generated from lib/job_flow/context_serializer.rb with RBS::Inline
+
+module JobFlow
+  class ContextSerializer < ActiveJob::Serializers::ObjectSerializer
+    def self.instance: () -> ContextSerializer
+
+    # :  (Context) -> Hash[String, untyped]
+    def serialize: (Context) -> Hash[String, untyped]
+
+    # :  (Hash[String, untyped]) -> Context
+    def deserialize: (Hash[String, untyped]) -> Context
+
+    # :  () -> Class
+    def klass: () -> Class
+
+    private
+
+    # :  (untyped) -> Hash[String, untyped]
+    def argument_serialize: (untyped) -> Hash[String, untyped]
+
+    # :  (Hash[String, untyped]) -> untyped
+    def argument_deserialize: (Hash[String, untyped]) -> untyped
+  end
+end

@@ -9,7 +9,7 @@ SimpleCov.start do
   add_filter "/spec/"
 end
 
-require "shuttle_job"
+require "job-flow"
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure

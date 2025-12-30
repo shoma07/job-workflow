@@ -1,5 +1,0 @@
-# Generated from lib/shuttle_job/version.rb with RBS::Inline
-
-module ShuttleJob
-  VERSION: ::String
-end

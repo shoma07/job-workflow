@@ -62,6 +62,10 @@ Metrics/ModuleLength:
     - hash
     - heredoc
 
+Naming/FileName:
+  Exclude:
+    - lib/job-flow.rb
+
 RSpec/ExampleLength:
   Enabled: true
   Max: 5
