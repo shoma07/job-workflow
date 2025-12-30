@@ -4,6 +4,7 @@ module ShuttleJob
   class Context
     attr_reader :raw_data #: Hash[Symbol, untyped]
     attr_reader :output #: Output
+    attr_reader :job_status #: JobStatus
 
     class << self
       #:  (Workflow) -> Context
@@ -16,14 +17,16 @@ module ShuttleJob
     #:  (
     #     raw_data: Hash[Symbol, untyped],
     #     ?each_context: Hash[Symbol, untyped],
-    #     ?task_outputs: Array[Hash[Symbol, untyped]]
+    #     ?task_outputs: Array[Hash[Symbol, untyped]],
+    #     ?task_job_statuses: Array[Hash[Symbol, untyped]]
     #   ) -> void
-    def initialize(raw_data:, each_context: {}, task_outputs: [])
+    def initialize(raw_data:, each_context: {}, task_outputs: [], task_job_statuses: [])
       self.raw_data = raw_data
       self.reader_names = raw_data.keys.to_set
       self.writer_names = raw_data.keys.to_set { |n| :"#{n}=" }
       self.each_context = EachContext.new(**each_context.symbolize_keys)
       self.output = Output.from_hash_array(task_outputs)
+      self.job_status = JobStatus.from_hash_array(task_job_statuses)
     end
 
     #:  (Hash[Symbol, untyped]) -> void
@@ -87,6 +90,7 @@ module ShuttleJob
 
     attr_writer :raw_data #: Hash[Symbol, untyped]
     attr_writer :output #: Output
+    attr_writer :job_status #: JobStatus
     attr_accessor :reader_names #: Set[Symbol]
     attr_accessor :writer_names #: Set[Symbol]
     attr_accessor :each_context #: EachContext

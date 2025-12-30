@@ -13,12 +13,13 @@ require_relative "shuttle_job/runner"
 require_relative "shuttle_job/workflow"
 require_relative "shuttle_job/context_def"
 require_relative "shuttle_job/each_context"
+require_relative "shuttle_job/task_job_status"
+require_relative "shuttle_job/job_status"
 require_relative "shuttle_job/context"
 require_relative "shuttle_job/context_serializer"
 require_relative "shuttle_job/output_def"
 require_relative "shuttle_job/task_output"
 require_relative "shuttle_job/output"
-require_relative "shuttle_job/task_job_status"
 
 module ShuttleJob
   class Error < StandardError; end
