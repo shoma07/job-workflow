@@ -54,6 +54,36 @@ RSpec.describe ShuttleJob::JobStatus do
     end
   end
 
+  describe "#fetch_all" do
+    subject(:fetch_all) { job_status.fetch_all(task_name:) }
+
+    let(:task_name) { :task_a }
+    let(:job_status) { described_class.new(task_job_statuses:) }
+
+    context "when task exists" do
+      let(:task_job_statuses) do
+        [
+          ShuttleJob::TaskJobStatus.new(task_name: :task_a, job_id: "job1", each_index: 0, status: :succeeded),
+          ShuttleJob::TaskJobStatus.new(task_name: :task_a, job_id: "job2", each_index: 1, status: :pending),
+          ShuttleJob::TaskJobStatus.new(task_name: :task_b, job_id: "job3", each_index: nil, status: :running)
+        ]
+      end
+
+      it do
+        expect(fetch_all).to contain_exactly(
+          have_attributes(task_name: :task_a, job_id: "job1", each_index: 0, status: :succeeded),
+          have_attributes(task_name: :task_a, job_id: "job2", each_index: 1, status: :pending)
+        )
+      end
+    end
+
+    context "when task does not exist" do
+      let(:task_job_statuses) { [] }
+
+      it { is_expected.to be_empty }
+    end
+  end
+
   describe "#fetch" do
     subject(:fetch) { job_status.fetch(task_name: task_name, index: index) }
 
@@ -199,16 +229,11 @@ RSpec.describe ShuttleJob::JobStatus do
     end
     let(:jobs) { [klass.new, klass.new] }
 
-    before do
-      allow(jobs[0]).to receive_messages(finished?: false, failed?: false, claimed?: true)
-      allow(jobs[1]).to receive_messages(finished?: true, failed?: false, claimed?: false)
-    end
-
     it "creates TaskJobStatus for each job with correct index" do
       update_task_job_statuses_from_jobs
       expect(job_status.flat_task_job_statuses).to contain_exactly(
-        have_attributes(task_name: :my_task, job_id: jobs[0].job_id, each_index: 0, status: :running),
-        have_attributes(task_name: :my_task, job_id: jobs[1].job_id, each_index: 1, status: :succeeded)
+        have_attributes(task_name: :my_task, job_id: jobs[0].job_id, each_index: 0, status: :pending),
+        have_attributes(task_name: :my_task, job_id: jobs[1].job_id, each_index: 1, status: :pending)
       )
     end
   end
