@@ -9,8 +9,7 @@ RSpec.describe ShuttleJob::TaskJobStatus do
         {
           task_name: :my_task,
           job_id: "abc123",
-          index: 0,
-          provider_job_id: "provider123",
+          each_index: 0,
           status: :pending
         }
       end
@@ -19,8 +18,7 @@ RSpec.describe ShuttleJob::TaskJobStatus do
         expect(init).to have_attributes(
           task_name: :my_task,
           job_id: "abc123",
-          provider_job_id: "provider123",
-          index: 0,
+          each_index: 0,
           status: :pending
         )
       end
@@ -31,26 +29,14 @@ RSpec.describe ShuttleJob::TaskJobStatus do
         {
           task_name: :my_task,
           job_id: "abc123",
-          index: 0
+          each_index: 0
         }
       end
 
       it { is_expected.to have_attributes(status: :pending) }
     end
 
-    context "when provider_job_id is not provided" do
-      let(:arguments) do
-        {
-          task_name: :my_task,
-          job_id: "abc123",
-          index: 0
-        }
-      end
-
-      it { is_expected.to have_attributes(provider_job_id: nil) }
-    end
-
-    context "when index is not provided" do
+    context "when each_index is not provided" do
       let(:arguments) do
         {
           task_name: :my_task,
@@ -58,8 +44,25 @@ RSpec.describe ShuttleJob::TaskJobStatus do
         }
       end
 
-      it { is_expected.to have_attributes(index: nil) }
+      it { is_expected.to have_attributes(each_index: nil) }
     end
+  end
+
+  describe "#update_status" do
+    subject(:update_status) { task_job_status.update_status(status) }
+
+    let(:task_job_status) do
+      described_class.new(
+        task_name: :my_task,
+        job_id: "abc123",
+        each_index: 0,
+        status: :pending
+      )
+    end
+
+    let(:status) { :succeeded }
+
+    it { expect { update_status }.to change(task_job_status, :status).from(:pending).to(:succeeded) }
   end
 
   describe "#finished?" do
@@ -67,7 +70,7 @@ RSpec.describe ShuttleJob::TaskJobStatus do
       described_class.new(
         task_name: :my_task,
         job_id: "abc123",
-        index: 0,
+        each_index: 0,
         status: status
       ).finished?
     end
@@ -102,7 +105,7 @@ RSpec.describe ShuttleJob::TaskJobStatus do
       described_class.new(
         task_name: :my_task,
         job_id: "abc123",
-        index: 0,
+        each_index: 0,
         status: status
       ).succeeded?
     end
@@ -125,7 +128,7 @@ RSpec.describe ShuttleJob::TaskJobStatus do
       described_class.new(
         task_name: :my_task,
         job_id: "abc123",
-        index: 0,
+        each_index: 0,
         status: status
       ).failed?
     end
@@ -151,8 +154,7 @@ RSpec.describe ShuttleJob::TaskJobStatus do
         {
           task_name: :my_task,
           job_id: "abc123",
-          provider_job_id: "provider123",
-          index: 5,
+          each_index: 5,
           status: :succeeded
         }
       end
@@ -161,14 +163,13 @@ RSpec.describe ShuttleJob::TaskJobStatus do
         expect(to_h).to eq(
           task_name: :my_task,
           job_id: "abc123",
-          provider_job_id: "provider123",
-          index: 5,
+          each_index: 5,
           status: :succeeded
         )
       end
     end
 
-    context "without provider_job_id and index" do
+    context "without each_index" do
       let(:attributes) do
         {
           task_name: :my_task,
@@ -181,8 +182,7 @@ RSpec.describe ShuttleJob::TaskJobStatus do
         expect(to_h).to eq(
           task_name: :my_task,
           job_id: "abc123",
-          provider_job_id: nil,
-          index: nil,
+          each_index: nil,
           status: :running
         )
       end
@@ -197,8 +197,7 @@ RSpec.describe ShuttleJob::TaskJobStatus do
         {
           task_name: :my_task,
           job_id: "abc123",
-          provider_job_id: "provider123",
-          index: 0,
+          each_index: 0,
           status: :succeeded
         }
       end
@@ -207,8 +206,7 @@ RSpec.describe ShuttleJob::TaskJobStatus do
         expect(from_hash).to have_attributes(
           task_name: :my_task,
           job_id: "abc123",
-          provider_job_id: "provider123",
-          index: 0,
+          each_index: 0,
           status: :succeeded
         )
       end
@@ -227,11 +225,51 @@ RSpec.describe ShuttleJob::TaskJobStatus do
         expect(from_hash).to have_attributes(
           task_name: :my_task,
           job_id: "abc123",
-          provider_job_id: nil,
-          index: nil,
+          each_index: nil,
           status: :running
         )
       end
+    end
+  end
+
+  describe ".status_value_from_job" do
+    subject(:status_value_from_job) { described_class.status_value_from_job(job) }
+
+    let(:job) do
+      klass = Class.new(ActiveJob::Base) do
+        include ShuttleJob::DSL
+      end
+      klass.new
+    end
+
+    before do
+      methods.each do |method, return_value|
+        allow(job).to receive(method).and_return(return_value)
+      end
+    end
+
+    context "when job is failed" do
+      let(:methods) { { failed?: true, finished?: true, claimed?: false } }
+
+      it { is_expected.to eq(:failed) }
+    end
+
+    context "when job is finished but not failed" do
+      let(:methods) { { failed?: false, finished?: true, claimed?: false } }
+
+      it { is_expected.to eq(:succeeded) }
+    end
+
+    context "when job is claimed but not finished" do
+      let(:methods) { { failed?: false, finished?: false, claimed?: true } }
+
+      it { is_expected.to eq(:running) }
+    end
+
+    context "when job is neither failed, finished, nor claimed" do
+      let(:methods) { { failed?: false, finished?: false, claimed?: false } }
+
+      it { is_expected.to eq(:pending) }
     end
   end
 end

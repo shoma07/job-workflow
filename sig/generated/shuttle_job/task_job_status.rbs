@@ -6,23 +6,26 @@ module ShuttleJob
 
     attr_reader job_id: String
 
-    attr_reader provider_job_id: String?
-
-    attr_reader index: Integer?
+    attr_reader each_index: Integer?
 
     attr_reader status: Symbol
 
     # :  (Hash[Symbol, untyped]) -> TaskJobStatus
     def self.from_hash: (Hash[Symbol, untyped]) -> TaskJobStatus
 
+    # :  (DSL | SolidQueue::Job) -> Symbol
+    def self.status_value_from_job: (DSL | SolidQueue::Job) -> Symbol
+
     # :  (
     #       task_name: Symbol,
     #       job_id: String,
-    #       ?index: Integer?,
-    #       ?provider_job_id: String?,
+    #       ?each_index: Integer?,
     #       ?status: Symbol
     #     ) -> void
-    def initialize: (task_name: Symbol, job_id: String, ?index: Integer?, ?provider_job_id: String?, ?status: Symbol) -> void
+    def initialize: (task_name: Symbol, job_id: String, ?each_index: Integer?, ?status: Symbol) -> void
+
+    # :  (Symbol) -> void
+    def update_status: (Symbol) -> void
 
     # :  () -> bool
     def finished?: () -> bool

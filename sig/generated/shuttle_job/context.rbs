@@ -6,15 +6,18 @@ module ShuttleJob
 
     attr_reader output: Output
 
+    attr_reader job_status: JobStatus
+
     # :  (Workflow) -> Context
     def self.from_workflow: (Workflow) -> Context
 
     # :  (
     #      raw_data: Hash[Symbol, untyped],
     #      ?each_context: Hash[Symbol, untyped],
-    #      ?task_outputs: Array[Hash[Symbol, untyped]]
+    #      ?task_outputs: Array[Hash[Symbol, untyped]],
+    #      ?task_job_statuses: Array[Hash[Symbol, untyped]]
     #    ) -> void
-    def initialize: (raw_data: Hash[Symbol, untyped], ?each_context: Hash[Symbol, untyped], ?task_outputs: Array[Hash[Symbol, untyped]]) -> void
+    def initialize: (raw_data: Hash[Symbol, untyped], ?each_context: Hash[Symbol, untyped], ?task_outputs: Array[Hash[Symbol, untyped]], ?task_job_statuses: Array[Hash[Symbol, untyped]]) -> void
 
     # :  (Hash[Symbol, untyped]) -> void
     def merge!: (Hash[Symbol, untyped]) -> void
@@ -51,6 +54,8 @@ module ShuttleJob
     attr_writer raw_data: Hash[Symbol, untyped]
 
     attr_writer output: Output
+
+    attr_writer job_status: JobStatus
 
     attr_accessor reader_names: Set[Symbol]
 
