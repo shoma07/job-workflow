@@ -8,9 +8,6 @@ module ShuttleJob
 
     attr_reader job_status: JobStatus
 
-    # :  (Workflow) -> Context
-    def self.from_workflow: (Workflow) -> Context
-
     # :  (
     #      arguments: Hash[Symbol, untyped],
     #      ?each_context: Hash[Symbol, untyped],

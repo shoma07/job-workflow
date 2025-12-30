@@ -85,23 +85,45 @@ A workflow is a flow of multiple tasks executed in order. Each task consists of:
 - **Dependencies**: Other tasks that must complete before execution
 - **Execution Logic**: The logic the task executes
 
-#### Context
+#### Arguments and Context
 
-Context is a shared data store for the entire workflow. Each task reads and writes data through Context.
+**Arguments** are immutable inputs passed to the workflow. They represent the initial configuration and data for the workflow execution:
 
 ```ruby
-# Accessing Context
-ctx.input_data = "Hello"
-result = ctx.input_data  # => "Hello"
+# Define arguments (read-only)
+argument :input_data, "String"
+argument :config, "Hash", default: {}
+
+# Access arguments in tasks (read-only)
+task :example do |ctx|
+  data = ctx.arguments.input_data  # Read-only access
+end
+```
+
+**Context** provides access to both arguments and task outputs. To pass data between tasks, use task outputs instead of modifying context:
+
+```ruby
+# Return data via outputs
+task :process, output: { result: "String" } do |ctx|
+  input = ctx.arguments.input_data
+  { result: "processed: #{input}" }
+end
+
+# Access outputs from previous tasks
+task :use_result, depends_on: [:process] do |ctx|
+  result = ctx.output.process.result
+  puts result
+end
 ```
 
 #### Task
 
-A task is the smallest execution unit in a workflow. Each task is defined as a block that takes Context as an argument.
+A task is the smallest execution unit in a workflow. Each task is defined as a block that takes Context as an argument and can return outputs:
 
 ```ruby
-task :process_data do |ctx|
-  ctx.result = process(ctx.input)
+task :process_data, output: { result: "String" } do |ctx|
+  input = ctx.arguments.input
+  { result: process(input) }
 end
 ```
 
@@ -116,24 +138,25 @@ Let's create a simple ETL (Extract-Transform-Load) workflow.
 class DataPipelineJob < ApplicationJob
   include ShuttleJob::DSL
   
-  # Define Context fields
-  context :source_id, "Integer"
-  context :raw_data, "String"
-  context :transformed_data, "Hash"
+  # Define arguments (immutable inputs)
+  argument :source_id, "Integer"
   
   # Task 1: Data extraction
-  task :extract do |ctx|
-    ctx.raw_data = ExternalAPI.fetch(ctx.source_id)
+  task :extract, output: { raw_data: "String" } do |ctx|
+    source_id = ctx.arguments.source_id
+    { raw_data: ExternalAPI.fetch(source_id) }
   end
   
   # Task 2: Data transformation (depends on extract)
-  task :transform, depends_on: [:extract] do |ctx|
-    ctx.transformed_data = JSON.parse(ctx.raw_data)
+  task :transform, depends_on: [:extract], output: { transformed_data: "Hash" } do |ctx|
+    raw_data = ctx.output.extract.raw_data
+    { transformed_data: JSON.parse(raw_data) }
   end
   
   # Task 3: Data loading (depends on transform)
   task :load, depends_on: [:transform] do |ctx|
-    DataModel.create!(ctx.transformed_data)
+    transformed_data = ctx.output.transform.transformed_data
+    DataModel.create!(transformed_data)
   end
 end
 ```
@@ -183,11 +206,17 @@ config.log_level = :debug
 
 #### Simple Task
 
-The simplest task requires only a name and a block.
+The simplest task requires only a name and a block. Tasks can return outputs that are accessible to dependent tasks:
 
 ```ruby
-task :simple_task do |ctx|
-  ctx.result = "completed"
+task :simple_task, output: { result: "String" } do |ctx|
+  { result: "completed" }
+end
+
+# Access the output in another task
+task :next_task, depends_on: [:simple_task] do |ctx|
+  result = ctx.output.simple_task.result
+  puts result  # => "completed"
 end
 ```
 
@@ -196,28 +225,31 @@ end
 ##### Single Dependency
 
 ```ruby
-task :fetch_data do |ctx|
-  ctx.data = API.fetch
+task :fetch_data, output: { data: "Hash" } do |ctx|
+  { data: API.fetch }
 end
 
-task :process_data, depends_on: [:fetch_data] do |ctx|
-  ctx.result = process(ctx.data)
+task :process_data, depends_on: [:fetch_data], output: { result: "String" } do |ctx|
+  data = ctx.output.fetch_data.data
+  { result: process(data) }
 end
 ```
 
 ##### Multiple Dependencies
 
 ```ruby
-task :task_a do |ctx|
-  ctx.a = 1
+task :task_a, output: { a: "Integer" } do |ctx|
+  { a: 1 }
 end
 
-task :task_b do |ctx|
-  ctx.b = 2
+task :task_b, output: { b: "Integer" } do |ctx|
+  { b: 2 }
 end
 
-task :task_c, depends_on: [:task_a, :task_b] do |ctx|
-  ctx.result = ctx.a + ctx.b  # => 3
+task :task_c, depends_on: [:task_a, :task_b], output: { result: "Integer" } do |ctx|
+  a = ctx.output.task_a.a
+  b = ctx.output.task_b.b
+  { result: a + b }  # => 3
 end
 ```
 
@@ -227,24 +259,24 @@ ShuttleJob automatically topologically sorts dependencies.
 
 ```ruby
 # Correct order is executed regardless of definition order
-task :step3, depends_on: [:step2] do |ctx|
-  ctx.final = true
+task :step3, depends_on: [:step2], output: { final: "Boolean" } do |ctx|
+  { final: true }
 end
 
-task :step1 do |ctx|
-  ctx.initial = true
+task :step1, output: { initial: "Boolean" } do |ctx|
+  { initial: true }
 end
 
-task :step2, depends_on: [:step1] do |ctx|
-  ctx.middle = true
+task :step2, depends_on: [:step1], output: { middle: "Boolean" } do |ctx|
+  { middle: true }
 end
 
 # Execution order: step1 → step2 → step3
 ```
 
-### Working with Context
+### Working with Arguments
 
-#### Defining Context Fields
+#### Defining Arguments
 
 ##### Simple Definition
 
@@ -253,12 +285,12 @@ class MyWorkflowJob < ApplicationJob
   include ShuttleJob::DSL
   
   # Field names only
-  context :user_id, :email, :status
+  argument :user_id, :email, :status
   
   task :process do |ctx|
-    ctx.user_id   # Accessible
-    ctx.email     # Accessible
-    ctx.status    # Accessible
+    ctx.arguments.user_id   # Accessible (read-only)
+    ctx.arguments.email     # Accessible (read-only)
+    ctx.arguments.status    # Accessible (read-only)
   end
 end
 ```
@@ -272,48 +304,53 @@ class TypedWorkflowJob < ApplicationJob
   include ShuttleJob::DSL
   
   # Type information specified as strings (for RBS generation)
-  context :user_id, "Integer"
-  context :email, "String"
-  context :created_at, "Time"
-  context :metadata, "Hash"
+  argument :user_id, "Integer"
+  argument :email, "String"
+  argument :created_at, "Time"
+  argument :metadata, "Hash"
   
   # Arrays and generics as strings too
-  context :items, "Array[String]"
-  context :config, "Hash[Symbol, String]"
+  argument :items, "Array[String]"
+  argument :config, "Hash[Symbol, String]"
   
   # Fields with default values
-  context :optional_field, "String", default: ""
+  argument :optional_field, "String", default: ""
 end
 ```
 
-#### Accessing Context
+#### Accessing Arguments
 
-##### Method Form (Recommended)
+**Arguments are immutable and read-only**. Access them via `ctx.arguments`:
 
 ```ruby
 task :example do |ctx|
-  # Reading
-  user_id = ctx.user_id
+  # Reading arguments
+  user_id = ctx.arguments.user_id
+  email = ctx.arguments.email
   
-  # Writing
-  ctx.result = "completed"
-  
-  # Check if field has value
-  if ctx.optional_field.present?
+  # Check if argument has value
+  if ctx.arguments.optional_field.present?
     # Process
   end
 end
 ```
 
-##### Hash Form (For Compatibility)
+**Important**: Arguments cannot be modified. To pass data between tasks, use task outputs:
 
 ```ruby
-task :example do |ctx|
-  # Reading
-  user_id = ctx[:user_id]
-  
-  # Writing
-  ctx[:result] = "completed"
+# ✅ Correct: Use outputs to pass data
+task :fetch, output: { result: "String" } do |ctx|
+  { result: "data" }
+end
+
+task :process, depends_on: [:fetch] do |ctx|
+  result = ctx.output.fetch.result
+  process_data(result)
+end
+
+# ❌ Wrong: Cannot modify arguments
+task :wrong do |ctx|
+  ctx.arguments.user_id = 123  # Error: Arguments are immutable
 end
 ```
 
@@ -322,66 +359,89 @@ end
 #### Retry Configuration
 
 ```ruby
+argument :api_key, "String"
+
 # Simple retry (up to 3 times)
-task :flaky_api, retry_count: 3 do |ctx|
-  ctx.response = ExternalAPI.call
+task :flaky_api, retry_count: 3, output: { response: "Hash" } do |ctx|
+  api_key = ctx.arguments.api_key
+  { response: ExternalAPI.call(api_key) }
 end
 
 # Advanced retry configuration
-task :advanced_retry, retry_options: {
-  count: 5,
-  strategy: :exponential,  # :linear, :exponential, :custom
-  base_delay: 2,           # Initial wait time in seconds
-  max_delay: 60,           # Maximum wait time in seconds
-  jitter: true,            # Add random jitter
-  dlq: true                # Send to DLQ on failure
-} do |ctx|
-  ctx.result = unreliable_operation
+task :advanced_retry, 
+  retry_options: {
+    count: 5,
+    strategy: :exponential,  # :linear, :exponential, :custom
+    base_delay: 2,           # Initial wait time in seconds
+    max_delay: 60,           # Maximum wait time in seconds
+    jitter: true,            # Add random jitter
+    dlq: true                # Send to DLQ on failure
+  },
+  output: { result: "String" } do |ctx|
+  { result: unreliable_operation }
 end
 ```
 
 #### Timeout
 
 ```ruby
-task :slow_operation, timeout: 30.seconds do |ctx|
-  ctx.result = long_running_process
+task :slow_operation, timeout: 30.seconds, output: { result: "String" } do |ctx|
+  { result: long_running_process }
 end
 
 # Combining timeout and retry
-task :critical_task, timeout: 10.seconds, retry_count: 3 do |ctx|
-  ctx.result = critical_operation
+task :critical_task, 
+  timeout: 10.seconds, 
+  retry_count: 3,
+  output: { result: "String" } do |ctx|
+  { result: critical_operation }
 end
 ```
 
 #### Conditional Execution
 
 ```ruby
+argument :user, "User"
+argument :amount, "Integer"
+argument :verified, "Boolean"
+
 # condition: Execute only if condition returns true
-task :premium_feature, condition: ->(ctx) { ctx.user.premium? } do |ctx|
-  ctx.premium_result = premium_process
+task :premium_feature, 
+  condition: ->(ctx) { ctx.arguments.user.premium? },
+  output: { premium_result: "String" } do |ctx|
+  { premium_result: premium_process }
 end
 
 # Inverse condition using negation
-task :free_tier_limit, condition: ->(ctx) { !ctx.user.premium? } do |ctx|
-  ctx.limited_result = limited_process
+task :free_tier_limit, 
+  condition: ->(ctx) { !ctx.arguments.user.premium? },
+  output: { limited_result: "String" } do |ctx|
+  { limited_result: limited_process }
 end
 
 # Complex condition
-task :complex, condition: ->(ctx) { ctx.amount > 1000 && ctx.verified } do |ctx|
-  ctx.vip_process = true
+task :complex, 
+  condition: ->(ctx) { ctx.arguments.amount > 1000 && ctx.arguments.verified },
+  output: { vip_process: "Boolean" } do |ctx|
+  { vip_process: true }
 end
 ```
 
 #### Throttling
 
 ```ruby
+argument :api_params, "Hash"
+
 # Rate limit for external API
-task :api_call, throttle: {
-  key: "external_api",     # Semaphore key
-  limit: 10,               # Concurrency limit
-  lease_ttl: 120           # Lease TTL in seconds
-} do |ctx|
-  ctx.response = RateLimitedAPI.call
+task :api_call, 
+  throttle: {
+    key: "external_api",     # Semaphore key
+    limit: 10,               # Concurrency limit
+    lease_ttl: 120           # Lease TTL in seconds
+  },
+  output: { response: "Hash" } do |ctx|
+  params = ctx.arguments.api_params
+  { response: RateLimitedAPI.call(params) }
 end
 ```
 
@@ -401,13 +461,14 @@ Use the `output:` option to define the structure of task outputs. Specify output
 class DataProcessingJob < ApplicationJob
   include ShuttleJob::DSL
   
-  context :input_value, "Integer", default: 0
+  argument :input_value, "Integer", default: 0
   
   # Define task with outputs
   task :calculate, output: { result: "Integer", message: "String" } do |ctx|
+    input_value = ctx.arguments.input_value
     # Return a hash with the defined keys
     {
-      result: ctx.input_value * 2,
+      result: input_value * 2,
       message: "Calculation complete"
     }
   end
@@ -428,7 +489,7 @@ Outputs from map tasks are collected as an array, with one output per iteration.
 class BatchCalculationJob < ApplicationJob
   include ShuttleJob::DSL
   
-  context :numbers, "Array[Integer]", default: []
+  argument :numbers, "Array[Integer]", default: []
   
   # Map task with output definition
   task :double_numbers, 
@@ -568,14 +629,13 @@ Use Context fields when you need to:
 class WellDesignedJob < ApplicationJob
   include ShuttleJob::DSL
   
-  # Context for configuration and final results
-  context :user_id, "Integer"
-  context :final_report, "Hash", default: {}
+  # Arguments for configuration
+  argument :user_id, "Integer"
   
   # Use outputs for intermediate structured data
   task :fetch_user, 
     output: { name: "String", email: "String", role: "String" } do |ctx|
-    user = User.find(ctx.user_id)
+    user = User.find(ctx.arguments.user_id)
     {
       name: user.name,
       email: user.email,
@@ -592,22 +652,41 @@ class WellDesignedJob < ApplicationJob
     }
   end
   
-  # Build final report in Context
+  # Build final report as output
   task :generate_report,
-    depends_on: [:fetch_user, :fetch_permissions] do |ctx|
+    depends_on: [:fetch_user, :fetch_permissions],
+    output: { final_report: "Hash" } do |ctx|
     user = ctx.output.fetch_user
     perms = ctx.output.fetch_permissions
     
-    ctx.final_report = {
-      user: { name: user.name, email: user.email },
-      permissions: perms.permissions,
-      generated_at: Time.current
+    {
+      final_report: {
+        user: { name: user.name, email: user.email },
+        permissions: perms.permissions,
+        generated_at: Time.current
+      }
     }
   end
 end
 ```
 
 ### Limitations
+
+#### Arguments are Immutable
+
+Arguments cannot be modified during workflow execution. To pass data between tasks, use task outputs:
+
+```ruby
+# ✅ Correct: Use outputs
+task :process, output: { result: "String" } do |ctx|
+  { result: "processed" }
+end
+
+# ❌ Wrong: Cannot modify arguments
+task :wrong do |ctx|
+  ctx.arguments.result = "value"  # Error!
+end
+```
 
 #### Concurrent Map Tasks
 
@@ -628,7 +707,7 @@ task :process_parallel,
 end
 ```
 
-**Workaround**: For now, if you need outputs from concurrent map tasks, use Context fields to collect results manually.
+**Workaround**: For now, if you need outputs from concurrent map tasks, collect results in a shared data store (e.g., database, cache) and retrieve them in a subsequent task.
 
 ---
 
@@ -644,18 +723,18 @@ ShuttleJob enables parallel processing of collection elements by specifying the 
 class BatchProcessingJob < ApplicationJob
   include ShuttleJob::DSL
   
-  context :user_ids, "Array"
-  context :results, "Hash"
+  argument :user_ids, "Array[Integer]", default: []
   
   # Prepare user IDs
-  task :fetch_user_ids do |ctx|
-    ctx.user_ids = User.active.pluck(:id)
+  task :fetch_user_ids, output: { ids: "Array[Integer]" } do |ctx|
+    { ids: User.active.pluck(:id) }
   end
   
   # Process each user in parallel
   task :process_users,
        each: :user_ids,
-       depends_on: [:fetch_user_ids] do |ctx|
+       depends_on: [:fetch_user_ids],
+       output: { user_id: "Integer", status: "Symbol" } do |ctx|
     user_id = ctx.each_value
     user = User.find(user_id)
     {
@@ -666,7 +745,8 @@ class BatchProcessingJob < ApplicationJob
   
   # Aggregate results
   task :aggregate_results, depends_on: [:process_users] do |ctx|
-    ctx.results = ctx.process_users_results
+    results = ctx.output.process_users
+    puts "Processed #{results.size} users"
     # => [{ user_id: 1, status: :ok }, { user_id: 2, status: :ok }, ...]
   end
 end
@@ -693,26 +773,23 @@ end
 
 #### Context Isolation
 
-Each parallel task has an independent Context. This prevents impact on parent Context and avoids data races.
+Each parallel task has access to the same Context instance. Arguments are immutable and outputs should be returned:
 
 ```ruby
+argument :items, "Array[Hash]"
+argument :shared_config, "Hash"
+
 task :parallel_processing,
-     each: :items do |ctx|
-  # This ctx is the same Context instance (not a copy)
+     each: :items,
+     output: { item_result: "String" } do |ctx|
   # Access current element via ctx.each_value
   item = ctx.each_value
   
-  ctx.item_result = process(item)
+  # Can read arguments (immutable)
+  config = ctx.arguments.shared_config
   
-  # Can read from parent Context
-  shared_config = ctx.shared_config
-  
-  # Changes to Context are visible across iterations
-  # (be careful with shared state)
-  ctx.local_temp = "temporary data"
-  
-  # Return value is collected as result (Join)
-  { item_id: item.id, result: ctx.item_result }
+  # Return output for this iteration
+  { item_result: process(item, config) }
 end
 ```
 
@@ -752,24 +829,29 @@ ShuttleJob provides robust error handling features. With retry strategies, timeo
 #### Basic Retry
 
 ```ruby
+argument :api_endpoint, "String"
+
 # Simple retry (up to 3 times)
-task :fetch_data, retry_count: 3 do |ctx|
-  ctx.data = ExternalAPI.fetch
+task :fetch_data, retry_count: 3, output: { data: "Hash" } do |ctx|
+  endpoint = ctx.arguments.api_endpoint
+  { data: ExternalAPI.fetch(endpoint) }
 end
 ```
 
 #### Advanced Retry Configuration
 
 ```ruby
-task :advanced_retry, retry_options: {
-  count: 5,                # Maximum retry attempts
-  strategy: :exponential,  # Retry strategy
-  base_delay: 2,           # Initial wait time in seconds
-  max_delay: 300,          # Maximum wait time in seconds
-  jitter: true,            # Add random jitter
-  dlq: true                # Send to DLQ on failure
-} do |ctx|
-  ctx.result = unreliable_operation
+task :advanced_retry, 
+  retry_options: {
+    count: 5,                # Maximum retry attempts
+    strategy: :exponential,  # Retry strategy
+    base_delay: 2,           # Initial wait time in seconds
+    max_delay: 300,          # Maximum wait time in seconds
+    jitter: true,            # Add random jitter
+    dlq: true                # Send to DLQ on failure
+  },
+  output: { result: "String" } do |ctx|
+  { result: unreliable_operation }
 end
 ```
 
@@ -780,11 +862,14 @@ end
 Retries at fixed intervals.
 
 ```ruby
-task :linear_retry, retry_options: {
-  count: 5,
-  strategy: :linear,
-  base_delay: 10  # Always wait 10 seconds
-} do |ctx|
+task :linear_retry, 
+  retry_options: {
+    count: 5,
+    strategy: :linear,
+    base_delay: 10  # Always wait 10 seconds
+  },
+  output: { result: "String" } do |ctx|
+  { result: operation }
   # Retry intervals: 10s, 10s, 10s, 10s, 10s
 end
 ```
@@ -794,12 +879,15 @@ end
 Doubles wait time with each retry.
 
 ```ruby
-task :exponential_retry, retry_options: {
-  count: 5,
-  strategy: :exponential,
-  base_delay: 2,
-  max_delay: 60
-} do |ctx|
+task :exponential_retry, 
+  retry_options: {
+    count: 5,
+    strategy: :exponential,
+    base_delay: 2,
+    max_delay: 60
+  },
+  output: { result: "String" } do |ctx|
+  { result: operation }
   # Retry intervals: 2s, 4s, 8s, 16s, 32s
   # Capped at max_delay
 end
@@ -810,12 +898,15 @@ end
 Adds randomness to prevent thundering herd.
 
 ```ruby
-task :jitter_retry, retry_options: {
-  count: 5,
-  strategy: :exponential,
-  base_delay: 2,
-  jitter: true
-} do |ctx|
+task :jitter_retry, 
+  retry_options: {
+    count: 5,
+    strategy: :exponential,
+    base_delay: 2,
+    jitter: true
+  },
+  output: { result: "String" } do |ctx|
+  { result: operation }
   # Retry intervals: 2±0.5s, 4±1s, 8±2s, ...
   # Effective against thundering herd
 end
@@ -827,15 +918,16 @@ end
 
 ```ruby
 # Timeout after 30 seconds
-task :slow_operation, timeout: 30.seconds do |ctx|
-  ctx.result = long_running_process
+task :slow_operation, timeout: 30.seconds, output: { result: "String" } do |ctx|
+  { result: long_running_process }
 end
 
 # Combining timeout and retry
 task :timeout_with_retry,
      timeout: 10.seconds,
-     retry_count: 3 do |ctx|
-  ctx.result = potentially_slow_operation
+     retry_count: 3,
+     output: { result: "String" } do |ctx|
+  { result: potentially_slow_operation }
   # Timeout → Retry → Timeout → ...
 end
 ```
@@ -847,12 +939,14 @@ Failed tasks that exhaust retries are sent to DLQ for later analysis and reproce
 #### Enabling DLQ
 
 ```ruby
-task :critical_task, retry_options: {
-  count: 5,
-  strategy: :exponential,
-  dlq: true  # Enable DLQ
-} do |ctx|
-  ctx.result = critical_operation
+task :critical_task, 
+  retry_options: {
+    count: 5,
+    strategy: :exponential,
+    dlq: true  # Enable DLQ
+  },
+  output: { result: "String" } do |ctx|
+  { result: critical_operation }
 end
 ```
 
@@ -872,25 +966,30 @@ Execute task only if condition returns true.
 class UserNotificationJob < ApplicationJob
   include ShuttleJob::DSL
   
-  context :user, "User"
-  context :notification_type, "String"
+  argument :user, "User"
+  argument :notification_type, "String"
   
-  task :load_user_preferences do |ctx|
-    ctx.preferences = ctx.user.notification_preferences
+  task :load_user_preferences, output: { preferences: "Hash" } do |ctx|
+    user = ctx.arguments.user
+    { preferences: user.notification_preferences }
   end
   
   # Execute only for premium users
   task :send_premium_notification,
        depends_on: [:load_user_preferences],
-       condition: ->(ctx) { ctx.user.premium? } do |ctx|
-    PremiumNotificationService.send(ctx.user, ctx.notification_type)
+       condition: ->(ctx) { ctx.arguments.user.premium? } do |ctx|
+    user = ctx.arguments.user
+    notification_type = ctx.arguments.notification_type
+    PremiumNotificationService.send(user, notification_type)
   end
   
   # Send simple notification to standard users
   task :send_standard_notification,
        depends_on: [:load_user_preferences],
-       condition: ->(ctx) { !ctx.user.premium? } do |ctx|
-    StandardNotificationService.send(ctx.user, ctx.notification_type)
+       condition: ->(ctx) { !ctx.arguments.user.premium? } do |ctx|
+    user = ctx.arguments.user
+    notification_type = ctx.arguments.notification_type
+    StandardNotificationService.send(user, notification_type)
   end
 end
 ```
@@ -903,17 +1002,19 @@ You can use any Ruby expression in the condition lambda.
 class DataSyncJob < ApplicationJob
   include ShuttleJob::DSL
   
-  context :force_sync, "TrueClass | FalseClass", default: false
-  context :last_sync_at, "Time", default: nil
+  argument :force_sync, "TrueClass | FalseClass", default: false
+  argument :last_sync_at, "Time", default: nil
   
   # Execute only if more than 1 hour since last sync
   task :sync_data,
        condition: ->(ctx) { 
-         return true if ctx.force_sync  # Always execute if force_sync is true
-         !ctx.last_sync_at || ctx.last_sync_at <= 1.hour.ago
-       } do |ctx|
+         return true if ctx.arguments.force_sync  # Always execute if force_sync is true
+         last_sync = ctx.arguments.last_sync_at
+         !last_sync || last_sync <= 1.hour.ago
+       },
+       output: { sync_time: "Time" } do |ctx|
     SyncService.perform
-    ctx.last_sync_at = Time.current
+    { sync_time: Time.current }
   end
 end
 ```
@@ -934,12 +1035,11 @@ Execute processing before task execution.
 class ValidationWorkflowJob < ApplicationJob
   include ShuttleJob::DSL
   
-  context :order_id, "Integer"
-  context :order, "Hash", default: nil
+  argument :order_id, "Integer"
   
   # Run validation in before hook
   before :charge_payment do |ctx|
-    order = Order.find(ctx.order_id)
+    order = Order.find(ctx.arguments.order_id)
     
     # Check inventory
     raise "Out of stock" unless order.items_in_stock?
@@ -948,9 +1048,10 @@ class ValidationWorkflowJob < ApplicationJob
     raise "Invalid card" unless order.valid_credit_card?
   end
   
-  task :charge_payment do |ctx|
+  task :charge_payment, output: { payment_id: "String" } do |ctx|
     # Executes after validation passes
-    ctx.payment_id = PaymentGateway.charge(ctx.order_id)
+    order_id = ctx.arguments.order_id
+    { payment_id: PaymentGateway.charge(order_id) }
   end
 end
 ```
@@ -963,24 +1064,27 @@ Execute processing after task execution.
 class NotificationWorkflowJob < ApplicationJob
   include ShuttleJob::DSL
   
-  context :user_id, "Integer"
-  context :action_result, "Hash"
+  argument :user_id, "Integer"
   
-  task :perform_action do |ctx|
-    ctx.action_result = SomeService.perform(ctx.user_id)
+  task :perform_action, output: { action_result: "Hash" } do |ctx|
+    user_id = ctx.arguments.user_id
+    { action_result: SomeService.perform(user_id) }
   end
   
   # Send notification in after hook
   after :perform_action do |ctx|
+    user_id = ctx.arguments.user_id
+    action_result = ctx.output.perform_action.action_result
+    
     UserMailer.action_completed(
-      ctx.user_id,
-      ctx.action_result
+      user_id,
+      action_result
     ).deliver_later
     
     # Record analytics
     Analytics.track('action_completed', {
-      user_id: ctx.user_id,
-      result: ctx.action_result
+      user_id: user_id,
+      result: action_result
     })
   end
 end
@@ -1012,8 +1116,8 @@ class MetricsWorkflowJob < ApplicationJob
     })
   end
   
-  task :expensive_task do |ctx|
-    ctx.result = heavy_computation
+  task :expensive_task, output: { result: "String" } do |ctx|
+    { result: heavy_computation }
   end
 end
 ```
@@ -1034,45 +1138,50 @@ Group related tasks.
 class ECommerceOrderJob < ApplicationJob
   include ShuttleJob::DSL
   
-  context :order, "Order"
-  context :payment_result, "Hash", default: nil
-  context :inventory_reserved, "TrueClass | FalseClass", default: false
-  context :shipping_label, "String", default: nil
+  argument :order, "Order"
   
   # Payment-related tasks
   namespace :payment do
     task :validate do |ctx|
-      PaymentValidator.validate(ctx.order)
+      order = ctx.arguments.order
+      PaymentValidator.validate(order)
     end
     
-    task :charge, depends_on: [:validate] do |ctx|
-      ctx.payment_result = PaymentProcessor.charge(ctx.order)
+    task :charge, depends_on: [:validate], output: { payment_result: "Hash" } do |ctx|
+      order = ctx.arguments.order
+      { payment_result: PaymentProcessor.charge(order) }
     end
     
     task :send_receipt, depends_on: [:charge] do |ctx|
-      ReceiptMailer.send(ctx.order, ctx.payment_result)
+      order = ctx.arguments.order
+      payment_result = ctx.output.payment__charge.payment_result
+      ReceiptMailer.send(order, payment_result)
     end
   end
   
   # Inventory-related tasks
   namespace :inventory do
     task :check_availability do |ctx|
-      InventoryService.check(ctx.order.items)
+      order = ctx.arguments.order
+      InventoryService.check(order.items)
     end
     
-    task :reserve, depends_on: [:check_availability] do |ctx|
-      ctx.inventory_reserved = InventoryService.reserve(ctx.order.items)
+    task :reserve, depends_on: [:check_availability], output: { reserved: "Boolean" } do |ctx|
+      order = ctx.arguments.order
+      { reserved: InventoryService.reserve(order.items) }
     end
   end
   
   # Shipping-related tasks
   namespace :shipping do
-    task :calculate_cost do |ctx|
-      ctx.shipping_cost = ShippingCalculator.calculate(ctx.order)
+    task :calculate_cost, output: { shipping_cost: "Float" } do |ctx|
+      order = ctx.arguments.order
+      { shipping_cost: ShippingCalculator.calculate(order) }
     end
     
-    task :create_label, depends_on: [:calculate_cost] do |ctx|
-      ctx.shipping_label = ShippingService.create_label(ctx.order)
+    task :create_label, depends_on: [:calculate_cost], output: { shipping_label: "String" } do |ctx|
+      order = ctx.arguments.order
+      { shipping_label: ShippingService.create_label(order) }
     end
   end
 end
@@ -1121,55 +1230,70 @@ class BookingWorkflowJob < ApplicationJob
   include ShuttleJob::DSL
   include ShuttleJob::Saga
   
-  context :user_id, "Integer"
-  context :hotel_booking_id, "Integer", default: nil
-  context :flight_booking_id, "Integer", default: nil
+  argument :user_id, "Integer"
+  argument :dates, "Hash"
+  argument :total_amount, "Float"
   
   # Hotel reservation
-  task :reserve_hotel do |ctx|
-    ctx.hotel_booking_id = HotelService.reserve(
-      user_id: ctx.user_id,
-      dates: ctx.dates
-    )
+  task :reserve_hotel, output: { hotel_booking_id: "Integer" } do |ctx|
+    user_id = ctx.arguments.user_id
+    dates = ctx.arguments.dates
+    {
+      hotel_booking_id: HotelService.reserve(
+        user_id: user_id,
+        dates: dates
+      )
+    }
   end
   
   # Hotel reservation compensation (cancellation)
   compensate :reserve_hotel do |ctx|
-    if ctx.hotel_booking_id
-      HotelService.cancel(ctx.hotel_booking_id)
-      Rails.logger.info("Hotel booking #{ctx.hotel_booking_id} cancelled")
+    hotel_booking_id = ctx.output.reserve_hotel&.hotel_booking_id
+    if hotel_booking_id
+      HotelService.cancel(hotel_booking_id)
+      Rails.logger.info("Hotel booking #{hotel_booking_id} cancelled")
     end
   end
   
   # Flight reservation
-  task :reserve_flight, depends_on: [:reserve_hotel] do |ctx|
-    ctx.flight_booking_id = FlightService.reserve(
-      user_id: ctx.user_id,
-      dates: ctx.dates
-    )
+  task :reserve_flight, depends_on: [:reserve_hotel], output: { flight_booking_id: "Integer" } do |ctx|
+    user_id = ctx.arguments.user_id
+    dates = ctx.arguments.dates
+    {
+      flight_booking_id: FlightService.reserve(
+        user_id: user_id,
+        dates: dates
+      )
+    }
   end
   
   # Flight reservation compensation (cancellation)
   compensate :reserve_flight do |ctx|
-    if ctx.flight_booking_id
-      FlightService.cancel(ctx.flight_booking_id)
-      Rails.logger.info("Flight booking #{ctx.flight_booking_id} cancelled")
+    flight_booking_id = ctx.output.reserve_flight&.flight_booking_id
+    if flight_booking_id
+      FlightService.cancel(flight_booking_id)
+      Rails.logger.info("Flight booking #{flight_booking_id} cancelled")
     end
   end
   
   # Payment processing
-  task :charge_payment, depends_on: [:reserve_flight] do |ctx|
-    ctx.payment_id = PaymentService.charge(
-      user_id: ctx.user_id,
-      amount: ctx.total_amount
-    )
+  task :charge_payment, depends_on: [:reserve_flight], output: { payment_id: "String" } do |ctx|
+    user_id = ctx.arguments.user_id
+    total_amount = ctx.arguments.total_amount
+    {
+      payment_id: PaymentService.charge(
+        user_id: user_id,
+        amount: total_amount
+      )
+    }
   end
   
   # Payment compensation (refund)
   compensate :charge_payment do |ctx|
-    if ctx.payment_id
-      PaymentService.refund(ctx.payment_id)
-      Rails.logger.info("Payment #{ctx.payment_id} refunded")
+    payment_id = ctx.output.charge_payment&.payment_id
+    if payment_id
+      PaymentService.refund(payment_id)
+      Rails.logger.info("Payment #{payment_id} refunded")
     end
   end
 end
@@ -1191,8 +1315,7 @@ Limit concurrent execution by specifying the `throttle` option on a task.
 class ExternalAPIJob < ApplicationJob
   include ShuttleJob::DSL
   
-  context :user_ids, "Array[Integer]"
-  context :api_results, "Array", default: []
+  argument :user_ids, "Array[Integer]"
   
   # External API allows up to 10 concurrent requests
   task :fetch_user_data,
@@ -1200,10 +1323,13 @@ class ExternalAPIJob < ApplicationJob
          key: "external_user_api",  # Semaphore identifier
          limit: 10,                  # Concurrency limit
          lease_ttl: 120              # Lease TTL in seconds
-       } do |ctx|
-    ctx.api_results = ctx.user_ids.map do |user_id|
+       },
+       output: { api_results: "Array[Hash]" } do |ctx|
+    user_ids = ctx.arguments.user_ids
+    results = user_ids.map do |user_id|
       ExternalAPI.fetch_user(user_id)
     end
+    { api_results: results }
   end
 end
 ```
@@ -1216,10 +1342,14 @@ end
 4. Release lease after completion
 
 ```ruby
+argument :data, "Hash"
+
 # Example: Task with max 3 concurrent executions
 task :limited_task,
-     throttle: { key: "shared_resource", limit: 3 } do |ctx|
-  SharedResource.use(ctx.data)
+     throttle: { key: "shared_resource", limit: 3 },
+     output: { result: "String" } do |ctx|
+  data = ctx.arguments.data
+  { result: SharedResource.use(data) }
 end
 
 # Execution state:
@@ -1321,7 +1451,8 @@ RSpec.describe UserRegistrationJob do
   describe 'task: validate_email' do
     it 'validates correct email format' do
       job = described_class.new
-      ctx = ShuttleJob::Context.new(email: 'user@example.com')
+      arguments = ShuttleJob::Arguments.new(email: 'user@example.com')
+      ctx = ShuttleJob::Context.new(arguments: arguments)
       
       task = described_class._workflow_tasks[:validate_email]
       expect { job.instance_exec(ctx, &task[:block]) }.not_to raise_error
@@ -1329,7 +1460,8 @@ RSpec.describe UserRegistrationJob do
     
     it 'raises error for invalid email' do
       job = described_class.new
-      ctx = ShuttleJob::Context.new(email: 'invalid')
+      arguments = ShuttleJob::Arguments.new(email: 'invalid')
+      ctx = ShuttleJob::Context.new(arguments: arguments)
       
       task = described_class._workflow_tasks[:validate_email]
       expect { job.instance_exec(ctx, &task[:block]) }.to raise_error(/Invalid email/)
@@ -1339,10 +1471,11 @@ RSpec.describe UserRegistrationJob do
   describe 'task: create_user' do
     it 'creates a new user' do
       job = described_class.new
-      ctx = ShuttleJob::Context.new(
+      arguments = ShuttleJob::Arguments.new(
         email: 'user@example.com',
         password: 'password123'
       )
+      ctx = ShuttleJob::Context.new(arguments: arguments)
       
       task = described_class._workflow_tasks[:create_user]
       
@@ -1350,8 +1483,10 @@ RSpec.describe UserRegistrationJob do
         job.instance_exec(ctx, &task[:block])
       }.to change(User, :count).by(1)
       
-      expect(ctx.user).to be_a(User)
-      expect(ctx.user.email).to eq('user@example.com')
+      # Verify output
+      output = ctx.output.create_user
+      expect(output.user).to be_a(User)
+      expect(output.user.email).to eq('user@example.com')
     end
   end
 end
@@ -1447,51 +1582,71 @@ task(name, **options, &block)
 **Example**:
 
 ```ruby
-task :simple do |ctx|
-  ctx.result = "simple"
+argument :enabled, "Boolean", default: false
+argument :data, "Hash"
+
+task :simple, output: { result: "String" } do |ctx|
+  { result: "simple" }
 end
 
 task :with_dependencies,
      depends_on: [:simple],
      retry_count: 3,
-     timeout: 30.seconds do |ctx|
-  ctx.final = process(ctx.result)
+     timeout: 30.seconds,
+     output: { final: "String" } do |ctx|
+  result = ctx.output.simple.result
+  { final: process(result) }
 end
 
 task :conditional,
-     condition: ->(ctx) { ctx.enabled? } do |ctx|
-  ctx.conditional_result = "executed"
+     condition: ->(ctx) { ctx.arguments.enabled },
+     output: { conditional_result: "String" } do |ctx|
+  { conditional_result: "executed" }
 end
 
 task :throttled,
-     throttle: { key: "api", limit: 10, lease_ttl: 60 } do |ctx|
-  ExternalAPI.call(ctx.data)
+     throttle: { key: "api", limit: 10, lease_ttl: 60 },
+     output: { response: "Hash" } do |ctx|
+  data = ctx.arguments.data
+  { response: ExternalAPI.call(data) }
 end
 
 # Parallel processing with collection
 task :process_items,
      each: :items,
-     concurrency: 5 do |ctx|
-  ProcessService.handle(ctx.each_value)
+     concurrency: 5,
+     output: { result: "String" } do |ctx|
+  item = ctx.each_value
+  { result: ProcessService.handle(item) }
 end
 ```
 
-**Map Task Result**: When `each:` is specified, results are automatically stored in `ctx.#{name}_results`.
+**Map Task Output**: When `each:` is specified, outputs are automatically collected as an array.
 
 **Example**:
 
 ```ruby
-context :items, "Array[String]"
+argument :items, "Array[String]"
 
 task :process_items,
      each: :items,
-     concurrency: 5 do |ctx|
-  ProcessService.handle(ctx.each_value)
+     concurrency: 5,
+     output: { result: "String", status: "Symbol" } do |ctx|
+  item = ctx.each_value
+  {
+    result: ProcessService.handle(item),
+    status: :success
+  }
 end
 
 task :summarize, depends_on: [:process_items] do |ctx|
-  # Access results with ctx.process_items_results
-  ctx.summary = ctx.process_items_results.sum
+  # Access outputs as an array
+  outputs = ctx.output.process_items
+  puts "Processed #{outputs.size} items"
+  
+  outputs.each do |output|
+    puts "Result: #{output.result}, Status: #{output.status}"
+  end
 end
 ```
 
@@ -1554,24 +1709,30 @@ Best practices, design patterns, and recommendations for effective ShuttleJob us
 class WellDesignedWorkflowJob < ApplicationJob
   include ShuttleJob::DSL
   
+  argument :data, "Hash"
+  
   task :validate_input do |ctx|
     # Only validation
-    raise "Invalid" unless ctx.data.valid?
+    data = ctx.arguments.data
+    raise "Invalid" unless data.valid?
   end
   
-  task :fetch_dependencies, depends_on: [:validate_input] do |ctx|
+  task :fetch_dependencies, depends_on: [:validate_input], output: { dependencies: "Hash" } do |ctx|
     # Only fetch data
-    ctx.dependencies = fetch_required_data
+    { dependencies: fetch_required_data }
   end
   
-  task :transform_data, depends_on: [:fetch_dependencies] do |ctx|
+  task :transform_data, depends_on: [:fetch_dependencies], output: { transformed: "Hash" } do |ctx|
     # Only transform
-    ctx.transformed = transform(ctx.data, ctx.dependencies)
+    data = ctx.arguments.data
+    dependencies = ctx.output.fetch_dependencies.dependencies
+    { transformed: transform(data, dependencies) }
   end
   
   task :save_result, depends_on: [:transform_data] do |ctx|
     # Only save
-    save_to_database(ctx.transformed)
+    transformed = ctx.output.transform_data.transformed
+    save_to_database(transformed)
   end
 end
 
@@ -1579,11 +1740,14 @@ end
 class PoorlyDesignedWorkflowJob < ApplicationJob
   include ShuttleJob::DSL
   
+  argument :data, "Hash"
+  
   task :do_everything do |ctx|
     # All in one task (hard to test, not reusable)
-    raise "Invalid" unless ctx.data.valid?
+    data = ctx.arguments.data
+    raise "Invalid" unless data.valid?
     deps = fetch_required_data
-    transformed = transform(ctx.data, deps)
+    transformed = transform(data, deps)
     save_to_database(transformed)
   end
 end
@@ -1592,23 +1756,28 @@ end
 #### Explicit Dependencies
 
 ```ruby
+argument :raw_data, "String"
+
 # ✅ Explicit dependencies
-task :prepare_data do |ctx|
-  ctx.prepared = prepare(ctx.raw_data)
+task :prepare_data, output: { prepared: "Hash" } do |ctx|
+  raw_data = ctx.arguments.raw_data
+  { prepared: prepare(raw_data) }
 end
 
-task :process_data, depends_on: [:prepare_data] do |ctx|
-  ctx.result = process(ctx.prepared)
+task :process_data, depends_on: [:prepare_data], output: { result: "String" } do |ctx|
+  prepared = ctx.output.prepare_data.prepared
+  { result: process(prepared) }
 end
 
-# ❌ Implicit dependencies (depends on Context)
-task :task1 do |ctx|
-  ctx.shared = "data"
+# ❌ Implicit dependencies (unpredictable execution order)
+task :task1, output: { shared: "String" } do |ctx|
+  { shared: "data" }
 end
 
 task :task2 do |ctx|
-  # No guarantee task1 executes first
-  use(ctx.shared)
+  # No guarantee task1 executes first - this may fail!
+  shared = ctx.output.task1.shared  # May be nil
+  use(shared)
 end
 ```
 
