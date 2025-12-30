@@ -4,8 +4,7 @@ module ShuttleJob
   class TaskJobStatus
     attr_reader :task_name #: Symbol
     attr_reader :job_id #: String
-    attr_reader :provider_job_id #: String?
-    attr_reader :index #: Integer?
+    attr_reader :each_index #: Integer?
     attr_reader :status #: Symbol
 
     class << self
@@ -14,25 +13,36 @@ module ShuttleJob
         new(
           task_name: hash[:task_name],
           job_id: hash[:job_id],
-          provider_job_id: hash[:provider_job_id],
-          index: hash[:index],
+          each_index: hash[:each_index],
           status: hash[:status]
         )
+      end
+
+      #:  (DSL | SolidQueue::Job) -> Symbol
+      def status_value_from_job(job)
+        return :failed if job.failed?
+        return :succeeded if job.finished?
+        return :running if job.claimed?
+
+        :pending
       end
     end
 
     #:  (
     #      task_name: Symbol,
     #      job_id: String,
-    #      ?index: Integer?,
-    #      ?provider_job_id: String?,
+    #      ?each_index: Integer?,
     #      ?status: Symbol
     #    ) -> void
-    def initialize(task_name:, job_id:, index: nil, provider_job_id: nil, status: :pending)
+    def initialize(task_name:, job_id:, each_index: nil, status: :pending)
       @task_name = task_name
       @job_id = job_id
-      @provider_job_id = provider_job_id
-      @index = index
+      @each_index = each_index
+      @status = status
+    end
+
+    #:  (Symbol) -> void
+    def update_status(status)
       @status = status
     end
 
@@ -54,11 +64,10 @@ module ShuttleJob
     #:  () -> Hash[Symbol, untyped]
     def to_h
       {
-        task_name: task_name,
-        job_id: job_id,
-        provider_job_id: provider_job_id,
-        index: index,
-        status: status
+        task_name:,
+        job_id:,
+        each_index:,
+        status:
       }
     end
   end

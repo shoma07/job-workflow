@@ -1,0 +1,35 @@
+module SolidQueue
+  class Record < ActiveRecord::Base
+  end
+
+  class Job < Record
+    class EnqueueError < StandardError
+    end
+
+    module Executable
+      def finished?: () -> bool
+
+      def ready?: () -> bool
+
+      def claimed?: () -> bool
+
+      def failed?: () -> bool
+    end
+
+    module Clearable
+    end
+
+    module Recurrable
+    end
+
+    class ActiveRecord_Relation < ActiveRecord::Relation
+      include _ActiveRecord_Relation[Job, Integer]
+    end
+
+    extend _ActiveRecord_Relation_ClassMethods[Job, ActiveRecord_Relation, Integer]
+
+    include Executable
+    include Clearable
+    include Recurrable
+  end
+end

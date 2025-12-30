@@ -92,6 +92,41 @@ RSpec.describe ShuttleJob::Context do
         )
       end
     end
+
+    context "when task_job_statuses is provided" do
+      let(:arguments) do
+        {
+          raw_data: { ctx_one: nil, ctx_two: 1 },
+          task_job_statuses: [
+            { task_name: :task_a, job_id: "job1", each_index: 0, status: :succeeded },
+            { task_name: :task_a, job_id: "job2", each_index: 1, status: :pending }
+          ]
+        }
+      end
+
+      it "creates a context with job status" do
+        expect(init.job_status).to be_a(ShuttleJob::JobStatus)
+      end
+
+      it "initializes JobStatus with task_job_statuses" do
+        expect(init.job_status.flat_task_job_statuses).to contain_exactly(
+          have_attributes(task_name: :task_a, job_id: "job1", each_index: 0, status: :succeeded),
+          have_attributes(task_name: :task_a, job_id: "job2", each_index: 1, status: :pending)
+        )
+      end
+    end
+
+    context "when no task_job_statuses is provided" do
+      let(:arguments) { { raw_data: { ctx_one: nil, ctx_two: 1 } } }
+
+      it "creates a context with empty job status" do
+        expect(init.job_status).to be_a(ShuttleJob::JobStatus)
+      end
+
+      it "has no task_job_statuses" do
+        expect(init.job_status.flat_task_job_statuses).to be_empty
+      end
+    end
   end
 
   describe "#merge!" do
