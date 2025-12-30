@@ -25,6 +25,11 @@ module ShuttleJob
       task_job_statuses.fetch(task_name, [])[index || 0]
     end
 
+    #:  (task_name: Symbol) -> Array[String]
+    def finished_job_ids(task_name:)
+      fetch_all(task_name:).filter(&:finished?).map(&:job_id)
+    end
+
     #:  () -> Array[TaskJobStatus]
     def flat_task_job_statuses
       task_job_statuses.values.flatten
@@ -50,7 +55,7 @@ module ShuttleJob
             task_name:,
             job_id: job.job_id,
             each_index: index,
-            status: TaskJobStatus.status_value_from_job(job)
+            status: :pending
           )
         )
       end

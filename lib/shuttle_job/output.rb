@@ -42,6 +42,14 @@ module ShuttleJob
       each_task_names << task_output.task_name if task_output.each_index
     end
 
+    #:  (Array[String]) -> void
+    def update_task_outputs_from_db(job_ids)
+      jobs = SolidQueue::Job.where(active_job_id: job_ids)
+      return if jobs.empty?
+
+      update_task_outputs_from_jobs(jobs.to_a)
+    end
+
     #:  (Array[SolidQueue::Job]) -> void
     def update_task_outputs_from_jobs(jobs)
       jobs.each do |job|

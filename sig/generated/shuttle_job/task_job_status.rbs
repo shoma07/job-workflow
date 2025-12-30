@@ -13,8 +13,8 @@ module ShuttleJob
     # :  (Hash[Symbol, untyped]) -> TaskJobStatus
     def self.from_hash: (Hash[Symbol, untyped]) -> TaskJobStatus
 
-    # :  (DSL | SolidQueue::Job) -> Symbol
-    def self.status_value_from_job: (DSL | SolidQueue::Job) -> Symbol
+    # :  (SolidQueue::Job) -> Symbol
+    def self.status_value_from_job: (SolidQueue::Job) -> Symbol
 
     # :  (
     #       task_name: Symbol,

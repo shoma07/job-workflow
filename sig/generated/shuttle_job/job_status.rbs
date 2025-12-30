@@ -14,6 +14,9 @@ module ShuttleJob
     # :  (task_name: Symbol, ?index: Integer?) -> TaskJobStatus?
     def fetch: (task_name: Symbol, ?index: Integer?) -> TaskJobStatus?
 
+    # :  (task_name: Symbol) -> Array[String]
+    def finished_job_ids: (task_name: Symbol) -> Array[String]
+
     # :  () -> Array[TaskJobStatus]
     def flat_task_job_statuses: () -> Array[TaskJobStatus]
 
