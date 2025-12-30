@@ -1,0 +1,50 @@
+# Generated from lib/job_flow/runner.rb with RBS::Inline
+
+module JobFlow
+  class Runner
+    attr_reader context: Context
+
+    # :  (job: DSL, context: Context) -> void
+    def initialize: (job: DSL, context: Context) -> void
+
+    # :  () -> void
+    def run: () -> void
+
+    private
+
+    attr_reader job: DSL
+
+    # :  () -> Workflow
+    def workflow: () -> Workflow
+
+    # :  () -> Array[Task]
+    def tasks: () -> Array[Task]
+
+    # :  () -> void
+    def run_workflow: () -> void
+
+    # :  (Task, ActiveJob::Continuation::Step) -> void
+    def run_task: (Task, ActiveJob::Continuation::Step) -> void
+
+    # :  (Task) -> void
+    def run_map_task_with_concurrency: (Task) -> void
+
+    # :  (Task, ActiveJob::Continuation::Step) -> void
+    def run_map_task_without_concurrency: (Task, ActiveJob::Continuation::Step) -> void
+
+    # :  () -> void
+    def run_each_task_in_map: () -> void
+
+    # :  (ctx: Context, task: Task, ?each_index: Integer?, data: untyped) -> void
+    def add_task_output: (ctx: Context, task: Task, data: untyped, ?each_index: Integer?) -> void
+
+    # :  (Task, ActiveJob::Continuation::Step) -> void
+    def wait_for_dependent_tasks: (Task, ActiveJob::Continuation::Step) -> void
+
+    # :  (Task, ActiveJob::Continuation::Step) -> void
+    def wait_for_map_task_completion: (Task, ActiveJob::Continuation::Step) -> void
+
+    # :  (Task) -> void
+    def update_task_outputs: (Task) -> void
+  end
+end

@@ -1,0 +1,5 @@
+# Generated from lib/job_flow/version.rb with RBS::Inline
+
+module JobFlow
+  VERSION: ::String
+end

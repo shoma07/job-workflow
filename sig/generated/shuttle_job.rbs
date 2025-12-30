@@ -1,6 +1,0 @@
-# Generated from lib/shuttle_job.rb with RBS::Inline
-
-module ShuttleJob
-  class Error < StandardError
-  end
-end

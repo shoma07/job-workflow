@@ -1,6 +1,6 @@
-# ShuttleJob Complete Guide
+# JobFlow Complete Guide
 
-Welcome to the comprehensive guide for ShuttleJob. This document provides information on how to effectively use ShuttleJob, from basic usage to advanced features.
+Welcome to the comprehensive guide for JobFlow. This document provides information on how to effectively use JobFlow, from basic usage to advanced features.
 
 ---
 
@@ -41,9 +41,9 @@ Welcome to the comprehensive guide for ShuttleJob. This document provides inform
 
 ## Getting Started
 
-### What is ShuttleJob?
+### What is JobFlow?
 
-ShuttleJob is a declarative workflow orchestration engine for Ruby on Rails applications. Built on top of ActiveJob, it allows you to write complex workflows using a concise DSL.
+JobFlow is a declarative workflow orchestration engine for Ruby on Rails applications. Built on top of ActiveJob, it allows you to write complex workflows using a concise DSL.
 
 #### Key Features
 
@@ -59,7 +59,7 @@ ShuttleJob is a declarative workflow orchestration engine for Ruby on Rails appl
 #### Adding to Gemfile
 
 ```ruby
-gem 'shuttle_job'
+gem 'job-flow'
 ```
 
 Run:
@@ -136,7 +136,7 @@ Let's create a simple ETL (Extract-Transform-Load) workflow.
 ```ruby
 # app/jobs/data_pipeline_job.rb
 class DataPipelineJob < ApplicationJob
-  include ShuttleJob::DSL
+  include JobFlow::DSL
   
   # Define arguments (immutable inputs)
   argument :source_id, "Integer"
@@ -181,21 +181,21 @@ Dependencies are automatically topologically sorted to ensure correct execution 
 
 #### Debugging and Logging
 
-ShuttleJob outputs workflow execution status to the standard Rails logger.
+JobFlow outputs workflow execution status to the standard Rails logger.
 
 ```ruby
 # config/environments/development.rb
 config.log_level = :debug
 
 # Log output example
-# [ShuttleJob] Starting workflow: DataPipelineJob
-# [ShuttleJob] Executing task: extract
-# [ShuttleJob] Task extract completed
-# [ShuttleJob] Executing task: transform
-# [ShuttleJob] Task transform completed
-# [ShuttleJob] Executing task: load
-# [ShuttleJob] Task load completed
-# [ShuttleJob] Workflow completed
+# [JobFlow] Starting workflow: DataPipelineJob
+# [JobFlow] Executing task: extract
+# [JobFlow] Task extract completed
+# [JobFlow] Executing task: transform
+# [JobFlow] Task transform completed
+# [JobFlow] Executing task: load
+# [JobFlow] Task load completed
+# [JobFlow] Workflow completed
 ```
 
 ---
@@ -255,7 +255,7 @@ end
 
 #### Dependency Resolution Order
 
-ShuttleJob automatically topologically sorts dependencies.
+JobFlow automatically topologically sorts dependencies.
 
 ```ruby
 # Correct order is executed regardless of definition order
@@ -282,7 +282,7 @@ end
 
 ```ruby
 class MyWorkflowJob < ApplicationJob
-  include ShuttleJob::DSL
+  include JobFlow::DSL
   
   # Field names only
   argument :user_id, :email, :status
@@ -301,7 +301,7 @@ Type information is specified as **strings**. This is used for RBS generation an
 
 ```ruby
 class TypedWorkflowJob < ApplicationJob
-  include ShuttleJob::DSL
+  include JobFlow::DSL
   
   # Type information specified as strings (for RBS generation)
   argument :user_id, "Integer"
@@ -449,7 +449,7 @@ end
 
 ## Task Outputs
 
-ShuttleJob allows tasks to define and collect outputs, making it easy to access task execution results. This is particularly useful when you need to use results from previous tasks in subsequent tasks or when collecting results from parallel map tasks.
+JobFlow allows tasks to define and collect outputs, making it easy to access task execution results. This is particularly useful when you need to use results from previous tasks in subsequent tasks or when collecting results from parallel map tasks.
 
 ### Defining Task Outputs
 
@@ -459,7 +459,7 @@ Use the `output:` option to define the structure of task outputs. Specify output
 
 ```ruby
 class DataProcessingJob < ApplicationJob
-  include ShuttleJob::DSL
+  include JobFlow::DSL
   
   argument :input_value, "Integer", default: 0
   
@@ -487,7 +487,7 @@ Outputs from map tasks are collected as an array, with one output per iteration.
 
 ```ruby
 class BatchCalculationJob < ApplicationJob
-  include ShuttleJob::DSL
+  include JobFlow::DSL
   
   argument :numbers, "Array[Integer]", default: []
   
@@ -627,7 +627,7 @@ Use Context fields when you need to:
 
 ```ruby
 class WellDesignedJob < ApplicationJob
-  include ShuttleJob::DSL
+  include JobFlow::DSL
   
   # Arguments for configuration
   argument :user_id, "Integer"
@@ -713,7 +713,7 @@ end
 
 ## Parallel Processing
 
-ShuttleJob enables parallel processing of collection elements by specifying the `each:` option in a `task` definition. Based on the Fork-Join pattern, it provides efficient and safe parallel execution.
+JobFlow enables parallel processing of collection elements by specifying the `each:` option in a `task` definition. Based on the Fork-Join pattern, it provides efficient and safe parallel execution.
 
 ### Collection Task Basics
 
@@ -721,7 +721,7 @@ ShuttleJob enables parallel processing of collection elements by specifying the 
 
 ```ruby
 class BatchProcessingJob < ApplicationJob
-  include ShuttleJob::DSL
+  include JobFlow::DSL
   
   argument :user_ids, "Array[Integer]", default: []
   
@@ -822,7 +822,7 @@ end
 
 ## Error Handling
 
-ShuttleJob provides robust error handling features. With retry strategies, timeouts, and custom error handling, you can build reliable workflows.
+JobFlow provides robust error handling features. With retry strategies, timeouts, and custom error handling, you can build reliable workflows.
 
 ### Retry Strategies
 
@@ -954,7 +954,7 @@ end
 
 ## Conditional Execution
 
-ShuttleJob provides conditional execution features to selectively execute tasks based on runtime state.
+JobFlow provides conditional execution features to selectively execute tasks based on runtime state.
 
 ### Basic Conditional Execution
 
@@ -964,7 +964,7 @@ Execute task only if condition returns true.
 
 ```ruby
 class UserNotificationJob < ApplicationJob
-  include ShuttleJob::DSL
+  include JobFlow::DSL
   
   argument :user, "User"
   argument :notification_type, "String"
@@ -1000,7 +1000,7 @@ You can use any Ruby expression in the condition lambda.
 
 ```ruby
 class DataSyncJob < ApplicationJob
-  include ShuttleJob::DSL
+  include JobFlow::DSL
   
   argument :force_sync, "TrueClass | FalseClass", default: false
   argument :last_sync_at, "Time", default: nil
@@ -1023,7 +1023,7 @@ end
 
 ## Lifecycle Hooks
 
-ShuttleJob provides lifecycle hooks to insert processing before and after task execution. Use `before`, `after`, and `around` hooks to implement cross-cutting concerns.
+JobFlow provides lifecycle hooks to insert processing before and after task execution. Use `before`, `after`, and `around` hooks to implement cross-cutting concerns.
 
 ### Hook Types
 
@@ -1033,7 +1033,7 @@ Execute processing before task execution.
 
 ```ruby
 class ValidationWorkflowJob < ApplicationJob
-  include ShuttleJob::DSL
+  include JobFlow::DSL
   
   argument :order_id, "Integer"
   
@@ -1062,7 +1062,7 @@ Execute processing after task execution.
 
 ```ruby
 class NotificationWorkflowJob < ApplicationJob
-  include ShuttleJob::DSL
+  include JobFlow::DSL
   
   argument :user_id, "Integer"
   
@@ -1096,7 +1096,7 @@ Execute processing that wraps task execution.
 
 ```ruby
 class MetricsWorkflowJob < ApplicationJob
-  include ShuttleJob::DSL
+  include JobFlow::DSL
   
   # Measure execution time
   around :expensive_task do |ctx, task|
@@ -1126,7 +1126,7 @@ end
 
 ## Namespaces
 
-Logically grouping tasks improves readability and maintainability of complex workflows. ShuttleJob provides namespace functionality.
+Logically grouping tasks improves readability and maintainability of complex workflows. JobFlow provides namespace functionality.
 
 ### Basic Namespaces
 
@@ -1136,7 +1136,7 @@ Group related tasks.
 
 ```ruby
 class ECommerceOrderJob < ApplicationJob
-  include ShuttleJob::DSL
+  include JobFlow::DSL
   
   argument :order, "Order"
   
@@ -1204,7 +1204,7 @@ Tasks in namespaces are identified as `:namespace:task_name` at runtime:
 
 ## Saga Pattern
 
-The Saga pattern is a design pattern for managing distributed transactions. ShuttleJob allows you to define compensation actions to build rollback-capable workflows.
+The Saga pattern is a design pattern for managing distributed transactions. JobFlow allows you to define compensation actions to build rollback-capable workflows.
 
 ### What is the Saga Pattern?
 
@@ -1227,8 +1227,8 @@ Step2 compensation ← Step1 compensation (reverse order)
 
 ```ruby
 class BookingWorkflowJob < ApplicationJob
-  include ShuttleJob::DSL
-  include ShuttleJob::Saga
+  include JobFlow::DSL
+  include JobFlow::Saga
   
   argument :user_id, "Integer"
   argument :dates, "Hash"
@@ -1303,7 +1303,7 @@ end
 
 ## Throttling
 
-ShuttleJob provides semaphore-based throttling to handle external API rate limits and protect shared resources.
+JobFlow provides semaphore-based throttling to handle external API rate limits and protect shared resources.
 
 ### Basic Throttling
 
@@ -1313,7 +1313,7 @@ Limit concurrent execution by specifying the `throttle` option on a task.
 
 ```ruby
 class ExternalAPIJob < ApplicationJob
-  include ShuttleJob::DSL
+  include JobFlow::DSL
   
   argument :user_ids, "Array[Integer]"
   
@@ -1365,7 +1365,7 @@ end
 
 ## Production Deployment
 
-This section covers settings and best practices for safely running ShuttleJob in production.
+This section covers settings and best practices for safely running JobFlow in production.
 
 ### SolidQueue Configuration
 
@@ -1437,7 +1437,7 @@ config.cache_store = :solid_cache_store, {
 
 ## Testing Strategy
 
-This section covers effective testing methods for workflows built with ShuttleJob.
+This section covers effective testing methods for workflows built with JobFlow.
 
 ### Unit Testing
 
@@ -1451,8 +1451,8 @@ RSpec.describe UserRegistrationJob do
   describe 'task: validate_email' do
     it 'validates correct email format' do
       job = described_class.new
-      arguments = ShuttleJob::Arguments.new(email: 'user@example.com')
-      ctx = ShuttleJob::Context.new(arguments: arguments)
+      arguments = JobFlow::Arguments.new(email: 'user@example.com')
+      ctx = JobFlow::Context.new(arguments: arguments)
       
       task = described_class._workflow_tasks[:validate_email]
       expect { job.instance_exec(ctx, &task[:block]) }.not_to raise_error
@@ -1460,8 +1460,8 @@ RSpec.describe UserRegistrationJob do
     
     it 'raises error for invalid email' do
       job = described_class.new
-      arguments = ShuttleJob::Arguments.new(email: 'invalid')
-      ctx = ShuttleJob::Context.new(arguments: arguments)
+      arguments = JobFlow::Arguments.new(email: 'invalid')
+      ctx = JobFlow::Context.new(arguments: arguments)
       
       task = described_class._workflow_tasks[:validate_email]
       expect { job.instance_exec(ctx, &task[:block]) }.to raise_error(/Invalid email/)
@@ -1471,11 +1471,11 @@ RSpec.describe UserRegistrationJob do
   describe 'task: create_user' do
     it 'creates a new user' do
       job = described_class.new
-      arguments = ShuttleJob::Arguments.new(
+      arguments = JobFlow::Arguments.new(
         email: 'user@example.com',
         password: 'password123'
       )
-      ctx = ShuttleJob::Context.new(arguments: arguments)
+      ctx = JobFlow::Context.new(arguments: arguments)
       
       task = described_class._workflow_tasks[:create_user]
       
@@ -1496,13 +1496,13 @@ end
 
 ## Troubleshooting
 
-This section covers common issues encountered during ShuttleJob operation and their solutions.
+This section covers common issues encountered during JobFlow operation and their solutions.
 
 ### Common Issues
 
 #### CircularDependencyError
 
-**Symptom**: Workflow crashes with `ShuttleJob::CircularDependencyError`
+**Symptom**: Workflow crashes with `JobFlow::CircularDependencyError`
 
 ```ruby
 # ❌ Circular dependency
@@ -1530,7 +1530,7 @@ end
 
 #### UnknownTaskError
 
-**Symptom**: `ShuttleJob::UnknownTaskError: Unknown task: :typo_task`
+**Symptom**: `JobFlow::UnknownTaskError: Unknown task: :typo_task`
 
 ```ruby
 # ❌ Depending on non-existent task
@@ -1552,7 +1552,7 @@ end
 
 ## API Reference
 
-Detailed reference for all DSL methods and classes in ShuttleJob.
+Detailed reference for all DSL methods and classes in JobFlow.
 
 ### DSL Methods
 
@@ -1654,13 +1654,13 @@ end
 
 ## Type Definitions Guide
 
-ShuttleJob uses rbs-inline to build type-safe workflows.
+JobFlow uses rbs-inline to build type-safe workflows.
 
 ### rbs-inline Basics
 
 #### Three Type Definition Methods
 
-ShuttleJob uses the following priority for type definitions:
+JobFlow uses the following priority for type definitions:
 
 1. **rbs-inline (`: syntax`)** - Highest priority
 2. **rbs-inline (`@rbs`)** - When `: syntax` is insufficient
@@ -1696,7 +1696,7 @@ end
 
 ## Best Practices
 
-Best practices, design patterns, and recommendations for effective ShuttleJob usage.
+Best practices, design patterns, and recommendations for effective JobFlow usage.
 
 ### Workflow Design
 
@@ -1707,7 +1707,7 @@ Best practices, design patterns, and recommendations for effective ShuttleJob us
 ```ruby
 # ✅ Recommended: Follow single responsibility principle
 class WellDesignedWorkflowJob < ApplicationJob
-  include ShuttleJob::DSL
+  include JobFlow::DSL
   
   argument :data, "Hash"
   
@@ -1738,7 +1738,7 @@ end
 
 # ❌ Not recommended: Multiple responsibilities in one task
 class PoorlyDesignedWorkflowJob < ApplicationJob
-  include ShuttleJob::DSL
+  include JobFlow::DSL
   
   argument :data, "Hash"
   
@@ -1783,4 +1783,4 @@ end
 
 ---
 
-This completes the comprehensive guide to ShuttleJob. This document contains all the information needed to effectively use ShuttleJob, from basics to advanced features and troubleshooting.
+This completes the comprehensive guide to JobFlow. This document contains all the information needed to effectively use JobFlow, from basics to advanced features and troubleshooting.

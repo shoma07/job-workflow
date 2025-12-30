@@ -2,7 +2,7 @@
 
 source "https://rubygems.org"
 
-# Specify your gem's dependencies in shuttle_job.gemspec
+# Specify your gem's dependencies in job-flow.gemspec
 gemspec
 
 gem "irb", require: false
