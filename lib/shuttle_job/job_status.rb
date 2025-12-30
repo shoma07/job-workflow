@@ -15,6 +15,11 @@ module ShuttleJob
       task_job_statuses.each { |task_job_status| update_task_job_status(task_job_status) }
     end
 
+    #:  (task_name: Symbol) -> Array[TaskJobStatus]
+    def fetch_all(task_name:)
+      task_job_statuses.fetch(task_name, []).compact
+    end
+
     #:  (task_name: Symbol, ?index: Integer?) -> TaskJobStatus?
     def fetch(task_name:, index: nil)
       task_job_statuses.fetch(task_name, [])[index || 0]

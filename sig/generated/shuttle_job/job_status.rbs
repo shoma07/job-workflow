@@ -8,6 +8,9 @@ module ShuttleJob
     # :  (?task_job_statuses: Array[TaskJobStatus]) -> void
     def initialize: (?task_job_statuses: Array[TaskJobStatus]) -> void
 
+    # :  (task_name: Symbol) -> Array[TaskJobStatus]
+    def fetch_all: (task_name: Symbol) -> Array[TaskJobStatus]
+
     # :  (task_name: Symbol, ?index: Integer?) -> TaskJobStatus?
     def fetch: (task_name: Symbol, ?index: Integer?) -> TaskJobStatus?
 
