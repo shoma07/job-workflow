@@ -219,7 +219,6 @@ RSpec.describe ShuttleJob::JobStatus do
     subject(:update_task_job_statuses_from_jobs) do
       job_status.update_task_job_statuses_from_jobs(task_name: task_name, jobs: jobs)
     end
-
     let(:job_status) { described_class.new }
     let(:task_name) { :my_task }
     let(:klass) do
@@ -229,11 +228,16 @@ RSpec.describe ShuttleJob::JobStatus do
     end
     let(:jobs) { [klass.new, klass.new] }
 
+    before do
+      allow(jobs[0]).to receive_messages(finished?: false, failed?: false, claimed?: true)
+      allow(jobs[1]).to receive_messages(finished?: true, failed?: false, claimed?: false)
+    end
+
     it "creates TaskJobStatus for each job with correct index" do
       update_task_job_statuses_from_jobs
       expect(job_status.flat_task_job_statuses).to contain_exactly(
-        have_attributes(task_name: :my_task, job_id: jobs[0].job_id, each_index: 0, status: :pending),
-        have_attributes(task_name: :my_task, job_id: jobs[1].job_id, each_index: 1, status: :pending)
+        have_attributes(task_name: :my_task, job_id: jobs[0].job_id, each_index: 0, status: :running),
+        have_attributes(task_name: :my_task, job_id: jobs[1].job_id, each_index: 1, status: :succeeded)
       )
     end
   end
