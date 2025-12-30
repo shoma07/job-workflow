@@ -6,13 +6,6 @@ module ShuttleJob
     attr_reader :output #: Output
     attr_reader :job_status #: JobStatus
 
-    class << self
-      #:  (Workflow) -> Context
-      def from_workflow(workflow)
-        new(arguments: workflow.build_arguments_hash)
-      end
-    end
-
     #:  (
     #     arguments: Hash[Symbol, untyped],
     #     ?each_context: Hash[Symbol, untyped],

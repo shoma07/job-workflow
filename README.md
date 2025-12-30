@@ -34,22 +34,23 @@ bundle install
 class DataPipelineJob < ApplicationJob
   include ShuttleJob::DSL
   
-  # Define context fields
-  context :source_id, "Integer"
-  context :raw_data, "String"
-  context :processed_data, "Hash"
+  # Define arguments (immutable inputs)
+  argument :source_id, "Integer"
   
-  # Define tasks with dependencies
-  task :extract do |ctx|
-    ctx.raw_data = ExternalAPI.fetch(ctx.source_id)
+  # Define tasks with dependencies and outputs
+  task :extract, output: { raw_data: "String" } do |ctx|
+    source_id = ctx.arguments.source_id
+    { raw_data: ExternalAPI.fetch(source_id) }
   end
   
-  task :transform, depends_on: [:extract] do |ctx|
-    ctx.processed_data = JSON.parse(ctx.raw_data)
+  task :transform, depends_on: [:extract], output: { processed_data: "Hash" } do |ctx|
+    raw_data = ctx.output.extract.raw_data
+    { processed_data: JSON.parse(raw_data) }
   end
   
   task :load, depends_on: [:transform] do |ctx|
-    DataModel.create!(ctx.processed_data)
+    processed_data = ctx.output.transform.processed_data
+    DataModel.create!(processed_data)
   end
 end
 
@@ -65,7 +66,7 @@ Collect structured outputs from tasks for use in subsequent steps:
 class AnalyticsJob < ApplicationJob
   include ShuttleJob::DSL
   
-  context :user_ids, "Array[Integer]", default: []
+  argument :user_ids, "Array[Integer]", default: []
   
   # Task with defined output structure
   task :fetch_users, 
@@ -99,7 +100,7 @@ Process collections in parallel with automatic concurrency management:
 class BatchProcessingJob < ApplicationJob
   include ShuttleJob::DSL
   
-  context :items, "Array[Integer]", default: []
+  argument :items, "Array[Integer]", default: []
   
   # Process each item in parallel
   task :process_items, 
@@ -118,13 +119,32 @@ end
 
 ## Core Concepts
 
-### Context
+### Arguments and Context
 
-Context is a shared data store for the entire workflow. Each task can read and write Context fields:
+**Arguments** are immutable inputs passed to the workflow. They cannot be modified during execution:
 
 ```ruby
-context :user_id, "Integer"        # Required field
-context :result, "String", default: "" # Optional with default
+argument :user_id, "Integer"                    # Required argument
+argument :config, "Hash", default: {}          # Optional with default
+
+# Access arguments in tasks
+task :example do |ctx|
+  user_id = ctx.arguments.user_id  # Read-only access
+end
+```
+
+**Context** provides access to arguments and task outputs. Arguments are immutable; to pass data between tasks, use task outputs:
+
+```ruby
+task :fetch_data, output: { result: "String" } do |ctx|
+  user_id = ctx.arguments.user_id
+  { result: fetch_from_api(user_id) }
+end
+
+task :process, depends_on: [:fetch_data] do |ctx|
+  result = ctx.output.fetch_data.result  # Access output from previous task
+  process_data(result)
+end
 ```
 
 ### Tasks
