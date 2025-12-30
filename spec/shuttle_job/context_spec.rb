@@ -7,8 +7,8 @@ RSpec.describe ShuttleJob::Context do
     klass = Class.new(ActiveJob::Base) do
       include ShuttleJob::DSL
 
-      context :ctx_one, "String", default: nil
-      context :ctx_two, "Integer", default: 1
+      context :arg_one, "String", default: nil
+      context :arg_two, "Integer", default: 1
     end
     klass.new
   end
@@ -16,11 +16,13 @@ RSpec.describe ShuttleJob::Context do
   describe ".from_workflow" do
     subject(:from_workflow) { described_class.from_workflow(workflow) }
 
-    it "creates a context with raw_data from workflow contexts" do
+    it "creates a context with arguments from workflow contexts" do
       expect(from_workflow).to have_attributes(
-        raw_data: { ctx_one: nil, ctx_two: 1 },
-        ctx_one: nil,
-        ctx_two: 1
+        arguments: have_attributes(
+          to_h: { arg_one: nil, arg_two: 1 },
+          arg_one: nil,
+          arg_two: 1
+        )
       )
     end
   end
@@ -29,13 +31,15 @@ RSpec.describe ShuttleJob::Context do
     subject(:init) { described_class.new(**arguments) }
 
     context "when option is not provided" do
-      let(:arguments) { { raw_data: { ctx_one: nil, ctx_two: 1 } } }
+      let(:arguments) { { arguments: { arg_one: nil, arg_two: 1 } } }
 
-      it "creates a context with given raw_data" do
+      it "creates a context with given arguments" do
         expect(init).to have_attributes(
-          raw_data: { ctx_one: nil, ctx_two: 1 },
-          ctx_one: nil,
-          ctx_two: 1
+          arguments: have_attributes(
+            to_h: { arg_one: nil, arg_two: 1 },
+            arg_one: nil,
+            arg_two: 1
+          )
         )
       end
     end
@@ -43,7 +47,7 @@ RSpec.describe ShuttleJob::Context do
     context "when each_context is provided" do
       let(:arguments) do
         {
-          raw_data: { ctx_one: nil, ctx_two: [1, 2] },
+          arguments: { arg_one: nil, arg_two: [1, 2] },
           each_context: {
             parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076",
             index: 1
@@ -51,17 +55,16 @@ RSpec.describe ShuttleJob::Context do
         }
       end
 
-      it "creates a context with given raw_data and each_context" do
+      it "creates a context with given arguments and each_context" do
         expect(init).to have_attributes(
-          raw_data: { ctx_one: nil, ctx_two: [1, 2] },
-          ctx_one: nil,
-          ctx_two: [1, 2]
-        ).and(
-          have_attributes(
-            _each_context: have_attributes(
-              parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076",
-              index: 1
-            )
+          arguments: have_attributes(
+            to_h: { arg_one: nil, arg_two: [1, 2] },
+            arg_one: nil,
+            arg_two: [1, 2]
+          ),
+          _each_context: have_attributes(
+            parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076",
+            index: 1
           )
         )
       end
@@ -75,7 +78,7 @@ RSpec.describe ShuttleJob::Context do
     context "when task_outputs is provided" do
       let(:arguments) do
         {
-          raw_data: { ctx_one: nil, ctx_two: 1 },
+          arguments: { arg_one: nil, arg_two: 1 },
           task_outputs: [
             { task_name: :task_one, each_index: nil, data: { result: 100 } },
             { task_name: :task_two, each_index: nil, data: { result: 200 } }
@@ -96,7 +99,7 @@ RSpec.describe ShuttleJob::Context do
     context "when task_job_statuses is provided" do
       let(:arguments) do
         {
-          raw_data: { ctx_one: nil, ctx_two: 1 },
+          arguments: { arg_one: nil, arg_two: 1 },
           task_job_statuses: [
             { task_name: :task_a, job_id: "job1", each_index: 0, status: :succeeded },
             { task_name: :task_a, job_id: "job2", each_index: 1, status: :pending }
@@ -117,7 +120,7 @@ RSpec.describe ShuttleJob::Context do
     end
 
     context "when no task_job_statuses is provided" do
-      let(:arguments) { { raw_data: { ctx_one: nil, ctx_two: 1 } } }
+      let(:arguments) { { arguments: { arg_one: nil, arg_two: 1 } } }
 
       it "creates a context with empty job status" do
         expect(init.job_status).to be_a(ShuttleJob::JobStatus)
@@ -129,20 +132,11 @@ RSpec.describe ShuttleJob::Context do
     end
   end
 
-  describe "#merge!" do
-    subject(:merge!) { ctx.merge!(other_raw_data) }
-
-    let(:other_raw_data) do
-      {
-        ctx_one: "value_one",
-        ctx_three: "value_three"
-      }
-    end
+  describe "#arguments" do
+    subject(:arguments) { ctx.arguments }
 
     it do
-      expect { merge! }.to(
-        change(ctx, :raw_data).from({ ctx_one: nil, ctx_two: 1 }).to({ ctx_one: "value_one", ctx_two: 1 })
-      )
+      expect(arguments).to have_attributes(class: ShuttleJob::Arguments, arg_one: nil, arg_two: 1)
     end
   end
 
@@ -227,7 +221,7 @@ RSpec.describe ShuttleJob::Context do
 
     let(:ctx) do
       described_class.new(
-        raw_data: {},
+        arguments: {},
         each_context: { parent_job_id:, task_name: }
       )
     end
@@ -261,71 +255,24 @@ RSpec.describe ShuttleJob::Context do
     end
   end
 
-  describe "#respond_to?" do
-    subject(:respond_to?) { ctx.respond_to?(method_name) }
-
-    context "when reader method" do
-      let(:method_name) { :ctx_one }
-
-      it { is_expected.to be true }
+  describe "#arguments attribute" do
+    it "provides access to context values" do
+      expect(ctx.arguments).to have_attributes(
+        class: ShuttleJob::Arguments,
+        to_h: { arg_one: nil, arg_two: 1 },
+        arg_one: nil,
+        arg_two: 1
+      )
     end
 
-    context "when writer method" do
-      let(:method_name) { :ctx_two= }
-
-      it { is_expected.to be true }
+    it "allows merging new data" do
+      merged = ctx.arguments.merge(arg_one: "updated")
+      expect(merged.arg_one).to eq("updated")
     end
 
-    context "when undefined method" do
-      let(:method_name) { :ctx_three }
-
-      it { is_expected.to be false }
-    end
-  end
-
-  describe "reader method" do
-    context "without args" do
-      subject(:reader) { ctx.ctx_two }
-
-      it { is_expected.to eq 1 }
-    end
-
-    context "when using public_send without args" do
-      subject(:reader) { ctx.public_send(:ctx_two) } # rubocop:disable Style/SendWithLiteralMethodName
-
-      it { is_expected.to eq 1 }
-    end
-
-    context "with args" do
-      subject(:reader) { ctx.ctx_two(1) }
-
-      it { expect { reader }.to raise_error(NoMethodError) }
-    end
-  end
-
-  describe "writer method" do
-    context "without args" do
-      subject(:writer) { ctx.public_send(:ctx_two=) }
-
-      it { expect { writer }.to raise_error(NoMethodError) }
-    end
-
-    context "with one args" do
-      subject(:writer) { ctx.ctx_two = 2 }
-
-      it { expect { writer }.to change { ctx.raw_data[:ctx_two] }.from(1).to(2) }
-    end
-
-    context "when using public_send with one arg" do
-      subject(:writer) { ctx.public_send(:ctx_two=, 2) }
-
-      it { expect { writer }.to change { ctx.raw_data[:ctx_two] }.from(1).to(2) }
-    end
-
-    context "with two args" do
-      subject(:writer) { ctx.public_send(:ctx_two=, 2, 3) }
-
-      it { expect { writer }.to raise_error(NoMethodError) }
+    it "ignores unknown keys during merge" do
+      merged = ctx.arguments.merge(arg_three: "new_value")
+      expect(merged.to_h).to include(arg_one: nil, arg_two: 1)
     end
   end
 
@@ -428,13 +375,6 @@ RSpec.describe ShuttleJob::Context do
       expect(values).to eq([1, 2, 3])
     end
 
-    it "allows modifying context state during iteration" do
-      with_each_value.each do |each_ctx|
-        each_ctx.result = "item_#{each_ctx.each_value}"
-      end
-      expect(ctx.result).to eq("item_3")
-    end
-
     it "resets each_value state after iteration" do
       with_each_value.to_a
       expect { ctx.each_value }.to raise_error("each_value can be called only within each_values block")
@@ -479,7 +419,7 @@ RSpec.describe ShuttleJob::Context do
   describe "#each_task_output" do
     subject(:each_task_output) { ctx.each_task_output }
 
-    let(:ctx) { described_class.new(raw_data: {}, each_context:, task_outputs:) }
+    let(:ctx) { described_class.new(arguments: {}, each_context:, task_outputs:) }
 
     context "when called outside with_each_value" do
       let(:ctx) { described_class.from_workflow(workflow) }
@@ -503,7 +443,7 @@ RSpec.describe ShuttleJob::Context do
       let(:each_context) do
         {
           parent_job_id: "parent_job",
-          task_name: "task_name",
+          task_name: :task_name,
           index: 2
         }
       end

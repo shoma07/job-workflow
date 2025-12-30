@@ -5,18 +5,12 @@ module ShuttleJob
     #:  () -> void
     def initialize
       @task_graph = TaskGraph.new
-      @context_defs = {} #: Hash[Symbol, ContextDef]
       @argument_defs = {} #: Hash[Symbol, ArgumentDef]
     end
 
     #:  (Task) -> void
     def add_task(task)
       @task_graph.add(task)
-    end
-
-    #:  (ContextDef) -> void
-    def add_context(context_def)
-      @context_defs[context_def.name] = context_def
     end
 
     #:  (ArgumentDef) -> void
@@ -39,18 +33,16 @@ module ShuttleJob
       @argument_defs.values
     end
 
-    #:  () -> Array[ContextDef]
-    def contexts
-      @context_defs.values
+    #:  () -> Hash[Symbol, untyped]
+    def build_arguments_hash
+      arguments.to_h { |def_obj| [def_obj.name, def_obj.default] }
     end
 
     #:  (Hash[untyped, untyped] | Context) -> Context
     def build_context(initial_context)
       return initial_context if initial_context.is_a?(Context)
 
-      context = Context.from_workflow(self)
-      context.merge!(initial_context.symbolize_keys)
-      context
+      Context.new(arguments: build_arguments_hash.merge(initial_context.symbolize_keys))
     end
   end
 end
