@@ -41,6 +41,90 @@ RSpec.describe ShuttleJob::Output do
     end
   end
 
+  describe "#fetch_all" do
+    subject(:fetch_all) { output.fetch_all(task_name:) }
+
+    let(:output) do
+      described_class.new(
+        task_outputs: [
+          ShuttleJob::TaskOutput.new(task_name: :single_task, data: { value: 1 }),
+          ShuttleJob::TaskOutput.new(task_name: :multi_task, each_index: 0, data: { value: 10 }),
+          ShuttleJob::TaskOutput.new(task_name: :multi_task, each_index: 1, data: { value: 20 })
+        ]
+      )
+    end
+
+    context "when fetching a single task" do
+      let(:task_name) { :single_task }
+
+      it "returns an array with one TaskOutput" do
+        expect(fetch_all).to contain_exactly(
+          have_attributes(value: 1)
+        )
+      end
+    end
+
+    context "when fetching a multi (each) task" do
+      let(:task_name) { :multi_task }
+
+      it "returns an array with all TaskOutputs for that task" do
+        expect(fetch_all).to contain_exactly(
+          have_attributes(value: 10),
+          have_attributes(value: 20)
+        )
+      end
+    end
+
+    context "when fetching a non-existent task" do
+      let(:task_name) { :non_existent_task }
+
+      it "returns an empty array" do
+        expect(fetch_all).to be_empty
+      end
+    end
+  end
+
+  describe "#fetch" do
+    subject(:fetch) { output.fetch(task_name:, each_index:) }
+
+    let(:output) do
+      described_class.new(
+        task_outputs: [
+          ShuttleJob::TaskOutput.new(task_name: :single_task, data: { value: 1 }),
+          ShuttleJob::TaskOutput.new(task_name: :multi_task, each_index: 0, data: { value: 10 }),
+          ShuttleJob::TaskOutput.new(task_name: :multi_task, each_index: 1, data: { value: 20 })
+        ]
+      )
+    end
+
+    context "when fetching a single task" do
+      let(:task_name) { :single_task }
+      let(:each_index) { nil }
+
+      it "returns the TaskOutput" do
+        expect(fetch).to have_attributes(value: 1)
+      end
+    end
+
+    context "when fetching a multi (each) task with valid index" do
+      let(:task_name) { :multi_task }
+      let(:each_index) { 1 }
+
+      it "returns the TaskOutput at that index" do
+        expect(fetch).to have_attributes(value: 20)
+      end
+    end
+
+    context "when fetching a multi (each) task with invalid index" do
+      let(:task_name) { :multi_task }
+      let(:each_index) { 5 }
+
+      it "returns nil" do
+        expect(fetch).to be_nil
+      end
+    end
+  end
+
   describe "#add_task_output" do
     subject(:add) do
       task_outputs.each { |task_output| output.add_task_output(task_output) }
@@ -276,6 +360,82 @@ RSpec.describe ShuttleJob::Output do
           have_attributes(result: 30)
         )
       )
+    end
+  end
+
+  describe "#update_task_outputs_from_jobs" do
+    subject(:update_task_outputs_from_jobs) { output.update_task_outputs_from_jobs(jobs) }
+
+    let(:output) { described_class.new }
+    let(:all_jobs) do
+      stub_const("SolidQueue::Job", Class.new)
+      [SolidQueue::Job.new, SolidQueue::Job.new, SolidQueue::Job.new]
+    end
+
+    before do
+      allow(all_jobs[0]).to receive(:arguments).and_return(
+        {
+          "shuttle_job_context" => ShuttleJob::ContextSerializer.instance.serialize(
+            ShuttleJob::Context.new(
+              raw_data: {},
+              each_context: { parent_job_id: "parent-id", task_name: :sample_task, index: 0, value: 10 },
+              task_outputs: [{ task_name: :sample_task, each_index: 0, data: { result: 42 } }]
+            )
+          )
+        }
+      )
+      allow(all_jobs[1]).to receive(:arguments).and_return(
+        {
+          "shuttle_job_context" => ShuttleJob::ContextSerializer.instance.serialize(
+            ShuttleJob::Context.new(
+              raw_data: {},
+              each_context: { parent_job_id: "parent-id", task_name: :sample_task, index: 1, value: 11 },
+              task_outputs: [{ task_name: :sample_task, each_index: 1, data: { result: 82 } }]
+            )
+          )
+        }
+      )
+      allow(all_jobs[2]).to receive(:arguments).and_return(
+        {
+          "shuttle_job_context" => ShuttleJob::ContextSerializer.instance.serialize(
+            ShuttleJob::Context.new(
+              raw_data: {},
+              each_context: { parent_job_id: "parent-id", task_name: :sample_task, index: 2, value: 12 },
+              task_outputs: []
+            )
+          )
+        }
+      )
+    end
+
+    context "when jobs are empty" do
+      let(:jobs) { [] }
+
+      it { expect { update_task_outputs_from_jobs }.not_to(change(output, :flat_task_outputs)) }
+    end
+
+    context "when jobs have outputs" do
+      let(:jobs) { all_jobs[0..1] }
+
+      it "merges task outputs from all jobs" do
+        expect { update_task_outputs_from_jobs }.to(
+          change { output.fetch_all(task_name: :sample_task) }.from([]).to(
+            contain_exactly(have_attributes(result: 42), have_attributes(result: 82))
+          )
+        )
+      end
+    end
+
+    context "when some jobs have no outputs" do
+      let(:jobs) { all_jobs[1..2] }
+
+      it "merges task outputs from jobs that have them" do
+        expect { update_task_outputs_from_jobs }.to(
+          change { output.fetch_all(task_name: :sample_task) }.from([]).to(
+            contain_exactly(have_attributes(result: 82))
+          )
+        )
+      end
     end
   end
 end

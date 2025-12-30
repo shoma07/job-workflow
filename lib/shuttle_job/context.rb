@@ -63,6 +63,15 @@ module ShuttleJob
       each_context.value
     end
 
+    #:  () -> TaskOutput?
+    def each_task_output
+      raise "each_task_output can be called only within each_values block" unless each_context.enabled?
+
+      task_name = each_context.task_name
+      each_index = each_context.index
+      output.fetch(task_name:, each_index:)
+    end
+
     #:  () -> EachContext
     def _each_context
       each_context
