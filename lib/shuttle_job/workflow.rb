@@ -6,6 +6,7 @@ module ShuttleJob
     def initialize
       @task_graph = TaskGraph.new
       @context_defs = {} #: Hash[Symbol, ContextDef]
+      @argument_defs = {} #: Hash[Symbol, ArgumentDef]
     end
 
     #:  (Task) -> void
@@ -18,6 +19,11 @@ module ShuttleJob
       @context_defs[context_def.name] = context_def
     end
 
+    #:  (ArgumentDef) -> void
+    def add_argument(argument_def)
+      @argument_defs[argument_def.name] = argument_def
+    end
+
     #:  () -> Array[Task]
     def tasks
       @task_graph.to_a
@@ -26,6 +32,11 @@ module ShuttleJob
     #:  (Symbol?) -> Task
     def fetch_task(task_name)
       @task_graph.fetch(task_name)
+    end
+
+    #:  () -> Array[ArgumentDef]
+    def arguments
+      @argument_defs.values
     end
 
     #:  () -> Array[ContextDef]
