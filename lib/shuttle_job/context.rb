@@ -7,16 +7,28 @@ module ShuttleJob
     attr_reader :job_status #: JobStatus
 
     #:  (
-    #     arguments: Hash[Symbol, untyped],
+    #     ?arguments: Hash[Symbol, untyped],
     #     ?each_context: Hash[Symbol, untyped],
     #     ?task_outputs: Array[Hash[Symbol, untyped]],
     #     ?task_job_statuses: Array[Hash[Symbol, untyped]]
     #   ) -> void
-    def initialize(arguments:, each_context: {}, task_outputs: [], task_job_statuses: [])
+    def initialize(arguments: {}, each_context: {}, task_outputs: [], task_job_statuses: [])
       self.arguments = Arguments.new(data: arguments)
       self.each_context = EachContext.new(**each_context.symbolize_keys)
       self.output = Output.from_hash_array(task_outputs)
       self.job_status = JobStatus.from_hash_array(task_job_statuses)
+    end
+
+    #:  (Hash[Symbol, untyped]) -> Context
+    def _init_arguments(arguments)
+      self.arguments = Arguments.new(data: arguments)
+      self
+    end
+
+    #:  (Hash[Symbol, untyped]) -> Context
+    def _update_arguments(other_arguments)
+      self.arguments = arguments.merge(other_arguments.symbolize_keys)
+      self
     end
 
     #:  (DSL) -> void

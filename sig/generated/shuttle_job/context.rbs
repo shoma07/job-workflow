@@ -9,12 +9,18 @@ module ShuttleJob
     attr_reader job_status: JobStatus
 
     # :  (
-    #      arguments: Hash[Symbol, untyped],
+    #      ?arguments: Hash[Symbol, untyped],
     #      ?each_context: Hash[Symbol, untyped],
     #      ?task_outputs: Array[Hash[Symbol, untyped]],
     #      ?task_job_statuses: Array[Hash[Symbol, untyped]]
     #    ) -> void
-    def initialize: (arguments: Hash[Symbol, untyped], ?each_context: Hash[Symbol, untyped], ?task_outputs: Array[Hash[Symbol, untyped]], ?task_job_statuses: Array[Hash[Symbol, untyped]]) -> void
+    def initialize: (?arguments: Hash[Symbol, untyped], ?each_context: Hash[Symbol, untyped], ?task_outputs: Array[Hash[Symbol, untyped]], ?task_job_statuses: Array[Hash[Symbol, untyped]]) -> void
+
+    # :  (Hash[Symbol, untyped]) -> Context
+    def _init_arguments: (Hash[Symbol, untyped]) -> Context
+
+    # :  (Hash[Symbol, untyped]) -> Context
+    def _update_arguments: (Hash[Symbol, untyped]) -> Context
 
     # :  (DSL) -> void
     def _current_job=: (DSL) -> void
