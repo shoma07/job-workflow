@@ -1,0 +1,57 @@
+# Generated from lib/job_flow/dsl.rb with RBS::Inline
+
+module JobFlow
+  module DSL
+    extend ActiveSupport::Concern
+
+    include ActiveJob::Continuable
+
+    extend ClassMethods
+
+    def class: () -> ClassMethods
+
+    def job_id: () -> String
+
+    def step: (Symbol, ?start: ActiveJob::Continuation::_Succ, ?isolated: bool) -> void
+            | (Symbol, ?start: ActiveJob::Continuation::_Succ, ?isolated: bool) { (ActiveJob::Continuation::Step) -> void } -> void
+
+    # :  (Hash[untyped, untyped] | Context) -> void
+    def perform: (Hash[untyped, untyped] | Context) -> void
+
+    # :  () -> Context?
+    def _context: () -> Context?
+
+    # :  () -> Hash[String, untyped]
+    def serialize: () -> Hash[String, untyped]
+
+    # :  (Hash[String, untyped]) -> void
+    def deserialize: (Hash[String, untyped]) -> void
+
+    module ClassMethods
+      def class_attribute: (Symbol, default: untyped) -> void
+
+      def _workflow: () -> Workflow
+
+      def new: (Context) -> DSL
+
+      def perform_all_later: (Array[DSL]) -> void
+
+      def limits_concurrency: (to: Integer, key: ^(untyped) -> untyped, ?duration: ActiveSupport::Duration?, ?group: String?, ?on_conflict: Symbol?) -> void
+
+      # :  (Symbol argument_name, String type, ?default: untyped) -> void
+      def argument: (Symbol argument_name, String type, ?default: untyped) -> void
+
+      # rubocop:disable Metrics/ParameterLists
+      #
+      # :  (
+      #     Symbol task_name,
+      #     ?each: Symbol?,
+      #     ?concurrency: Integer?,
+      #     ?output: Hash[Symbol, String],
+      #     ?depends_on: Array[Symbol],
+      #     ?condition: ^(Context) -> bool,
+      #   ) { (untyped) -> void } -> void
+      def task: (Symbol task_name, ?each: Symbol?, ?concurrency: Integer?, ?output: Hash[Symbol, String], ?depends_on: Array[Symbol], ?condition: ^(Context) -> bool) { (untyped) -> void } -> void
+    end
+  end
+end

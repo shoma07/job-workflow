@@ -1,0 +1,12 @@
+# Generated from lib/job_flow/output_def.rb with RBS::Inline
+
+module JobFlow
+  class OutputDef
+    attr_reader name: Symbol
+
+    attr_reader type: String
+
+    # :  (name: Symbol, type: String) -> void
+    def initialize: (name: Symbol, type: String) -> void
+  end
+end

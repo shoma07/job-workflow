@@ -1,0 +1,14 @@
+# Generated from lib/job_flow/argument_def.rb with RBS::Inline
+
+module JobFlow
+  class ArgumentDef
+    attr_reader name: Symbol
+
+    attr_reader type: String
+
+    attr_reader default: untyped
+
+    # :  (name: Symbol, type: String, default: untyped) -> void
+    def initialize: (name: Symbol, type: String, default: untyped) -> void
+  end
+end

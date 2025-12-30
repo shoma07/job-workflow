@@ -1,6 +1,6 @@
-# ShuttleJob
+# JobFlow
 
-ShuttleJob is a declarative workflow orchestration engine for Ruby on Rails applications. Built on top of ActiveJob, it allows you to write complex workflows using a concise, declarative DSL.
+JobFlow is a declarative workflow orchestration engine for Ruby on Rails applications. Built on top of ActiveJob, it allows you to write complex workflows using a concise, declarative DSL.
 
 ## Key Features
 
@@ -17,7 +17,7 @@ ShuttleJob is a declarative workflow orchestration engine for Ruby on Rails appl
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'shuttle_job'
+gem 'job-flow'
 ```
 
 And then execute:
@@ -32,7 +32,7 @@ bundle install
 
 ```ruby
 class DataPipelineJob < ApplicationJob
-  include ShuttleJob::DSL
+  include JobFlow::DSL
   
   # Define arguments (immutable inputs)
   argument :source_id, "Integer"
@@ -64,7 +64,7 @@ Collect structured outputs from tasks for use in subsequent steps:
 
 ```ruby
 class AnalyticsJob < ApplicationJob
-  include ShuttleJob::DSL
+  include JobFlow::DSL
   
   argument :user_ids, "Array[Integer]", default: []
   
@@ -98,7 +98,7 @@ Process collections in parallel with automatic concurrency management:
 
 ```ruby
 class BatchProcessingJob < ApplicationJob
-  include ShuttleJob::DSL
+  include JobFlow::DSL
   
   argument :items, "Array[Integer]", default: []
   
@@ -199,7 +199,7 @@ To install this gem onto your local machine, run `bundle exec rake install`.
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/shoma07/shuttle_job.
+Bug reports and pull requests are welcome on GitHub at https://github.com/shoma07/job-flow.
 
 ## License
 
