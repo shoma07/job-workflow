@@ -60,7 +60,8 @@ RSpec.describe ShuttleJob::ContextSerializer do
               "index" => nil,
               "value" => nil
             },
-            "task_outputs" => []
+            "task_outputs" => [],
+            "task_job_statuses" => []
           }
         )
       end
@@ -95,7 +96,8 @@ RSpec.describe ShuttleJob::ContextSerializer do
               "index" => 1,
               "value" => 10
             },
-            "task_outputs" => []
+            "task_outputs" => [],
+            "task_job_statuses" => []
           }
         )
       end
@@ -128,7 +130,8 @@ RSpec.describe ShuttleJob::ContextSerializer do
               "index" => nil,
               "value" => nil
             },
-            "task_outputs" => []
+            "task_outputs" => [],
+            "task_job_statuses" => []
           }
         )
       end
@@ -206,6 +209,52 @@ RSpec.describe ShuttleJob::ContextSerializer do
         )
       end
     end
+
+    context "when context has task_job_statuses" do
+      let(:context) do
+        ctx = ShuttleJob::Context.new(
+          raw_data:,
+          task_job_statuses: [
+            { task_name: :process_items, job_id: "job1", each_index: 0, status: :succeeded },
+            { task_name: :process_items, job_id: "job2", each_index: 1, status: :running }
+          ]
+        )
+        ctx
+      end
+
+      it "serializes task_job_statuses" do
+        expect(serialized).to include(
+          "task_job_statuses" => contain_exactly(
+            {
+              "_aj_symbol_keys" => [],
+              "task_name" => {
+                "_aj_serialized" => "ActiveJob::Serializers::SymbolSerializer",
+                "value" => "process_items"
+              },
+              "job_id" => "job1",
+              "each_index" => 0,
+              "status" => {
+                "_aj_serialized" => "ActiveJob::Serializers::SymbolSerializer",
+                "value" => "succeeded"
+              }
+            },
+            {
+              "_aj_symbol_keys" => [],
+              "task_name" => {
+                "_aj_serialized" => "ActiveJob::Serializers::SymbolSerializer",
+                "value" => "process_items"
+              },
+              "job_id" => "job2",
+              "each_index" => 1,
+              "status" => {
+                "_aj_serialized" => "ActiveJob::Serializers::SymbolSerializer",
+                "value" => "running"
+              }
+            }
+          )
+        )
+      end
+    end
   end
 
   describe "#deserialize" do
@@ -232,7 +281,8 @@ RSpec.describe ShuttleJob::ContextSerializer do
             "index" => nil,
             "value" => nil
           },
-          "task_outputs" => []
+          "task_outputs" => [],
+          "task_job_statuses" => []
         }
       end
 
@@ -283,7 +333,8 @@ RSpec.describe ShuttleJob::ContextSerializer do
             "index" => nil,
             "value" => nil
           },
-          "task_outputs" => []
+          "task_outputs" => [],
+          "task_job_statuses" => []
         }
       end
 
@@ -334,7 +385,8 @@ RSpec.describe ShuttleJob::ContextSerializer do
             "index" => nil,
             "value" => nil
           },
-          "task_outputs" => []
+          "task_outputs" => [],
+          "task_job_statuses" => []
         }
       end
 
@@ -459,6 +511,85 @@ RSpec.describe ShuttleJob::ContextSerializer do
 
       it "creates context with empty output" do
         expect(deserialized.output.flat_task_outputs).to be_empty
+      end
+    end
+
+    context "when task_job_statuses is provided" do
+      let(:serialized_hash) do
+        {
+          "_aj_serialized" => "ShuttleJob::ContextSerializer",
+          "raw_data" => {
+            "_aj_symbol_keys" => [],
+            "string_value" => "test",
+            "integer_value" => 42
+          },
+          "each_context" => {
+            "_aj_symbol_keys" => %w[parent_job_id task_name index value],
+            "parent_job_id" => nil,
+            "task_name" => nil,
+            "index" => nil,
+            "value" => nil
+          },
+          "task_outputs" => [],
+          "task_job_statuses" => [
+            {
+              "task_name" => {
+                "_aj_serialized" => "ActiveJob::Serializers::SymbolSerializer",
+                "value" => "process_items"
+              },
+              "job_id" => "job1",
+              "each_index" => 0,
+              "status" => {
+                "_aj_serialized" => "ActiveJob::Serializers::SymbolSerializer",
+                "value" => "succeeded"
+              }
+            },
+            {
+              "task_name" => {
+                "_aj_serialized" => "ActiveJob::Serializers::SymbolSerializer",
+                "value" => "process_items"
+              },
+              "job_id" => "job2",
+              "each_index" => 1,
+              "status" => {
+                "_aj_serialized" => "ActiveJob::Serializers::SymbolSerializer",
+                "value" => "running"
+              }
+            }
+          ]
+        }
+      end
+
+      it "deserializes task_job_statuses correctly" do
+        expect(deserialized.job_status.flat_task_job_statuses).to contain_exactly(
+          have_attributes(task_name: :process_items, job_id: "job1", each_index: 0, status: :succeeded),
+          have_attributes(task_name: :process_items, job_id: "job2", each_index: 1, status: :running)
+        )
+      end
+    end
+
+    context "when task_job_statuses is not provided" do
+      let(:serialized_hash) do
+        {
+          "_aj_serialized" => "ShuttleJob::ContextSerializer",
+          "raw_data" => {
+            "_aj_symbol_keys" => [],
+            "string_value" => "test",
+            "integer_value" => 42
+          },
+          "each_context" => {
+            "_aj_symbol_keys" => %w[parent_job_id task_name index value],
+            "parent_job_id" => nil,
+            "task_name" => nil,
+            "index" => nil,
+            "value" => nil
+          },
+          "task_outputs" => []
+        }
+      end
+
+      it "creates context with empty job_status" do
+        expect(deserialized.job_status.flat_task_job_statuses).to be_empty
       end
     end
   end
