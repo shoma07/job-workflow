@@ -38,11 +38,9 @@ module ShuttleJob
       arguments.to_h { |def_obj| [def_obj.name, def_obj.default] }
     end
 
-    #:  (Hash[untyped, untyped] | Context) -> Context
-    def build_context(initial_context)
-      return initial_context if initial_context.is_a?(Context)
-
-      Context.new(arguments: build_arguments_hash.merge(initial_context.symbolize_keys))
+    #:  () -> Context
+    def build_context
+      Context.new(arguments: arguments.to_h { |def_obj| [def_obj.name, def_obj.default] })
     end
   end
 end

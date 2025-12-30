@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe ShuttleJob::Context do
-  let(:ctx) { workflow.build_context({}) }
+  let(:ctx) { workflow.build_context }
   let(:workflow) { job.class._workflow }
   let(:job) do
     klass = Class.new(ActiveJob::Base) do
@@ -408,7 +408,7 @@ RSpec.describe ShuttleJob::Context do
     let(:ctx) { described_class.new(arguments: {}, each_context:, task_outputs:) }
 
     context "when called outside with_each_value" do
-      let(:ctx) { workflow.build_context({}) }
+      let(:ctx) { workflow.build_context }
       let(:each_context) { {} }
       let(:task_outputs) do
         [

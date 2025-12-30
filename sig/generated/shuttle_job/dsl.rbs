@@ -18,11 +18,8 @@ module ShuttleJob
     # :  (Hash[untyped, untyped] | Context) -> void
     def perform: (Hash[untyped, untyped] | Context) -> void
 
-    # :  () -> Runner?
-    def _runner: () -> Runner?
-
-    # :  (Hash[untyped, untyped] | Context) -> Runner
-    def _build_runner: (Hash[untyped, untyped] | Context) -> Runner
+    # :  () -> Context?
+    def _context: () -> Context?
 
     # :  () -> Hash[String, untyped]
     def serialize: () -> Hash[String, untyped]
@@ -40,9 +37,6 @@ module ShuttleJob
       def perform_all_later: (Array[DSL]) -> void
 
       def limits_concurrency: (to: Integer, key: ^(untyped) -> untyped, ?duration: ActiveSupport::Duration?, ?group: String?, ?on_conflict: Symbol?) -> void
-
-      # :  (?Hash[untyped, untyped]) -> void
-      def perform_later: (?Hash[untyped, untyped]) -> void
 
       # :  (Symbol argument_name, String type, ?default: untyped) -> void
       def argument: (Symbol argument_name, String type, ?default: untyped) -> void

@@ -63,7 +63,7 @@ RSpec.describe ShuttleJob::Workflow do
   end
 
   describe "#build_context" do
-    subject(:build_context) { workflow.build_context(initial_context) }
+    subject(:build_context) { workflow.build_context._update_arguments(initial_arguments) }
 
     let(:workflow) do
       workflow = described_class.new
@@ -72,19 +72,9 @@ RSpec.describe ShuttleJob::Workflow do
     end
 
     context "when given a Hash" do
-      let(:initial_context) { { example: 1 } }
+      let(:initial_arguments) { { example: 1 } }
 
       it { is_expected.to have_attributes(class: ShuttleJob::Context, arguments: have_attributes(example: 1)) }
-    end
-
-    context "when given a Context" do
-      let(:initial_context) do
-        ShuttleJob::Context.new(arguments: { example: 2 })
-      end
-
-      it { is_expected.to eq(initial_context) }
-
-      it { is_expected.to have_attributes(class: ShuttleJob::Context, arguments: have_attributes(example: 2)) }
     end
   end
 end

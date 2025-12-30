@@ -21,28 +21,23 @@ module ShuttleJob
     end
 
     #:  (Hash[untyped, untyped] | Context) -> void
-    def perform(context)
-      @_runner ||= _build_runner(context)
-      @_runner.run
+    def perform(arguments)
+      @_context ||= self.class._workflow.build_context
+      ShuttleJob::Runner.new(job: self, context: @_context._update_arguments(arguments)).run
     end
 
-    #:  () -> Runner?
-    def _runner
-      @_runner
-    end
-
-    #:  (Hash[untyped, untyped] | Context) -> Runner
-    def _build_runner(initial_context)
-      ShuttleJob::Runner.new(job: self, context: self.class._workflow.build_context(initial_context))
+    #:  () -> Context?
+    def _context
+      @_context
     end
 
     #:  () -> Hash[String, untyped]
     def serialize
-      runner = _runner
-      if runner.nil?
+      context = @_context
+      if context.nil?
         super
       else
-        super.merge("shuttle_job_context" => ContextSerializer.instance.serialize(runner.context))
+        super.merge("shuttle_job_context" => ContextSerializer.instance.serialize(context))
       end
     end
 
@@ -51,7 +46,8 @@ module ShuttleJob
       super
 
       job_data["shuttle_job_context"]&.then do |context_data|
-        @_runner = _build_runner(ContextSerializer.instance.deserialize(context_data))
+        @_context = ContextSerializer.instance.deserialize(context_data)
+        @_context._init_arguments(self.class._workflow.build_arguments_hash)
       end
     end
 
@@ -72,11 +68,6 @@ module ShuttleJob
       #     ?group: String?,
       #     ?on_conflict: Symbol?
       #   ) -> void
-
-      #:  (?Hash[untyped, untyped]) -> void
-      def perform_later(initial_context = {})
-        super(_workflow.build_context(initial_context))
-      end
 
       #:  (Symbol argument_name, String type, ?default: untyped) -> void
       def argument(argument_name, type, default: nil)
