@@ -56,7 +56,7 @@ RSpec.describe JobFlow::Context do
       end
 
       it "raises error on nested _with_each_value" do
-        task = JobFlow::Task.new(name: :ctx_two, each: :ctx_two, block: ->(_ctx) {})
+        task = JobFlow::Task.new(name: :ctx_two, each: ->(ctx) { ctx.arguments.ctx_two }, block: ->(_ctx) {})
         expect { init._with_each_value(task) }.to raise_error("Nested _with_each_value calls are not allowed")
       end
     end
@@ -187,7 +187,9 @@ RSpec.describe JobFlow::Context do
     end
 
     context "when called inside _with_each_value" do
-      let(:task) { JobFlow::Task.new(name: :process_items, each: :items, block: ->(_ctx) {}) }
+      let(:task) do
+        JobFlow::Task.new(name: :process_items, each: ->(ctx) { ctx.arguments.items }, block: ->(_ctx) {})
+      end
 
       it "returns the parent job id" do
         ctx._with_each_value(task).each do |each_ctx|
@@ -336,7 +338,9 @@ RSpec.describe JobFlow::Context do
       end
       klass.new
     end
-    let(:task) { JobFlow::Task.new(name: :process_items, each: :items, block: ->(_ctx) {}) }
+    let(:task) do
+      JobFlow::Task.new(name: :process_items, each: ->(ctx) { ctx.arguments.items }, block: ->(_ctx) {})
+    end
 
     before { ctx._current_job = job }
 
@@ -378,7 +382,9 @@ RSpec.describe JobFlow::Context do
       end
       klass.new
     end
-    let(:task) { JobFlow::Task.new(name: :process_items, each: :items, block: ->(_ctx) {}) }
+    let(:task) do
+      JobFlow::Task.new(name: :process_items, each: ->(ctx) { ctx.arguments.items }, block: ->(_ctx) {})
+    end
 
     before { ctx._current_job = job }
 
@@ -478,8 +484,12 @@ RSpec.describe JobFlow::Context do
       end
       klass.new
     end
-    let(:items_task) { JobFlow::Task.new(name: :process_items, each: :items, block: ->(_ctx) {}) }
-    let(:nested_task) { JobFlow::Task.new(name: :process_nested, each: :nested, block: ->(_ctx) {}) }
+    let(:items_task) do
+      JobFlow::Task.new(name: :process_items, each: ->(ctx) { ctx.arguments.items }, block: ->(_ctx) {})
+    end
+    let(:nested_task) do
+      JobFlow::Task.new(name: :process_nested, each: ->(ctx) { ctx.arguments.nested }, block: ->(_ctx) {})
+    end
 
     before { ctx._current_job = job }
 

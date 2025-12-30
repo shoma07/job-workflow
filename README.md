@@ -70,7 +70,7 @@ class AnalyticsJob < ApplicationJob
   
   # Task with defined output structure
   task :fetch_users, 
-    each: :user_ids,
+    each: ->(ctx) { ctx.arguments.user_ids },
     output: { name: "String", email: "String", active: "Boolean" } do |ctx|
     user = User.find(ctx.each_value)
     {
@@ -104,7 +104,7 @@ class BatchProcessingJob < ApplicationJob
   
   # Process each item in parallel
   task :process_items, 
-    each: :items,
+    each: ->(ctx) { ctx.arguments.items },
     concurrency: 5,
     output: { result: "Integer" } do |ctx|
     item = ctx.each_value

@@ -6,7 +6,7 @@ module JobFlow
 
     attr_reader block: ^(untyped) -> void
 
-    attr_reader each: Symbol?
+    attr_reader each: ^(Context) -> untyped | nil
 
     attr_reader concurrency: Integer?
 
@@ -21,12 +21,12 @@ module JobFlow
     # :  (
     #     name: Symbol,
     #     block: ^(untyped) -> void,
-    #     ?each: Symbol?,
+    #     ?each: ^(Context) -> untyped | nil,
     #     ?concurrency: Integer?,
     #     ?output: Hash[Symbol, String],
     #     ?depends_on: Array[Symbol],
     #     condition: ^(Context) -> bool
     #   ) -> void
-    def initialize: (name: Symbol, block: ^(untyped) -> void, condition: ^(Context) -> bool, ?each: Symbol?, ?concurrency: Integer?, ?output: Hash[Symbol, String], ?depends_on: Array[Symbol]) -> void
+    def initialize: (name: Symbol, block: ^(untyped) -> void, condition: ^(Context) -> bool, ?each: ^(Context) -> untyped | nil, ?concurrency: Integer?, ?output: Hash[Symbol, String], ?depends_on: Array[Symbol]) -> void
   end
 end

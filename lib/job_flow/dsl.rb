@@ -78,7 +78,7 @@ module JobFlow
       #
       #:  (
       #     Symbol task_name,
-      #     ?each: Symbol?,
+      #     ?each: ^(Context) -> untyped | nil,
       #     ?concurrency: Integer?,
       #     ?output: Hash[Symbol, String],
       #     ?depends_on: Array[Symbol],
