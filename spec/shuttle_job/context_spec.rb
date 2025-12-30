@@ -476,6 +476,72 @@ RSpec.describe ShuttleJob::Context do
     end
   end
 
+  describe "#each_task_output" do
+    subject(:each_task_output) { ctx.each_task_output }
+
+    let(:ctx) { described_class.new(raw_data: {}, each_context:, task_outputs:) }
+
+    context "when called outside with_each_value" do
+      let(:ctx) { described_class.from_workflow(workflow) }
+      let(:each_context) { {} }
+      let(:task_outputs) do
+        [
+          {
+            task_name: :task_name,
+            each_index: 2,
+            data: { result: "output_0" }
+          }
+        ]
+      end
+
+      it do
+        expect { each_task_output }.to raise_error("each_task_output can be called only within each_values block")
+      end
+    end
+
+    context "when called inside _with_each_value but no matching output" do
+      let(:each_context) do
+        {
+          parent_job_id: "parent_job",
+          task_name: "task_name",
+          index: 2
+        }
+      end
+      let(:task_outputs) do
+        [
+          {
+            task_name: :task_name,
+            each_index: 1,
+            data: { result: "output_0" }
+          }
+        ]
+      end
+
+      it { is_expected.to be_nil }
+    end
+
+    context "when called inside _with_each_value with matching output" do
+      let(:each_context) do
+        {
+          parent_job_id: "parent_job",
+          task_name: :task_name,
+          index: 2
+        }
+      end
+      let(:task_outputs) do
+        [
+          {
+            task_name: :task_name,
+            each_index: 2,
+            data: { result: "output_0" }
+          }
+        ]
+      end
+
+      it { is_expected.to have_attributes(result: "output_0") }
+    end
+  end
+
   describe "#_with_each_value nested calls" do
     let(:job) do
       klass = Class.new(ActiveJob::Base) do
