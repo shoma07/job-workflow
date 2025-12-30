@@ -23,7 +23,7 @@ module ShuttleJob
     # :  () -> Hash[Symbol, untyped]
     def build_arguments_hash: () -> Hash[Symbol, untyped]
 
-    # :  (Hash[untyped, untyped] | Context) -> Context
-    def build_context: (Hash[untyped, untyped] | Context) -> Context
+    # :  () -> Context
+    def build_context: () -> Context
   end
 end

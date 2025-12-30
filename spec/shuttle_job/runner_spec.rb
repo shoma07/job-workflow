@@ -11,7 +11,7 @@ RSpec.describe ShuttleJob::Runner do
       klass.new
     end
     let(:ctx) do
-      job.class._workflow.build_context({})
+      job.class._workflow.build_context
     end
 
     # NOTE: Could not be verified with change matcher
@@ -51,7 +51,7 @@ RSpec.describe ShuttleJob::Runner do
         end
         klass.new
       end
-      let(:ctx) { job.class._workflow.build_context({ a: 0 }) }
+      let(:ctx) { job.class._workflow.build_context._update_arguments({ a: 0 }) }
 
       it do
         run
@@ -76,7 +76,7 @@ RSpec.describe ShuttleJob::Runner do
         end
         klass.new
       end
-      let(:ctx) { job.class._workflow.build_context({ items: [1, 2, 3] }) }
+      let(:ctx) { job.class._workflow.build_context._update_arguments({ items: [1, 2, 3] }) }
 
       it do
         run
@@ -105,7 +105,7 @@ RSpec.describe ShuttleJob::Runner do
         end
         klass.new
       end
-      let(:ctx) { job.class._workflow.build_context({ items: [10, 20] }) }
+      let(:ctx) { job.class._workflow.build_context._update_arguments({ items: [10, 20] }) }
 
       it do
         run
@@ -131,7 +131,7 @@ RSpec.describe ShuttleJob::Runner do
         klass.new
       end
       let(:ctx) do
-        job.class._workflow.build_context({ items: [1, 2, 3], sum: 0, enabled: false })
+        job.class._workflow.build_context._update_arguments({ items: [1, 2, 3], sum: 0, enabled: false })
       end
 
       it "does not execute the each task" do
@@ -155,7 +155,7 @@ RSpec.describe ShuttleJob::Runner do
         klass.new
       end
       let(:ctx) do
-        job.class._workflow.build_context({ items: [1, 2, 3], results: [] })
+        job.class._workflow.build_context._update_arguments({ items: [1, 2, 3], results: [] })
       end
 
       before { allow(job.class).to receive(:perform_all_later).and_return(nil) }
@@ -214,7 +214,7 @@ RSpec.describe ShuttleJob::Runner do
         end
         klass.new
       end
-      let(:ctx) { job.class._workflow.build_context({ multiplier: 3 }) }
+      let(:ctx) { job.class._workflow.build_context._update_arguments({ multiplier: 3 }) }
 
       it "collects output from the task" do
         run
@@ -236,7 +236,7 @@ RSpec.describe ShuttleJob::Runner do
         klass.new
       end
       let(:ctx) do
-        job.class._workflow.build_context({ items: [10, 20, 30] })
+        job.class._workflow.build_context._update_arguments({ items: [10, 20, 30] })
       end
 
       it "collects output from each iteration" do
@@ -261,7 +261,7 @@ RSpec.describe ShuttleJob::Runner do
         klass.new
       end
       let(:ctx) do
-        job.class._workflow.build_context({})
+        job.class._workflow.build_context
       end
 
       it "does not collect output" do
@@ -281,7 +281,7 @@ RSpec.describe ShuttleJob::Runner do
         end
         klass.new
       end
-      let(:ctx) { job.class._workflow.build_context({}) }
+      let(:ctx) { job.class._workflow.build_context }
 
       it "wraps value in Hash with :value key" do
         run
@@ -303,7 +303,7 @@ RSpec.describe ShuttleJob::Runner do
         klass.new
       end
       let(:ctx) do
-        job.class._workflow.build_context({ items: [1, 2, 3] })
+        job.class._workflow.build_context._update_arguments({ items: [1, 2, 3] })
       end
 
       before { allow(job.class).to receive(:perform_all_later).and_return(nil) }
@@ -331,7 +331,7 @@ RSpec.describe ShuttleJob::Runner do
         end
         klass.new
       end
-      let(:ctx) { job.class._workflow.build_context({}) }
+      let(:ctx) { job.class._workflow.build_context }
 
       it "has access to dependency outputs" do
         run
@@ -358,7 +358,7 @@ RSpec.describe ShuttleJob::Runner do
         klass.new
       end
       let(:ctx) do
-        job.class._workflow.build_context({ items: [1, 2] })
+        job.class._workflow.build_context._update_arguments({ items: [1, 2] })
       end
       let(:step_mock) { instance_double(ActiveJob::Continuation::Step) }
       let(:poll_count) { 0 }
@@ -458,7 +458,7 @@ RSpec.describe ShuttleJob::Runner do
         klass.new
       end
       let(:ctx) do
-        job.class._workflow.build_context({ items: [5, 10] })
+        job.class._workflow.build_context._update_arguments({ items: [5, 10] })
       end
 
       it "does not wait for sequential map tasks" do
@@ -484,7 +484,7 @@ RSpec.describe ShuttleJob::Runner do
         end
         klass.new
       end
-      let(:ctx) { job.class._workflow.build_context({}) }
+      let(:ctx) { job.class._workflow.build_context }
 
       it "does not wait for regular tasks" do
         run
@@ -511,7 +511,7 @@ RSpec.describe ShuttleJob::Runner do
         klass.new
       end
       let(:ctx) do
-        job.class._workflow.build_context({ items: [10, 20] })
+        job.class._workflow.build_context._update_arguments({ items: [10, 20] })
       end
       let(:step_mock) { instance_double(ActiveJob::Continuation::Step) }
       let(:created_job_ids) { [] }
@@ -600,7 +600,7 @@ RSpec.describe ShuttleJob::Runner do
         klass.new
       end
       let(:ctx) do
-        job.class._workflow.build_context({ numbers: [2, 3] })
+        job.class._workflow.build_context._update_arguments({ numbers: [2, 3] })
       end
       let(:step_mock) { instance_double(ActiveJob::Continuation::Step) }
       let(:created_jobs) { [] }
@@ -688,7 +688,7 @@ RSpec.describe ShuttleJob::Runner do
         klass.new
       end
       let(:ctx) do
-        ctx = job.class._workflow.build_context({ items: [1, 2], skip_parallel: true })
+        ctx = job.class._workflow.build_context._update_arguments({ items: [1, 2], skip_parallel: true })
 
         # Simulate resuming: parallel_work already completed in previous run
         ctx.job_status.update_task_job_status(

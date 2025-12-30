@@ -45,16 +45,6 @@ RSpec.describe ShuttleJob::ContextSerializer do
         expect(serialized).to eq(
           {
             "_aj_serialized" => "ShuttleJob::ContextSerializer",
-            "raw_data" => {
-              "_aj_symbol_keys" => [],
-              "string_value" => "test",
-              "integer_value" => 42,
-              "array_value" => [1, 2, 3],
-              "hash_value" => {
-                "_aj_symbol_keys" => %w[key],
-                "key" => "value"
-              }
-            },
             "each_context" => {
               "_aj_symbol_keys" => [],
               "parent_job_id" => nil,
@@ -78,16 +68,6 @@ RSpec.describe ShuttleJob::ContextSerializer do
         expect(serialized).to eq(
           {
             "_aj_serialized" => "ShuttleJob::ContextSerializer",
-            "raw_data" => {
-              "_aj_symbol_keys" => [],
-              "string_value" => "test",
-              "integer_value" => 42,
-              "array_value" => [1, 2, 3],
-              "hash_value" => {
-                "_aj_symbol_keys" => %w[key],
-                "key" => "value"
-              }
-            },
             "each_context" => {
               "_aj_symbol_keys" => [],
               "parent_job_id" => ctx_options[:parent_job_id],
@@ -112,16 +92,6 @@ RSpec.describe ShuttleJob::ContextSerializer do
         expect(serialized).to eq(
           {
             "_aj_serialized" => "ShuttleJob::ContextSerializer",
-            "raw_data" => {
-              "_aj_symbol_keys" => [],
-              "string_value" => "test",
-              "integer_value" => 42,
-              "array_value" => [1, 2, 3],
-              "hash_value" => {
-                "_aj_symbol_keys" => %w[key],
-                "key" => "value"
-              }
-            },
             "each_context" => {
               "_aj_symbol_keys" => [],
               "parent_job_id" => nil,
@@ -266,16 +236,6 @@ RSpec.describe ShuttleJob::ContextSerializer do
       let(:serialized_hash) do
         {
           "_aj_serialized" => "ShuttleJob::ContextSerializer",
-          "raw_data" => {
-            "_aj_symbol_keys" => [],
-            "string_value" => "test",
-            "integer_value" => 42,
-            "array_value" => [1, 2, 3],
-            "hash_value" => {
-              "_aj_symbol_keys" => %w[key],
-              "key" => "value"
-            }
-          },
           "each_context" => {
             "_aj_symbol_keys" => %w[parent_job_id task_name index value],
             "parent_job_id" => nil,
@@ -291,18 +251,7 @@ RSpec.describe ShuttleJob::ContextSerializer do
       it do
         expect(deserialized).to have_attributes(
           class: ShuttleJob::Context,
-          arguments: have_attributes(
-            to_h: {
-              string_value: "test",
-              integer_value: 42,
-              array_value: [1, 2, 3],
-              hash_value: { key: "value" }
-            },
-            string_value: "test",
-            integer_value: 42,
-            array_value: [1, 2, 3],
-            hash_value: { key: "value" }
-          ),
+          arguments: have_attributes(to_h: {}),
           _each_context: have_attributes(
             parent_job_id: nil,
             task_name: nil,
@@ -317,16 +266,6 @@ RSpec.describe ShuttleJob::ContextSerializer do
       let(:serialized_hash) do
         {
           "_aj_serialized" => "ShuttleJob::ContextSerializer",
-          "raw_data" => {
-            "_aj_symbol_keys" => [],
-            "string_value" => "test",
-            "integer_value" => 42,
-            "array_value" => [1, 2, 3],
-            "hash_value" => {
-              "_aj_symbol_keys" => %w[key],
-              "key" => "value"
-            }
-          },
           "each_context" => {
             "_aj_symbol_keys" => %w[parent_job_id task_name index value],
             "parent_job_id" => "019b6901-8bdf-7fd4-83aa-6c18254fe076",
@@ -342,18 +281,7 @@ RSpec.describe ShuttleJob::ContextSerializer do
       it do
         expect(deserialized).to have_attributes(
           class: ShuttleJob::Context,
-          arguments: have_attributes(
-            to_h: {
-              string_value: "test",
-              integer_value: 42,
-              array_value: [1, 2, 3],
-              hash_value: { key: "value" }
-            },
-            string_value: "test",
-            integer_value: 42,
-            array_value: [1, 2, 3],
-            hash_value: { key: "value" }
-          ),
+          arguments: have_attributes(to_h: {}),
           _each_context: have_attributes(
             parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076",
             task_name: nil,
@@ -368,16 +296,6 @@ RSpec.describe ShuttleJob::ContextSerializer do
       let(:serialized_hash) do
         {
           "_aj_serialized" => "ShuttleJob::ContextSerializer",
-          "raw_data" => {
-            "_aj_symbol_keys" => [],
-            "string_value" => "test",
-            "integer_value" => 42,
-            "array_value" => [1, 2, 3],
-            "hash_value" => {
-              "_aj_symbol_keys" => %w[key],
-              "key" => "value"
-            }
-          },
           "each_context" => {
             "_aj_symbol_keys" => %w[parent_job_id task_name index value],
             "parent_job_id" => nil,
@@ -393,18 +311,7 @@ RSpec.describe ShuttleJob::ContextSerializer do
       it do
         expect(deserialized).to have_attributes(
           class: ShuttleJob::Context,
-          arguments: have_attributes(
-            to_h: {
-              string_value: "test",
-              integer_value: 42,
-              array_value: [1, 2, 3],
-              hash_value: { key: "value" }
-            },
-            string_value: "test",
-            integer_value: 42,
-            array_value: [1, 2, 3],
-            hash_value: { key: "value" }
-          ),
+          arguments: have_attributes(to_h: {}),
           _each_context: have_attributes(
             parent_job_id: nil,
             task_name: "task_one",
@@ -419,16 +326,6 @@ RSpec.describe ShuttleJob::ContextSerializer do
       let(:serialized_hash) do
         {
           "_aj_serialized" => "ShuttleJob::ContextSerializer",
-          "raw_data" => {
-            "_aj_symbol_keys" => [],
-            "string_value" => "test",
-            "integer_value" => 42,
-            "array_value" => [1, 2, 3],
-            "hash_value" => {
-              "_aj_symbol_keys" => %w[key],
-              "key" => "value"
-            }
-          },
           "each_context" => {
             "_aj_symbol_keys" => %w[parent_job_id task_name index value],
             "parent_job_id" => nil,
@@ -492,11 +389,6 @@ RSpec.describe ShuttleJob::ContextSerializer do
       let(:serialized_hash) do
         {
           "_aj_serialized" => "ShuttleJob::ContextSerializer",
-          "raw_data" => {
-            "_aj_symbol_keys" => [],
-            "string_value" => "test",
-            "integer_value" => 42
-          },
           "each_context" => {
             "_aj_symbol_keys" => %w[parent_job_id task_name index value],
             "parent_job_id" => nil,
@@ -517,11 +409,6 @@ RSpec.describe ShuttleJob::ContextSerializer do
       let(:serialized_hash) do
         {
           "_aj_serialized" => "ShuttleJob::ContextSerializer",
-          "raw_data" => {
-            "_aj_symbol_keys" => [],
-            "string_value" => "test",
-            "integer_value" => 42
-          },
           "each_context" => {
             "_aj_symbol_keys" => %w[parent_job_id task_name index value],
             "parent_job_id" => nil,
@@ -571,11 +458,6 @@ RSpec.describe ShuttleJob::ContextSerializer do
       let(:serialized_hash) do
         {
           "_aj_serialized" => "ShuttleJob::ContextSerializer",
-          "raw_data" => {
-            "_aj_symbol_keys" => [],
-            "string_value" => "test",
-            "integer_value" => 42
-          },
           "each_context" => {
             "_aj_symbol_keys" => %w[parent_job_id task_name index value],
             "parent_job_id" => nil,

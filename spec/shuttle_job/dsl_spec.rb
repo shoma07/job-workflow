@@ -2,6 +2,8 @@
 
 RSpec.describe ShuttleJob::DSL do
   describe "#perform" do
+    subject(:perform) { job.perform(arguments) }
+
     let(:klass) do
       Class.new(ActiveJob::Base) do
         include ShuttleJob::DSL
@@ -17,23 +19,12 @@ RSpec.describe ShuttleJob::DSL do
         end
       end
     end
-    let(:initial_context_hash) { { a: 0 } }
+    let(:arguments) { { a: 0 } }
     let(:job) { klass.new }
 
     it "modifies context through tasks" do
-      job.perform(initial_context_hash)
-      expect(job._runner.context.output.task_two.value).to eq(3)
-    end
-
-    context "when given a Context object" do
-      subject(:perform) { klass.new.perform(ctx) }
-
-      let(:ctx) { klass._workflow.build_context({ a: 0 }) }
-
-      it do
-        job.perform(ctx)
-        expect(job._runner.context.output.task_two.value).to eq(3)
-      end
+      perform
+      expect(job._context.output.task_two.value).to eq(3)
     end
   end
 
@@ -74,24 +65,7 @@ RSpec.describe ShuttleJob::DSL do
         size: 1,
         first: hash_including(
           job: job_class,
-          args: [
-            {
-              "_aj_serialized" => "ShuttleJob::ContextSerializer",
-              "raw_data" => {
-                "_aj_symbol_keys" => [],
-                "example" => 1
-              },
-              "each_context" => {
-                "_aj_symbol_keys" => [],
-                "parent_job_id" => nil,
-                "task_name" => nil,
-                "index" => nil,
-                "value" => nil
-              },
-              "task_outputs" => [],
-              "task_job_statuses" => []
-            }
-          ]
+          args: [{ "_aj_symbol_keys" => %w[example], "example" => 1 }]
         )
       )
     end
@@ -138,7 +112,7 @@ RSpec.describe ShuttleJob::DSL do
 
       it do
         task
-        ctx = klass._workflow.build_context({ sum: 1 })
+        ctx = klass._workflow.build_context._update_arguments({ sum: 1 })
         expect(klass._workflow.tasks[0].block.call(ctx)).to eq({ value: 1 })
       end
     end
@@ -170,9 +144,9 @@ RSpec.describe ShuttleJob::DSL do
 
       it do
         task
-        ctx = klass._workflow.build_context({})
-        klass.new.perform(ctx)
-        expect(ctx.output.task_two.value).to eq(12)
+        job = klass.new
+        job.perform({})
+        expect(job._context.output.task_two.value).to eq(12)
       end
 
       it do
@@ -210,8 +184,8 @@ RSpec.describe ShuttleJob::DSL do
     end
   end
 
-  describe "#_runner" do
-    subject(:_runner) { job._runner }
+  describe "#_context" do
+    subject(:_context) { job._context }
 
     let(:job_class) do
       Class.new(ActiveJob::Base) do
@@ -238,72 +212,11 @@ RSpec.describe ShuttleJob::DSL do
       before { job.perform({ value: 42 }) }
 
       it do
-        expect(_runner).to have_attributes(
-          class: ShuttleJob::Runner,
-          context: have_attributes(
-            arguments: have_attributes(value: 42),
-            output: have_attributes(increment: have_attributes(value: 52))
-          )
+        expect(_context).to have_attributes(
+          class: ShuttleJob::Context,
+          arguments: have_attributes(value: 42),
+          output: have_attributes(increment: have_attributes(value: 52))
         )
-      end
-    end
-  end
-
-  describe "#_build_runner" do
-    subject(:_build_runner) { job._build_runner(ctx) }
-
-    let(:job) do
-      klass = Class.new(ActiveJob::Base) do
-        include ShuttleJob::DSL
-
-        argument :value, "Integer", default: 0
-
-        task :increment, output: { value: "Integer" } do |ctx|
-          { value: ctx.arguments.value + 10 }
-        end
-
-        def self.name
-          "TestJob"
-        end
-      end
-      klass.new
-    end
-
-    context "when initial context is a Hash" do
-      let(:ctx) { { value: 1 } }
-
-      it do
-        expect(_build_runner).to have_attributes(
-          class: ShuttleJob::Runner,
-          context: have_attributes(arguments: have_attributes(value: 1))
-        )
-      end
-
-      it do
-        expect { _build_runner.run }.to(change do
-          _build_runner.context.output.increment.value
-        rescue StandardError
-          nil
-        end.from(nil).to(11))
-      end
-    end
-
-    context "when initial context is a Context" do
-      let(:ctx) { job._workflow.build_context({ value: 1 }) }
-
-      it do
-        expect(_build_runner).to have_attributes(
-          class: ShuttleJob::Runner,
-          context: have_attributes(arguments: have_attributes(value: 1))
-        )
-      end
-
-      it do
-        expect { _build_runner.run }.to(change do
-          _build_runner.context.output.increment.value
-        rescue StandardError
-          nil
-        end.from(nil).to(11))
       end
     end
   end
@@ -339,10 +252,6 @@ RSpec.describe ShuttleJob::DSL do
         expect(serialize).to include(
           "shuttle_job_context" => {
             "_aj_serialized" => "ShuttleJob::ContextSerializer",
-            "raw_data" => {
-              "_aj_symbol_keys" => [],
-              "value" => 42
-            },
             "each_context" => {
               "_aj_symbol_keys" => [],
               "parent_job_id" => nil,
@@ -396,10 +305,6 @@ RSpec.describe ShuttleJob::DSL do
         {
           "shuttle_job_context" => {
             "_aj_serialized" => "ShuttleJob::ContextSerializer",
-            "raw_data" => {
-              "_aj_symbol_keys" => [],
-              "value" => 100
-            },
             "each_context" => {
               "_aj_symbol_keys" => %w[parent_job_id task_name index value],
               "parent_job_id" => nil,
@@ -414,9 +319,9 @@ RSpec.describe ShuttleJob::DSL do
 
       it do
         deserialize
-        expect(job._runner.context).to have_attributes(
+        expect(job._context).to have_attributes(
           class: ShuttleJob::Context,
-          arguments: have_attributes(to_h: { value: 100 }, value: 100)
+          arguments: have_attributes(to_h: { value: 0 }, value: 0)
         )
       end
     end
@@ -426,7 +331,7 @@ RSpec.describe ShuttleJob::DSL do
 
       it do
         deserialize
-        expect(job._runner).to be_nil
+        expect(job._context).to be_nil
       end
     end
   end
@@ -472,14 +377,12 @@ RSpec.describe ShuttleJob::DSL do
       it do
         job = job_class.new
         job.perform({ value: 0, items: [10, 20] })
-        expect(job._runner).to have_attributes(
-          context: have_attributes(
-            arguments: have_attributes(value: 0, items: [10, 20]),
-            output: have_attributes(
-              task_one: have_attributes(value: 1),
-              task_two: contain_exactly(have_attributes(value: 10), have_attributes(value: 20)),
-              task_three: have_attributes(value: 30)
-            )
+        expect(job._context).to have_attributes(
+          arguments: have_attributes(value: 0, items: [10, 20]),
+          output: have_attributes(
+            task_one: have_attributes(value: 1),
+            task_two: contain_exactly(have_attributes(value: 10), have_attributes(value: 20)),
+            task_three: have_attributes(value: 30)
           )
         )
       end
@@ -514,11 +417,9 @@ RSpec.describe ShuttleJob::DSL do
         job.perform({ value: 0, items: [1, 2, 3, 4, 5] })
         expect(job).to have_attributes(
           serialize: include("continuation" => { "completed" => %w[task_one task_two task_three] }),
-          _runner: have_attributes(
-            context: have_attributes(
-              arguments: have_attributes(value: 0, items: [1, 2, 3, 4, 5]),
-              output: have_attributes(task_three: have_attributes(value: 15))
-            )
+          _context: have_attributes(
+            arguments: have_attributes(value: 0, items: [1, 2, 3, 4, 5]),
+            output: have_attributes(task_three: have_attributes(value: 15))
           )
         )
       end
@@ -535,11 +436,9 @@ RSpec.describe ShuttleJob::DSL do
             serialize: include("continuation" => { "completed" => %w[task_one task_two task_three] })
           ),
           last: have_attributes(
-            _runner: have_attributes(
-              context: have_attributes(
-                arguments: have_attributes(value: 0, items: [10, 20, 30]),
-                output: have_attributes(task_three: have_attributes(value: 60))
-              )
+            _context: have_attributes(
+              arguments: have_attributes(value: 0, items: []),
+              output: have_attributes(task_three: have_attributes(value: 60))
             )
           )
         )
@@ -552,10 +451,10 @@ RSpec.describe ShuttleJob::DSL do
         job_one.perform({ value: 5, items: [10] })
         job_two = job_class.new
         job_two.deserialize(job_one.serialize)
-        expect(job_two._runner.context).to have_attributes(
+        expect(job_two._context).to have_attributes(
           arguments: have_attributes(
-            value: 5,
-            items: [10]
+            value: 0,
+            items: []
           )
         )
       end
