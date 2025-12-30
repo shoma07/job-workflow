@@ -2,9 +2,11 @@
 
 RSpec.describe ShuttleJob::ContextSerializer do
   let(:context) do
-    ShuttleJob::Context.new(raw_data:, each_context: ctx_options)
+    ShuttleJob::Context.new(arguments:, each_context: ctx_options)
   end
-  let(:raw_data) { { string_value: "test", integer_value: 42, array_value: [1, 2, 3], hash_value: { key: "value" } } }
+  let(:arguments) do
+    { string_value: "test", integer_value: 42, array_value: [1, 2, 3], hash_value: { key: "value" } }
+  end
   let(:ctx_options) { {} }
 
   describe ".instance" do
@@ -139,7 +141,7 @@ RSpec.describe ShuttleJob::ContextSerializer do
 
     context "when context has task_outputs" do
       let(:context) do
-        ctx = ShuttleJob::Context.new(raw_data:)
+        ctx = ShuttleJob::Context.new(arguments:)
         # Add regular task output
         ctx._add_task_output(
           ShuttleJob::TaskOutput.new(
@@ -213,7 +215,7 @@ RSpec.describe ShuttleJob::ContextSerializer do
     context "when context has task_job_statuses" do
       let(:context) do
         ctx = ShuttleJob::Context.new(
-          raw_data:,
+          arguments:,
           task_job_statuses: [
             { task_name: :process_items, job_id: "job1", each_index: 0, status: :succeeded },
             { task_name: :process_items, job_id: "job2", each_index: 1, status: :running }
@@ -289,24 +291,23 @@ RSpec.describe ShuttleJob::ContextSerializer do
       it do
         expect(deserialized).to have_attributes(
           class: ShuttleJob::Context,
-          raw_data: {
+          arguments: have_attributes(
+            to_h: {
+              string_value: "test",
+              integer_value: 42,
+              array_value: [1, 2, 3],
+              hash_value: { key: "value" }
+            },
             string_value: "test",
             integer_value: 42,
             array_value: [1, 2, 3],
             hash_value: { key: "value" }
-          },
-          string_value: "test",
-          integer_value: 42,
-          array_value: [1, 2, 3],
-          hash_value: { key: "value" }
-        ).and(
-          have_attributes(
-            _each_context: have_attributes(
-              parent_job_id: nil,
-              task_name: nil,
-              index: nil,
-              value: nil
-            )
+          ),
+          _each_context: have_attributes(
+            parent_job_id: nil,
+            task_name: nil,
+            index: nil,
+            value: nil
           )
         )
       end
@@ -341,24 +342,23 @@ RSpec.describe ShuttleJob::ContextSerializer do
       it do
         expect(deserialized).to have_attributes(
           class: ShuttleJob::Context,
-          raw_data: {
+          arguments: have_attributes(
+            to_h: {
+              string_value: "test",
+              integer_value: 42,
+              array_value: [1, 2, 3],
+              hash_value: { key: "value" }
+            },
             string_value: "test",
             integer_value: 42,
             array_value: [1, 2, 3],
             hash_value: { key: "value" }
-          },
-          string_value: "test",
-          integer_value: 42,
-          array_value: [1, 2, 3],
-          hash_value: { key: "value" }
-        ).and(
-          have_attributes(
-            _each_context: have_attributes(
-              parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076",
-              task_name: nil,
-              index: nil,
-              value: nil
-            )
+          ),
+          _each_context: have_attributes(
+            parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076",
+            task_name: nil,
+            index: nil,
+            value: nil
           )
         )
       end
@@ -393,24 +393,23 @@ RSpec.describe ShuttleJob::ContextSerializer do
       it do
         expect(deserialized).to have_attributes(
           class: ShuttleJob::Context,
-          raw_data: {
+          arguments: have_attributes(
+            to_h: {
+              string_value: "test",
+              integer_value: 42,
+              array_value: [1, 2, 3],
+              hash_value: { key: "value" }
+            },
             string_value: "test",
             integer_value: 42,
             array_value: [1, 2, 3],
             hash_value: { key: "value" }
-          },
-          string_value: "test",
-          integer_value: 42,
-          array_value: [1, 2, 3],
-          hash_value: { key: "value" }
-        ).and(
-          have_attributes(
-            _each_context: have_attributes(
-              parent_job_id: nil,
-              task_name: "task_one",
-              index: nil,
-              value: nil
-            )
+          ),
+          _each_context: have_attributes(
+            parent_job_id: nil,
+            task_name: "task_one",
+            index: nil,
+            value: nil
           )
         )
       end

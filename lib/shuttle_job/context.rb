@@ -2,36 +2,28 @@
 
 module ShuttleJob
   class Context
-    attr_reader :raw_data #: Hash[Symbol, untyped]
+    attr_reader :arguments #: Arguments
     attr_reader :output #: Output
     attr_reader :job_status #: JobStatus
 
     class << self
       #:  (Workflow) -> Context
       def from_workflow(workflow)
-        raw_data = workflow.contexts.to_h { |context_def| [context_def.name, context_def.default] }
-        new(raw_data:)
+        new(arguments: workflow.build_arguments_hash)
       end
     end
 
     #:  (
-    #     raw_data: Hash[Symbol, untyped],
+    #     arguments: Hash[Symbol, untyped],
     #     ?each_context: Hash[Symbol, untyped],
     #     ?task_outputs: Array[Hash[Symbol, untyped]],
     #     ?task_job_statuses: Array[Hash[Symbol, untyped]]
     #   ) -> void
-    def initialize(raw_data:, each_context: {}, task_outputs: [], task_job_statuses: [])
-      self.raw_data = raw_data
-      self.reader_names = raw_data.keys.to_set
-      self.writer_names = raw_data.keys.to_set { |n| :"#{n}=" }
+    def initialize(arguments:, each_context: {}, task_outputs: [], task_job_statuses: [])
+      self.arguments = Arguments.new(data: arguments)
       self.each_context = EachContext.new(**each_context.symbolize_keys)
       self.output = Output.from_hash_array(task_outputs)
       self.job_status = JobStatus.from_hash_array(task_job_statuses)
-    end
-
-    #:  (Hash[Symbol, untyped]) -> void
-    def merge!(other_raw_data)
-      raw_data.merge!(other_raw_data.slice(*reader_names.to_a))
     end
 
     #:  (DSL) -> void
@@ -82,26 +74,11 @@ module ShuttleJob
       output.add_task_output(task_output)
     end
 
-    #:  ...
-    def method_missing(name, *args, **_kwargs, &)
-      return raw_data[name.to_sym] if reader_names.include?(name) && args.empty?
-      return raw_data[name.to_s.chomp("=").to_sym] = args.first if writer_names.include?(name) && args.one?
-
-      super
-    end
-
-    #:  (Symbol, bool) -> bool
-    def respond_to_missing?(sym, include_private)
-      reader_names.include?(sym) || writer_names.include?(sym) || super
-    end
-
     private
 
-    attr_writer :raw_data #: Hash[Symbol, untyped]
+    attr_writer :arguments #: Arguments
     attr_writer :output #: Output
     attr_writer :job_status #: JobStatus
-    attr_accessor :reader_names #: Set[Symbol]
-    attr_accessor :writer_names #: Set[Symbol]
     attr_accessor :each_context #: EachContext
 
     #:  () -> DSL
@@ -115,7 +92,7 @@ module ShuttleJob
     #:  (Task, Enumerator::Yielder) -> void
     def iterate_each_value(task, yielder)
       each = task.each #: Symbol
-      public_send(each).each.with_index do |value, index|
+      arguments.public_send(each).each.with_index do |value, index|
         self.each_context = EachContext.new(
           parent_job_id: current_job_id,
           task_name: task.name,
