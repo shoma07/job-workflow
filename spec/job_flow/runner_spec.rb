@@ -66,7 +66,7 @@ RSpec.describe JobFlow::Runner do
 
           argument :items, "Array[Integer]", default: []
 
-          task :process_items, output: { value: "Integer" }, each: :items do |ctx|
+          task :process_items, output: { value: "Integer" }, each: ->(ctx) { ctx.arguments.items } do |ctx|
             { value: ctx.each_value }
           end
 
@@ -95,7 +95,10 @@ RSpec.describe JobFlow::Runner do
             { value: 3 }
           end
 
-          task :process_items, output: { value: "Integer" }, each: :items, depends_on: %i[setup] do |ctx|
+          task :process_items,
+               output: { value: "Integer" },
+               each: ->(ctx) { ctx.arguments.items },
+               depends_on: %i[setup] do |ctx|
             { value: ctx.each_value * ctx.output.setup.value }
           end
 
@@ -122,9 +125,10 @@ RSpec.describe JobFlow::Runner do
           argument :sum, "Integer", default: 0
           argument :enabled, "Boolean", default: false
 
-          task :process_items, each: :items, condition: lambda { |ctx|
-            ctx.arguments.enabled
-          }, output: { value: "Integer" } do |ctx|
+          task :process_items,
+               each: ->(ctx) { ctx.arguments.items },
+               condition: ->(ctx) { ctx.arguments.enabled },
+               output: { value: "Integer" } do |ctx|
             { value: ctx.each_value }
           end
         end
@@ -148,7 +152,10 @@ RSpec.describe JobFlow::Runner do
           argument :items, "Array[Integer]", default: []
           argument :results, "Array[Integer]", default: []
 
-          task :process_items, each: :items, concurrency: 2, output: { doubled: "Integer" } do |ctx|
+          task :process_items,
+               each: ->(ctx) { ctx.arguments.items },
+               concurrency: 2,
+               output: { doubled: "Integer" } do |ctx|
             { doubled: (ctx.each_value * 2) }
           end
         end
@@ -175,7 +182,7 @@ RSpec.describe JobFlow::Runner do
 
           argument :items, "Array[Integer]", default: []
 
-          task :process_items, output: { result: "Integer" }, each: :items do |ctx|
+          task :process_items, output: { result: "Integer" }, each: ->(ctx) { ctx.arguments.items } do |ctx|
             { result: ctx.each_value * 2 }
           end
         end
@@ -229,7 +236,7 @@ RSpec.describe JobFlow::Runner do
 
           argument :items, "Array[Integer]", default: []
 
-          task :process_items, each: :items, output: { doubled: "Integer" } do |ctx|
+          task :process_items, each: ->(ctx) { ctx.arguments.items }, output: { doubled: "Integer" } do |ctx|
             { doubled: ctx.each_value * 2 }
           end
         end
@@ -296,7 +303,10 @@ RSpec.describe JobFlow::Runner do
 
           argument :items, "Array[Integer]", default: []
 
-          task :process_items, each: :items, concurrency: 2, output: { result: "Integer" } do |ctx|
+          task :process_items,
+               each: ->(ctx) { ctx.arguments.items },
+               concurrency: 2,
+               output: { result: "Integer" } do |ctx|
             { result: ctx.each_value * 2 }
           end
         end
@@ -347,7 +357,10 @@ RSpec.describe JobFlow::Runner do
           argument :items, "Array[Integer]", default: []
           argument :result, "Integer", default: 0
 
-          task :parallel_process, each: :items, concurrency: 2, output: { value: "Integer" } do |ctx|
+          task :parallel_process,
+               each: ->(ctx) { ctx.arguments.items },
+               concurrency: 2,
+               output: { value: "Integer" } do |ctx|
             { value: ctx.each_value * 10 }
           end
 
@@ -447,7 +460,7 @@ RSpec.describe JobFlow::Runner do
           argument :items, "Array[Integer]", default: []
           argument :total, "Integer", default: 0
 
-          task :sequential_process, each: :items, output: { doubled: "Integer" } do |ctx|
+          task :sequential_process, each: ->(ctx) { ctx.arguments.items }, output: { doubled: "Integer" } do |ctx|
             { doubled: ctx.each_value * 2 }
           end
 
@@ -500,7 +513,10 @@ RSpec.describe JobFlow::Runner do
           argument :items, "Array[Integer]", default: []
           argument :sum, "Integer", default: 0
 
-          task :fast_parallel, each: :items, concurrency: 2, output: { value: "Integer" } do |ctx|
+          task :fast_parallel,
+               each: ->(ctx) { ctx.arguments.items },
+               concurrency: 2,
+               output: { value: "Integer" } do |ctx|
             { value: ctx.each_value }
           end
 
@@ -584,7 +600,10 @@ RSpec.describe JobFlow::Runner do
           argument :numbers, "Array[Integer]", default: []
           argument :result, "String", default: ""
 
-          task :parallel_compute, each: :numbers, concurrency: 2, output: { squared: "Integer" } do |ctx|
+          task :parallel_compute,
+               each: ->(ctx) { ctx.arguments.numbers },
+               concurrency: 2,
+               output: { squared: "Integer" } do |ctx|
             { squared: ctx.each_value**2 }
           end
 
@@ -674,7 +693,7 @@ RSpec.describe JobFlow::Runner do
           end
 
           task :parallel_work,
-               each: :items,
+               each: ->(ctx) { ctx.arguments.items },
                concurrency: 2,
                output: { result: "Integer" },
                condition: ->(ctx) { !ctx.arguments.skip_parallel } do |ctx|

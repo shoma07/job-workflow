@@ -493,7 +493,7 @@ class BatchCalculationJob < ApplicationJob
   
   # Map task with output definition
   task :double_numbers, 
-    each: :numbers,
+    each: ->(ctx) { ctx.arguments.numbers },
     output: { doubled: "Integer", original: "Integer" } do |ctx|
     value = ctx.each_value
     {
@@ -553,7 +553,7 @@ end
 
 ```ruby
 task :process_items, 
-  each: :items,
+  each: ->(ctx) { ctx.arguments.items },
   output: { result: "String", status: "String" } do |ctx|
   item = ctx.each_value
   {
@@ -694,13 +694,13 @@ Currently, outputs from map tasks with `concurrency:` specified are **not automa
 
 ```ruby
 # This works - outputs are collected
-task :process, each: :items, output: { result: "String" } do |ctx|
+task :process, each: ->(ctx) { ctx.arguments.items }, output: { result: "String" } do |ctx|
   { result: process(ctx.each_value) }
 end
 
 # This doesn't collect outputs (yet)
 task :process_parallel,
-  each: :items,
+  each: ->(ctx) { ctx.arguments.items },
   concurrency: 5,
   output: { result: "String" } do |ctx|
   { result: process(ctx.each_value) }
@@ -732,7 +732,7 @@ class BatchProcessingJob < ApplicationJob
   
   # Process each user in parallel
   task :process_users,
-       each: :user_ids,
+       each: ->(ctx) { ctx.arguments.user_ids },
        depends_on: [:fetch_user_ids],
        output: { user_id: "Integer", status: "Symbol" } do |ctx|
     user_id = ctx.each_value
@@ -757,14 +757,14 @@ end
 ```ruby
 # Process up to 10 items concurrently
 task :process_items,
-     each: :items,
+     each: ->(ctx) { ctx.arguments.items },
      concurrency: 10 do |ctx|
   process_item(ctx.each_value)
 end
 
 # Default (unlimited)
 task :unlimited,
-     each: :items do |ctx|
+     each: ->(ctx) { ctx.arguments.items } do |ctx|
   process_item(ctx.each_value)
 end
 ```
@@ -780,7 +780,7 @@ argument :items, "Array[Hash]"
 argument :shared_config, "Hash"
 
 task :parallel_processing,
-     each: :items,
+     each: ->(ctx) { ctx.arguments.items },
      output: { item_result: "String" } do |ctx|
   # Access current element via ctx.each_value
   item = ctx.each_value
@@ -799,7 +799,7 @@ When using `each:` option, access the current element via `ctx.each_value`:
 
 ```ruby
 task :process_items,
-     each: :items do |ctx|
+     each: ->(ctx) { ctx.arguments.items } do |ctx|
   item = ctx.each_value  # Get current element
   process(item)
 end
@@ -813,7 +813,7 @@ task :regular_task do |ctx|
 end
 
 task :map_task,
-     each: :items do |ctx|
+     each: ->(ctx) { ctx.arguments.items } do |ctx|
   ctx.each_value  # ✅ OK: Returns current element
 end
 ```
@@ -1613,7 +1613,7 @@ end
 
 # Parallel processing with collection
 task :process_items,
-     each: :items,
+     each: ->(ctx) { ctx.arguments.items },
      concurrency: 5,
      output: { result: "String" } do |ctx|
   item = ctx.each_value
@@ -1629,7 +1629,7 @@ end
 argument :items, "Array[String]"
 
 task :process_items,
-     each: :items,
+     each: ->(ctx) { ctx.arguments.items },
      concurrency: 5,
      output: { result: "String", status: "Symbol" } do |ctx|
   item = ctx.each_value

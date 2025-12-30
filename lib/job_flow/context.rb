@@ -96,8 +96,8 @@ module JobFlow
 
     #:  (Task, Enumerator::Yielder) -> void
     def iterate_each_value(task, yielder)
-      each = task.each #: Symbol
-      arguments.public_send(each).each.with_index do |value, index|
+      each = task.each #: ^(Context) -> untyped
+      each.call(self).each.with_index do |value, index|
         self.each_context = EachContext.new(
           parent_job_id: current_job_id,
           task_name: task.name,
