@@ -79,6 +79,7 @@ module JobFlow
       #:  (
       #     Symbol task_name,
       #     ?each: ^(Context) -> untyped | nil,
+      #     ?enqueue: ^(Context) -> bool | nil,
       #     ?concurrency: Integer?,
       #     ?output: Hash[Symbol, String],
       #     ?depends_on: Array[Symbol],
@@ -87,6 +88,7 @@ module JobFlow
       def task(
         task_name,
         each: nil,
+        enqueue: nil,
         concurrency: nil,
         output: {},
         depends_on: [],
@@ -97,6 +99,7 @@ module JobFlow
           Task.new(
             name: task_name,
             block: block,
+            enqueue:,
             each:,
             concurrency:,
             output:,
@@ -104,7 +107,7 @@ module JobFlow
             condition:
           )
         )
-        if !concurrency.nil? && !each.nil? && respond_to?(:limits_concurrency) # rubocop:disable Style/GuardClause
+        if !concurrency.nil? && !enqueue.nil? && respond_to?(:limits_concurrency) # rubocop:disable Style/GuardClause
           limits_concurrency(to: concurrency, key: ->(ctx) { ctx.each_task_concurrency_key }) # rubocop:disable Style/SymbolProc
         end
       end

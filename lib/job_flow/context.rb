@@ -12,7 +12,12 @@ module JobFlow
     #     ?task_outputs: Array[Hash[Symbol, untyped]],
     #     ?task_job_statuses: Array[Hash[Symbol, untyped]]
     #   ) -> void
-    def initialize(arguments: {}, each_context: {}, task_outputs: [], task_job_statuses: [])
+    def initialize(
+      arguments: {},
+      each_context: {},
+      task_outputs: [],
+      task_job_statuses: []
+    )
       self.arguments = Arguments.new(data: arguments)
       self.each_context = EachContext.new(**each_context.symbolize_keys)
       self.output = Output.from_hash_array(task_outputs)

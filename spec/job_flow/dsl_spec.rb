@@ -173,7 +173,12 @@ RSpec.describe JobFlow::DSL do
 
     context "with each and concurrency options with limits_concurrency" do
       subject(:task) do
-        klass.task :example_task, each: ->(ctx) { ctx.arguments.items }, concurrency: 3 do |ctx|
+        klass.task(
+          :example_task,
+          each: ->(ctx) { ctx.arguments.items },
+          enqueue: ->(_ctx) { true },
+          concurrency: 3
+        ) do |ctx|
           ctx.sum = ctx.sum + ctx.each_value
         end
       end

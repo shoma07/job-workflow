@@ -5,6 +5,7 @@ module JobFlow
     attr_reader :name #: Symbol
     attr_reader :block #: ^(untyped) -> void
     attr_reader :each #: ^(Context) -> untyped | nil
+    attr_reader :enqueue #: ->(Context) -> bool | nil
     attr_reader :concurrency #: Integer?
     attr_reader :output #: Array[OutputDef]
     attr_reader :depends_on #: Array[Symbol]
@@ -16,6 +17,7 @@ module JobFlow
     #     name: Symbol,
     #     block: ^(untyped) -> void,
     #     ?each: ^(Context) -> untyped | nil,
+    #     ?enqueue: ^(Context) -> bool | nil,
     #     ?concurrency: Integer?,
     #     ?output: Hash[Symbol, String],
     #     ?depends_on: Array[Symbol],
@@ -25,6 +27,7 @@ module JobFlow
       name:,
       block:,
       each: nil,
+      enqueue: nil,
       concurrency: nil,
       output: {},
       depends_on: [],
@@ -33,6 +36,7 @@ module JobFlow
       @name = name
       @block = block
       @each = each
+      @enqueue = enqueue
       @concurrency = concurrency
       @output = output.map { |name, type| OutputDef.new(name:, type:) }
       @depends_on = depends_on
