@@ -14,7 +14,7 @@ module JobFlow
     #:  () -> void
     def run
       task = context.current_task
-      return job.step(task.name) { |step| run_task(task, step) } unless task.nil?
+      return run_task(task) unless task.nil?
 
       run_workflow
     end
@@ -40,18 +40,17 @@ module JobFlow
 
         job.step(task.name) do |step|
           wait_for_dependent_tasks(task, step)
-          task.enqueue&.call(context) ? enqueue_task(task) : run_task(task, step)
+          task.enqueue&.call(context) ? enqueue_task(task) : run_task(task)
         end
       end
     end
 
-    #:  (Task, ActiveJob::Continuation::Step) -> void
-    def run_task(task, step)
+    #:  (Task) -> void
+    def run_task(task)
       context._with_each_value(task).each do |each_ctx|
         data = task.block.call(each_ctx)
         each_index = each_ctx._each_context.index
         add_task_output(ctx: each_ctx, task:, each_index:, data:)
-        step.advance! from: each_index
       end
     end
 

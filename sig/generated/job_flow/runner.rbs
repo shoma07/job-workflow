@@ -23,8 +23,8 @@ module JobFlow
     # :  () -> void
     def run_workflow: () -> void
 
-    # :  (Task, ActiveJob::Continuation::Step) -> void
-    def run_task: (Task, ActiveJob::Continuation::Step) -> void
+    # :  (Task) -> void
+    def run_task: (Task) -> void
 
     # :  (Task) -> void
     def enqueue_task: (Task) -> void
