@@ -7,6 +7,7 @@ RSpec.describe JobFlow::TaskGraph do
     let(:graph) { described_class.new }
     let(:task) do
       JobFlow::Task.new(
+        job_name: "TestJob",
         name: :sample_task,
         block: ->(ctx) { ctx },
         depends_on: []
@@ -26,6 +27,7 @@ RSpec.describe JobFlow::TaskGraph do
     end
     let(:task) do
       JobFlow::Task.new(
+        job_name: "TestJob",
         name: :sample_task,
         block: ->(ctx) { ctx },
         depends_on: []
@@ -60,6 +62,7 @@ RSpec.describe JobFlow::TaskGraph do
       let(:tasks) do
         [
           JobFlow::Task.new(
+            job_name: "TestJob",
             name: :sample_task,
             block: ->(ctx) { ctx },
             depends_on: %i[missing_task]
@@ -78,16 +81,19 @@ RSpec.describe JobFlow::TaskGraph do
       let(:tasks) do
         [
           JobFlow::Task.new(
+            job_name: "TestJob",
             name: :task_a,
             block: ->(ctx) { ctx },
             depends_on: []
           ),
           JobFlow::Task.new(
+            job_name: "TestJob",
             name: :task_c,
             block: ->(ctx) { ctx },
             depends_on: %i[task_b]
           ),
           JobFlow::Task.new(
+            job_name: "TestJob",
             name: :task_b,
             block: ->(ctx) { ctx },
             depends_on: %i[task_a]

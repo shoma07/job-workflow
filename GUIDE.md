@@ -420,7 +420,7 @@ task :api_call,
   throttle: {
     key: "external_api",     # Semaphore key
     limit: 10,               # Concurrency limit
-    lease_ttl: 120           # Lease TTL in seconds
+    ttl: 120                 # Lease TTL in seconds
   },
   output: { response: "Hash" } do |ctx|
   params = ctx.arguments.api_params
@@ -1271,8 +1271,8 @@ class ExternalAPIJob < ApplicationJob
   task :fetch_user_data,
        throttle: {
          key: "external_user_api",  # Semaphore identifier
-         limit: 10,                  # Concurrency limit
-         lease_ttl: 120              # Lease TTL in seconds
+         limit: 10,                 # Concurrency limit
+         ttl: 120                   # Lease TTL in seconds
        },
        output: { api_results: "Array[Hash]" } do |ctx|
     user_ids = ctx.arguments.user_ids
