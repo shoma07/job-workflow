@@ -856,4 +856,63 @@ RSpec.describe JobFlow::Context do
       it { is_expected.to eq(["throttled_result"]) }
     end
   end
+
+  describe "#throttle" do
+    before { ctx._current_job = job }
+
+    let(:task) do
+      JobFlow::Task.new(
+        job_name: "TestJob", name: :throttle_test_task,
+        each: ->(_ctx) { [1] }, block: ->(_ctx) {}
+      )
+    end
+
+    context "when called with explicit key" do
+      subject(:throttle_result) do
+        ctx._with_each_value(task).map do |each_ctx|
+          each_ctx.throttle(key: "custom_key", limit: 5) { "result_with_key" }
+        end
+      end
+
+      it { is_expected.to eq(["result_with_key"]) }
+    end
+
+    context "when called without key (uses default key)" do
+      subject(:throttle_result) do
+        ctx._with_each_value(task).map do |each_ctx|
+          each_ctx.throttle(limit: 3) { "result_without_key" }
+        end
+      end
+
+      it { is_expected.to eq(["result_without_key"]) }
+    end
+
+    context "when called multiple times (increments call count)" do
+      subject(:throttle_results) do
+        ctx._with_each_value(task).flat_map do |each_ctx|
+          result1 = each_ctx.throttle(limit: 2) { "first" }
+          result2 = each_ctx.throttle(limit: 2) { "second" }
+          [result1, result2]
+        end
+      end
+
+      it { is_expected.to eq(%w[first second]) }
+    end
+
+    context "when called with custom ttl" do
+      subject(:throttle_result) do
+        ctx._with_each_value(task).map do |each_ctx|
+          each_ctx.throttle(limit: 5, ttl: 60) { "result_with_ttl" }
+        end
+      end
+
+      it { is_expected.to eq(["result_with_ttl"]) }
+    end
+
+    context "when called outside of task (current_task is nil)" do
+      subject(:throttle_call) { ctx.throttle(limit: 3) { "result_no_task" } }
+
+      it { expect { throttle_call }.to raise_error("throttle can be called only in task") }
+    end
+  end
 end
