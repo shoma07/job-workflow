@@ -42,18 +42,18 @@ module JobFlow
       each_task_names << task_output.task_name if task_output.each_index
     end
 
-    #:  (Array[String]) -> void
-    def update_task_outputs_from_db(job_ids)
+    #:  (Array[String], Workflow) -> void
+    def update_task_outputs_from_db(job_ids, workflow)
       jobs = SolidQueue::Job.where(active_job_id: job_ids)
       return if jobs.empty?
 
-      update_task_outputs_from_jobs(jobs.to_a)
+      update_task_outputs_from_jobs(jobs.to_a, workflow)
     end
 
-    #:  (Array[SolidQueue::Job]) -> void
-    def update_task_outputs_from_jobs(jobs)
+    #:  (Array[SolidQueue::Job], Workflow) -> void
+    def update_task_outputs_from_jobs(jobs, workflow)
       jobs.each do |job|
-        context = Context.deserialize(job.arguments["job_flow_context"])
+        context = Context.deserialize(job.arguments["job_flow_context"].merge("workflow" => workflow))
         task_output = context.each_task_output
         next if task_output.nil?
 

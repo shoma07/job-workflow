@@ -121,7 +121,7 @@ module JobFlow
     #:  (Task) -> void
     def update_task_outputs(task)
       finished_job_ids = context.job_status.finished_job_ids(task_name: task.name)
-      context.output.update_task_outputs_from_db(finished_job_ids)
+      context.output.update_task_outputs_from_db(finished_job_ids, context.workflow)
     end
   end
 end

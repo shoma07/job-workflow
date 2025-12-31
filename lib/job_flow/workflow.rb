@@ -37,10 +37,5 @@ module JobFlow
     def build_arguments_hash
       arguments.to_h { |def_obj| [def_obj.name, def_obj.default] }
     end
-
-    #:  () -> Context
-    def build_context
-      Context.from_hash({ arguments: arguments.to_h { |def_obj| [def_obj.name, def_obj.default] } })
-    end
   end
 end
