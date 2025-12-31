@@ -4,6 +4,7 @@ module JobFlow
   class Context
     attr_reader :workflow #: Workflow
     attr_reader :arguments #: Arguments
+    attr_reader :current_task #: Task?
     attr_reader :output #: Output
     attr_reader :job_status #: JobStatus
 
@@ -26,13 +27,10 @@ module JobFlow
         new(
           workflow: hash.fetch("workflow"),
           arguments: Arguments.new(data: workflow.build_arguments_hash),
+          current_task: workflow.fetch_task(hash["current_task_name"]&.to_sym),
           each_context: EachContext.deserialize(hash["each_context"]),
-          output: Output.new(
-            task_outputs: hash.fetch("task_outputs", []).map { |shash| TaskOutput.deserialize(shash) }
-          ),
-          job_status: JobStatus.new(
-            task_job_statuses: hash.fetch("task_job_statuses", []).map { |shash| TaskJobStatus.deserialize(shash) }
-          )
+          output: Output.deserialize(hash),
+          job_status: JobStatus.deserialize(hash)
         )
       end
     end
@@ -42,17 +40,20 @@ module JobFlow
     #     arguments: Arguments,
     #     each_context: EachContext,
     #     output: Output,
-    #     job_status: JobStatus
+    #     job_status: JobStatus,
+    #     ?current_task: Task?
     #   ) -> void
-    def initialize(
+    def initialize( # rubocop:disable Metrics/ParameterLists
       workflow:,
       arguments:,
       each_context:,
       output:,
-      job_status:
+      job_status:,
+      current_task: nil
     )
       self.workflow = workflow
       self.arguments = arguments
+      self.current_task = current_task
       self.each_context = each_context
       self.output = output
       self.job_status = job_status
@@ -61,6 +62,7 @@ module JobFlow
     #:  () -> Hash[String, untyped]
     def serialize
       {
+        "current_task_name" => current_task&.name,
         "each_context" => _each_context.serialize,
         "task_outputs" => output.flat_task_outputs.map(&:serialize),
         "task_job_statuses" => job_status.flat_task_job_statuses.map(&:serialize)
@@ -84,8 +86,21 @@ module JobFlow
     end
 
     #:  () -> String?
-    def each_task_concurrency_key
-      each_context.concurrency_key
+    def concurrency_key
+      task = current_task
+      return if task.nil?
+
+      [each_context.parent_job_id, task.name].compact.join("/")
+    end
+
+    #:  (Task) { () -> void } -> void
+    def _with_task(task)
+      raise "Nested _with_task calls are not allowed" if current_task
+
+      self.current_task = task
+      yield
+    ensure
+      self.current_task = nil
     end
 
     #:  (Task) -> Enumerator[Context]
@@ -104,9 +119,11 @@ module JobFlow
 
     #:  () -> TaskOutput?
     def each_task_output
-      raise "each_task_output can be called only within each_values block" unless each_context.enabled?
+      task = current_task
+      raise "each_task_output can be called only _with_task block" if task.nil?
+      raise "each_task_output can be called only _with_each_value block" unless each_context.enabled?
 
-      task_name = each_context.task_name
+      task_name = task.name
       each_index = each_context.index
       output.fetch(task_name:, each_index:)
     end
@@ -125,6 +142,7 @@ module JobFlow
 
     attr_writer :workflow #: Workflow
     attr_writer :arguments #: Arguments
+    attr_writer :current_task #: Task?
     attr_writer :output #: Output
     attr_writer :job_status #: JobStatus
     attr_accessor :each_context #: EachContext
@@ -143,7 +161,6 @@ module JobFlow
       each.call(self).each.with_index do |value, index|
         self.each_context = EachContext.new(
           parent_job_id: current_job_id,
-          task_name: task.name,
           index:,
           value:
         )

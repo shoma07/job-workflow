@@ -14,6 +14,11 @@ module JobFlow
         end
         new(task_outputs:)
       end
+
+      #:  (Hash[String, untyped]) -> Output
+      def deserialize(hash)
+        new(task_outputs: hash.fetch("task_outputs", []).map { |shash| TaskOutput.deserialize(shash) })
+      end
     end
 
     #:  (?task_outputs: Array[TaskOutput]) -> void

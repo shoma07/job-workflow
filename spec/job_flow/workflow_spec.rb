@@ -58,7 +58,7 @@ RSpec.describe JobFlow::Workflow do
     context "when task does not exist" do
       let(:task_name) { :missing_task }
 
-      it { expect { fetch_task }.to raise_error(KeyError) }
+      it { is_expected.to be_nil }
     end
   end
 end

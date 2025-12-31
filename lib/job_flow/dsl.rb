@@ -102,7 +102,7 @@ module JobFlow
           )
         )
         if !concurrency.nil? && !enqueue.nil? && respond_to?(:limits_concurrency) # rubocop:disable Style/GuardClause
-          limits_concurrency(to: concurrency, key: ->(ctx) { ctx.each_task_concurrency_key }) # rubocop:disable Style/SymbolProc
+          limits_concurrency(to: concurrency, key: ->(ctx) { ctx.concurrency_key }) # rubocop:disable Style/SymbolProc
         end
       end
       # rubocop:enable Metrics/ParameterLists

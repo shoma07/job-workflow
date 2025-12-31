@@ -13,7 +13,8 @@ module JobFlow
 
     #:  () -> void
     def run
-      return run_each_task_in_map unless context.each_task_concurrency_key.nil?
+      task = context.current_task
+      return run_each_task_in_map(task) unless task.nil?
 
       run_workflow
     end
@@ -35,9 +36,11 @@ module JobFlow
     #:  () -> void
     def run_workflow
       tasks.each do |task|
-        next unless task.condition.call(context)
+        context._with_task(task) do
+          next unless task.condition.call(context)
 
-        job.step(task.name) { |step| run_task(task, step) }
+          job.step(task.name) { |step| run_task(task, step) }
+        end
       end
     end
 
@@ -72,9 +75,8 @@ module JobFlow
       end
     end
 
-    #:  () -> void
-    def run_each_task_in_map
-      task = workflow.fetch_task(context._each_context.task_name)
+    #:  (Task) -> void
+    def run_each_task_in_map(task)
       data = task.block.call(context)
       add_task_output(ctx: context, task:, data:, each_index: context._each_context.index)
     end
@@ -93,9 +95,8 @@ module JobFlow
 
       dependent_task_names.each do |dependent_task_name|
         dependent_task = workflow.fetch_task(dependent_task_name)
-
         # Only wait for map tasks with concurrency
-        next if dependent_task.each.nil? || dependent_task.concurrency.nil?
+        next if dependent_task.nil? || dependent_task.each.nil? || dependent_task.concurrency.nil?
         # Skip if already finished
         next if context.job_status.task_job_finished?(dependent_task.name)
 

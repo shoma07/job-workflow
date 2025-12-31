@@ -264,9 +264,9 @@ RSpec.describe JobFlow::DSL do
       it "includes each_context and task_job_statuses" do
         context_data = serialize["job_flow_context"]
         expect(context_data).to include(
+          "current_task_name" => nil,
           "each_context" => {
             "parent_job_id" => nil,
-            "task_name" => nil,
             "index" => nil,
             "value" => nil
           },

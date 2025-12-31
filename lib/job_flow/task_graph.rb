@@ -15,9 +15,9 @@ module JobFlow
       @tasks[task.name] = task
     end
 
-    #:  (Symbol?) -> Task
+    #:  (Symbol?) -> Task?
     def fetch(task_name)
-      @tasks.fetch(task_name)
+      @tasks[task_name]
     end
 
     #:  () { (Task) -> void } -> void
