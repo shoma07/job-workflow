@@ -1308,30 +1308,30 @@ end
 Use the same `key` to share rate limits across different jobs and tasks:
 
 ```ruby
-# Both jobs share the same "stripe_api" throttle limit
+# Both jobs share the same "payment_api" throttle limit
 class CreateUserJob < ApplicationJob
   include JobFlow::DSL
   
   argument :user_data, "Hash"
   
-  task :create_stripe_customer,
-       throttle: { key: "stripe_api", limit: 5 } do |ctx|
-    Stripe::Customer.create(ctx.arguments.user_data)
+  task :create_customer,
+       throttle: { key: "payment_api", limit: 5 } do |ctx|
+    PaymentService.create_customer(ctx.arguments.user_data)
   end
 end
 
-class UpdateSubscriptionJob < ApplicationJob
+class UpdateBillingJob < ApplicationJob
   include JobFlow::DSL
   
-  argument :subscription_id, "String"
+  argument :billing_id, "String"
   
-  task :update_subscription,
-       throttle: { key: "stripe_api", limit: 5 } do |ctx|
-    Stripe::Subscription.update(ctx.arguments.subscription_id)
+  task :update_billing,
+       throttle: { key: "payment_api", limit: 5 } do |ctx|
+    PaymentService.update_billing(ctx.arguments.billing_id)
   end
 end
 
-# Total concurrent calls to Stripe API: max 5 across both jobs
+# Total concurrent calls to payment API: max 5 across both jobs
 ```
 
 ### Throttling Behavior
@@ -1412,14 +1412,14 @@ Apply different rate limits to different operations within the same task:
 
 ```ruby
 task :multi_api_task do |ctx|
-  # Stripe API: max 5 concurrent
-  ctx.throttle(limit: 5, key: "stripe_api") do
-    Stripe::Customer.create(ctx.arguments.customer_data)
+  # Payment API: max 5 concurrent
+  ctx.throttle(limit: 5, key: "payment_api") do
+    PaymentService.process(ctx.arguments.payment_data)
   end
   
-  # SendGrid API: max 10 concurrent
-  ctx.throttle(limit: 10, key: "sendgrid_api") do
-    SendGrid.send_email(ctx.arguments.email_params)
+  # Notification API: max 10 concurrent
+  ctx.throttle(limit: 10, key: "notification_api") do
+    NotificationService.send(ctx.arguments.message_params)
   end
 end
 ```

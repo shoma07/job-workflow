@@ -138,12 +138,12 @@ class APIBatchJob < ApplicationJob
 end
 
 # Share throttle limits across different jobs
-class StripeJob < ApplicationJob
+class PaymentJob < ApplicationJob
   include JobFlow::DSL
   
   task :create_customer,
-       throttle: { key: "stripe_api", limit: 10 } do |ctx|
-    Stripe::Customer.create(ctx.arguments.data)
+       throttle: { key: "payment_api", limit: 10 } do |ctx|
+    PaymentService.create_customer(ctx.arguments.data)
   end
 end
 ```
