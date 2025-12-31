@@ -4,18 +4,18 @@ module JobFlow
   class TaskOutput
     attr_reader task_name: Symbol
 
-    attr_reader each_index: Integer?
+    attr_reader each_index: Integer
 
     attr_reader data: Hash[Symbol, untyped]
 
-    # :  (task: Task, ?each_index: Integer?, data: Hash[Symbol, untyped]) -> TaskOutput
-    def self.from_task: (task: Task, data: Hash[Symbol, untyped], ?each_index: Integer?) -> TaskOutput
+    # :  (task: Task, each_index: Integer, data: Hash[Symbol, untyped]) -> TaskOutput
+    def self.from_task: (task: Task, each_index: Integer, data: Hash[Symbol, untyped]) -> TaskOutput
 
     # :  (Hash[String, untyped]) -> TaskOutput
     def self.deserialize: (Hash[String, untyped]) -> TaskOutput
 
-    # :  (task_name: Symbol, ?each_index: Integer?, ?data: Hash[Symbol, untyped]) -> void
-    def initialize: (task_name: Symbol, ?each_index: Integer?, ?data: Hash[Symbol, untyped]) -> void
+    # :  (task_name: Symbol, each_index: Integer, ?data: Hash[Symbol, untyped]) -> void
+    def initialize: (task_name: Symbol, each_index: Integer, ?data: Hash[Symbol, untyped]) -> void
 
     # :  () -> Hash[String, untyped]
     def serialize: () -> Hash[String, untyped]

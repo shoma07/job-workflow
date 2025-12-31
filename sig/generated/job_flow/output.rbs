@@ -14,8 +14,8 @@ module JobFlow
     # :  (task_name: Symbol?) -> Array[TaskOutput]
     def fetch_all: (task_name: Symbol?) -> Array[TaskOutput]
 
-    # :  (task_name: Symbol?, ?each_index: Integer?) -> TaskOutput?
-    def fetch: (task_name: Symbol?, ?each_index: Integer?) -> TaskOutput?
+    # :  (task_name: Symbol?, each_index: Integer) -> TaskOutput?
+    def fetch: (task_name: Symbol?, each_index: Integer) -> TaskOutput?
 
     # :  (TaskOutput) -> void
     def add_task_output: (TaskOutput) -> void
@@ -38,7 +38,5 @@ module JobFlow
     private
 
     attr_accessor task_outputs: Hash[Symbol, Array[TaskOutput]]
-
-    attr_accessor each_task_names: Set[Symbol]
   end
 end

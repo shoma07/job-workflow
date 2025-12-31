@@ -4,7 +4,7 @@ module JobFlow
   class TaskJobStatus
     attr_reader :task_name #: Symbol
     attr_reader :job_id #: String
-    attr_reader :each_index #: Integer?
+    attr_reader :each_index #: Integer
     attr_reader :status #: Symbol
 
     class << self
@@ -41,10 +41,10 @@ module JobFlow
     #:  (
     #      task_name: Symbol,
     #      job_id: String,
-    #      ?each_index: Integer?,
+    #      each_index: Integer,
     #      ?status: Symbol
     #    ) -> void
-    def initialize(task_name:, job_id:, each_index: nil, status: :pending)
+    def initialize(task_name:, job_id:, each_index:, status: :pending)
       @task_name = task_name
       @job_id = job_id
       @each_index = each_index

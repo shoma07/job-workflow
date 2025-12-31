@@ -4,7 +4,7 @@ module JobFlow
   class Task
     attr_reader :name #: Symbol
     attr_reader :block #: ^(untyped) -> void
-    attr_reader :each #: ^(Context) -> untyped | nil
+    attr_reader :each #: ^(Context) -> untyped
     attr_reader :enqueue #: ->(Context) -> bool | nil
     attr_reader :concurrency #: Integer?
     attr_reader :output #: Array[OutputDef]
@@ -16,7 +16,7 @@ module JobFlow
     #:  (
     #     name: Symbol,
     #     block: ^(untyped) -> void,
-    #     ?each: ^(Context) -> untyped | nil,
+    #     ?each: ^(Context) -> untyped,
     #     ?enqueue: ^(Context) -> bool | nil,
     #     ?concurrency: Integer?,
     #     ?output: Hash[Symbol, String],

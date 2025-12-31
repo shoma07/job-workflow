@@ -20,10 +20,16 @@ module JobFlow
       class_attribute :_workflow, default: Workflow.new
     end
 
-    #:  (Hash[untyped, untyped] | Context) -> void
+    #:  (Hash[untyped, untyped]) -> void
     def perform(arguments)
-      @_context ||= Context.from_hash({ workflow: self.class._workflow })
-      Runner.new(job: self, context: @_context._update_arguments(arguments)).run
+      self._context ||= Context.from_hash({ workflow: self.class._workflow })
+      context = self._context #: Context
+      Runner.new(job: self, context: context._update_arguments(arguments)).run
+    end
+
+    #:  (Context) -> void
+    def _context=(context)
+      @_context = context
     end
 
     #:  () -> Context?
@@ -41,7 +47,7 @@ module JobFlow
       super
 
       job_data["job_flow_context"]&.then do |context_data|
-        @_context = Context.deserialize(context_data.merge("workflow" => self.class._workflow))
+        self._context = Context.deserialize(context_data.merge("workflow" => self.class._workflow))
       end
     end
 
@@ -51,9 +57,11 @@ module JobFlow
       #
       #   def _workflow: () -> Workflow
       #
-      #   def new: (Context) -> DSL
+      #   def new: (Hash[untyped, untyped]) -> DSL
       #
       #   def perform_all_later: (Array[DSL]) -> void
+      #
+      #   def enqueue: (Hash[untyped, untyped]) -> void
       #
       #   def limits_concurrency: (
       #     to: Integer,
@@ -62,6 +70,13 @@ module JobFlow
       #     ?group: String?,
       #     ?on_conflict: Symbol?
       #   ) -> void
+
+      #:  (Context) -> DSL
+      def from_context(context)
+        job = new(context.arguments.to_h)
+        job._context = context
+        job
+      end
 
       #:  (Symbol argument_name, String type, ?default: untyped) -> void
       def argument(argument_name, type, default: nil)
@@ -72,7 +87,7 @@ module JobFlow
       #
       #:  (
       #     Symbol task_name,
-      #     ?each: ^(Context) -> untyped | nil,
+      #     ?each: ^(Context) -> untyped,
       #     ?enqueue: ^(Context) -> bool | nil,
       #     ?concurrency: Integer?,
       #     ?output: Hash[Symbol, String],
@@ -81,7 +96,7 @@ module JobFlow
       #   ) { (untyped) -> void } -> void
       def task(
         task_name,
-        each: nil,
+        each: ->(_ctx) { [EachContext::NULL_VALUE] },
         enqueue: nil,
         concurrency: nil,
         output: {},

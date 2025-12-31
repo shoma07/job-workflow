@@ -8,7 +8,7 @@ RSpec.describe JobFlow::JobStatus do
       [
         { task_name: :task_a, job_id: "job1", each_index: 0, status: :succeeded },
         { task_name: :task_a, job_id: "job2", each_index: 1, status: :pending },
-        { task_name: :task_b, job_id: "job3", each_index: nil, status: :running }
+        { task_name: :task_b, job_id: "job3", each_index: 0, status: :running }
       ]
     end
 
@@ -18,7 +18,7 @@ RSpec.describe JobFlow::JobStatus do
         flat_task_job_statuses: contain_exactly(
           have_attributes(task_name: :task_a, job_id: "job1", each_index: 0, status: :succeeded),
           have_attributes(task_name: :task_a, job_id: "job2", each_index: 1, status: :pending),
-          have_attributes(task_name: :task_b, job_id: "job3", each_index: nil, status: :running)
+          have_attributes(task_name: :task_b, job_id: "job3", each_index: 0, status: :running)
         )
       )
     end
@@ -65,7 +65,7 @@ RSpec.describe JobFlow::JobStatus do
         [
           JobFlow::TaskJobStatus.new(task_name: :task_a, job_id: "job1", each_index: 0, status: :succeeded),
           JobFlow::TaskJobStatus.new(task_name: :task_a, job_id: "job2", each_index: 1, status: :pending),
-          JobFlow::TaskJobStatus.new(task_name: :task_b, job_id: "job3", each_index: nil, status: :running)
+          JobFlow::TaskJobStatus.new(task_name: :task_b, job_id: "job3", each_index: 0, status: :running)
         ]
       end
 
@@ -92,7 +92,7 @@ RSpec.describe JobFlow::JobStatus do
         task_job_statuses: [
           JobFlow::TaskJobStatus.new(task_name: :task_a, job_id: "job1", each_index: 0, status: :succeeded),
           JobFlow::TaskJobStatus.new(task_name: :task_a, job_id: "job2", each_index: 1, status: :pending),
-          JobFlow::TaskJobStatus.new(task_name: :task_b, job_id: "job3", each_index: nil, status: :running)
+          JobFlow::TaskJobStatus.new(task_name: :task_b, job_id: "job3", each_index: 0, status: :running)
         ]
       )
     end
@@ -104,16 +104,16 @@ RSpec.describe JobFlow::JobStatus do
       it { is_expected.to have_attributes(task_name: :task_a, job_id: "job2", each_index: 1) }
     end
 
-    context "when task exists without index (single task)" do
+    context "when task exists with index 0 (single task)" do
       let(:task_name) { :task_b }
-      let(:index) { nil }
+      let(:index) { 0 }
 
-      it { is_expected.to have_attributes(task_name: :task_b, job_id: "job3", each_index: nil) }
+      it { is_expected.to have_attributes(task_name: :task_b, job_id: "job3", each_index: 0) }
     end
 
     context "when task does not exist" do
       let(:task_name) { :task_c }
-      let(:index) { nil }
+      let(:index) { 0 }
 
       it { is_expected.to be_nil }
     end
@@ -179,8 +179,8 @@ RSpec.describe JobFlow::JobStatus do
     end
   end
 
-  describe "#task_job_finished?" do
-    subject(:task_finished?) { job_status.task_job_finished?(task_name) }
+  describe "#needs_waiting?" do
+    subject(:needs_waiting) { job_status.needs_waiting?(task_name) }
 
     let(:job_status) { described_class.new(task_job_statuses:) }
 
@@ -208,11 +208,13 @@ RSpec.describe JobFlow::JobStatus do
       it { is_expected.to be false }
     end
 
-    context "when no statuses exist for the task" do
+    context "when no statuses exist for the task (not enqueued)" do
       let(:task_name) { :task_c }
       let(:task_job_statuses) { [] }
 
-      it { is_expected.to be false }
+      it "returns true (no need to wait)" do
+        expect(needs_waiting).to be true
+      end
     end
   end
 

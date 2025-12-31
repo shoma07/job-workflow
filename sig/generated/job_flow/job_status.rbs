@@ -14,8 +14,8 @@ module JobFlow
     # :  (task_name: Symbol) -> Array[TaskJobStatus]
     def fetch_all: (task_name: Symbol) -> Array[TaskJobStatus]
 
-    # :  (task_name: Symbol, ?index: Integer?) -> TaskJobStatus?
-    def fetch: (task_name: Symbol, ?index: Integer?) -> TaskJobStatus?
+    # :  (task_name: Symbol, index: Integer) -> TaskJobStatus?
+    def fetch: (task_name: Symbol, index: Integer) -> TaskJobStatus?
 
     # :  (task_name: Symbol) -> Array[String]
     def finished_job_ids: (task_name: Symbol) -> Array[String]
@@ -23,8 +23,12 @@ module JobFlow
     # :  () -> Array[TaskJobStatus]
     def flat_task_job_statuses: () -> Array[TaskJobStatus]
 
+    # @note
+    #   - If the array is empty, the task is not enqueued and is considered completed.
+    #   - If we add a task existence check in the future, we'll check here.
+    #
     # :  (Symbol) -> bool
-    def task_job_finished?: (Symbol) -> bool
+    def needs_waiting?: (Symbol) -> bool
 
     # :  (TaskJobStatus) -> void
     def update_task_job_status: (TaskJobStatus) -> void

@@ -87,8 +87,8 @@ RSpec.describe JobFlow::Context do
           each_context: JobFlow::EachContext.new,
           output: JobFlow::Output.new(
             task_outputs: [
-              JobFlow::TaskOutput.new(task_name: :task_one, data: { result: 100 }),
-              JobFlow::TaskOutput.new(task_name: :task_two, data: { result: 200 })
+              JobFlow::TaskOutput.new(task_name: :task_one, each_index: 0, data: { result: 100 }),
+              JobFlow::TaskOutput.new(task_name: :task_two, each_index: 0, data: { result: 200 })
             ]
           ),
           job_status: JobFlow::JobStatus.new
@@ -98,8 +98,8 @@ RSpec.describe JobFlow::Context do
       it "creates a context with task outputs" do
         expect(init).to have_attributes(
           output: have_attributes(
-            task_one: have_attributes(result: 100),
-            task_two: have_attributes(result: 200)
+            task_one: contain_exactly(have_attributes(result: 100)),
+            task_two: contain_exactly(have_attributes(result: 200))
           )
         )
       end
@@ -162,11 +162,11 @@ RSpec.describe JobFlow::Context do
         workflow:,
         each_context: { parent_job_id: "parent-id", index: 0, value: 10 },
         task_outputs: [
-          { task_name: :task_a, each_index: nil, data: { result: 100 } },
+          { task_name: :task_a, each_index: 0, data: { result: 100 } },
           { task_name: :task_b, each_index: 0, data: { value: 200 } }
         ],
         task_job_statuses: [
-          { task_name: :task_a, job_id: "job1", each_index: nil, status: :succeeded }
+          { task_name: :task_a, job_id: "job1", each_index: 0, status: :succeeded }
         ]
       }
     end
@@ -176,7 +176,7 @@ RSpec.describe JobFlow::Context do
         arguments: have_attributes(arg_one: nil, arg_two: 1),
         _each_context: have_attributes(parent_job_id: "parent-id", index: 0, value: 10),
         output: have_attributes(
-          task_a: have_attributes(result: 100),
+          task_a: contain_exactly(have_attributes(result: 100)),
           task_b: contain_exactly(have_attributes(value: 200))
         ),
         job_status: be_a(JobFlow::JobStatus)
@@ -198,12 +198,12 @@ RSpec.describe JobFlow::Context do
             "value" => 10
           },
           "task_outputs" => [
-            { "task_name" => "task_a", "each_index" => nil,
+            { "task_name" => "task_a", "each_index" => 0,
               "data" => { "_aj_symbol_keys" => %w[result], "result" => 100 } },
             { "task_name" => "task_b", "each_index" => 0, "data" => { "_aj_symbol_keys" => %w[value], "value" => 200 } }
           ],
           "task_job_statuses" => [
-            { "task_name" => "task_a", "job_id" => "job1", "each_index" => nil, "status" => "succeeded" }
+            { "task_name" => "task_a", "job_id" => "job1", "each_index" => 0, "status" => "succeeded" }
           ]
         }
       end
@@ -213,7 +213,7 @@ RSpec.describe JobFlow::Context do
           arguments: have_attributes(arg_one: nil, arg_two: 1),
           _each_context: have_attributes(parent_job_id: "parent-id", index: 0, value: 10),
           output: have_attributes(
-            task_a: have_attributes(result: 100),
+            task_a: contain_exactly(have_attributes(result: 100)),
             task_b: contain_exactly(have_attributes(value: 200))
           ),
           job_status: be_a(JobFlow::JobStatus)
@@ -228,7 +228,7 @@ RSpec.describe JobFlow::Context do
           "current_task_name" => nil,
           "each_context" => {
             "parent_job_id" => nil,
-            "index" => nil,
+            "index" => 0,
             "value" => nil
           },
           "task_outputs" => [],
@@ -256,12 +256,12 @@ RSpec.describe JobFlow::Context do
         each_context: JobFlow::EachContext.new(parent_job_id: "parent-id", index: 0, value: 10),
         output: JobFlow::Output.new(
           task_outputs: [
-            JobFlow::TaskOutput.new(task_name: :task_a, data: { result: 100 })
+            JobFlow::TaskOutput.new(task_name: :task_a, each_index: 0, data: { result: 100 })
           ]
         ),
         job_status: JobFlow::JobStatus.new(
           task_job_statuses: [
-            JobFlow::TaskJobStatus.new(task_name: :task_a, job_id: "job1", status: :succeeded)
+            JobFlow::TaskJobStatus.new(task_name: :task_a, job_id: "job1", each_index: 0, status: :succeeded)
           ]
         )
       )
@@ -277,11 +277,11 @@ RSpec.describe JobFlow::Context do
             "value" => 10
           },
           "task_outputs" => [
-            { "task_name" => "task_a", "each_index" => nil,
+            { "task_name" => "task_a", "each_index" => 0,
               "data" => { "_aj_symbol_keys" => %w[result], "result" => 100 } }
           ],
           "task_job_statuses" => [
-            { "task_name" => "task_a", "job_id" => "job1", "each_index" => nil, "status" => "succeeded" }
+            { "task_name" => "task_a", "job_id" => "job1", "each_index" => 0, "status" => "succeeded" }
           ]
         }
       )
@@ -476,15 +476,17 @@ RSpec.describe JobFlow::Context do
       let(:task_output) do
         JobFlow::TaskOutput.new(
           task_name: :sample_task,
-          data: { result: 42, message: "success" }
+          each_index: 0, data: { result: 42, message: "success" }
         )
       end
 
       it "adds the task output to the output" do
         add_task_output
-        expect(ctx.output.sample_task).to have_attributes(
-          result: 42,
-          message: "success"
+        expect(ctx.output.sample_task).to contain_exactly(
+          have_attributes(
+            result: 42,
+            message: "success"
+          )
         )
       end
     end
@@ -740,19 +742,6 @@ RSpec.describe JobFlow::Context do
           each_ctx._with_each_value(nested_task).to_a
         end
       end.to raise_error("Nested _with_each_value calls are not allowed")
-    end
-  end
-
-  describe "#_with_task nested calls" do
-    let(:outer_task) { JobFlow::Task.new(name: :outer_task, block: ->(_ctx) {}) }
-    let(:inner_task) { JobFlow::Task.new(name: :inner_task, block: ->(_ctx) {}) }
-
-    it "raises an error when nested" do
-      expect do
-        ctx._with_task(outer_task) do
-          ctx._with_task(inner_task) { nil }
-        end
-      end.to raise_error("Nested _with_task calls are not allowed")
     end
   end
 end

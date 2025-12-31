@@ -2,17 +2,19 @@
 
 module JobFlow
   class EachContext
+    NULL_VALUE: nil
+
     attr_reader parent_job_id: String?
 
-    attr_reader index: Integer?
+    attr_reader index: Integer
 
     attr_reader value: untyped
 
     # :  (Hash[String, untyped]) -> EachContext
     def self.deserialize: (Hash[String, untyped]) -> EachContext
 
-    # :  (?parent_job_id: String?, ?index: Integer?, ?value: untyped) -> void
-    def initialize: (?parent_job_id: String?, ?index: Integer?, ?value: untyped) -> void
+    # :  (?parent_job_id: String?, ?index: Integer, ?value: untyped) -> void
+    def initialize: (?parent_job_id: String?, ?index: Integer, ?value: untyped) -> void
 
     # :  () -> bool
     def enabled?: () -> bool
@@ -24,7 +26,7 @@ module JobFlow
 
     attr_writer parent_job_id: String?
 
-    attr_writer index: Integer?
+    attr_writer index: Integer
 
     attr_writer value: untyped
   end
