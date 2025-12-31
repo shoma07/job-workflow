@@ -34,4 +34,17 @@ module SolidQueue
 
     def arguments: () -> Hash[String, untyped]
   end
+
+  class Semaphore < Record
+    # Interface expected by wait/signal
+    interface _SemaphoreJob
+      def concurrency_key: () -> String
+      def concurrency_limit: () -> Integer
+      def concurrency_duration: () -> ActiveSupport::Duration
+    end
+
+    def self.wait: (_SemaphoreJob job) -> bool
+    def self.signal: (_SemaphoreJob job) -> bool
+    def self.signal_all: (Array[_SemaphoreJob] jobs) -> Integer
+  end
 end
