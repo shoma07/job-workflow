@@ -8,6 +8,7 @@ JobFlow is a declarative workflow orchestration engine for Ruby on Rails applica
 - **Dependency Management**: Automatic task ordering based on dependencies
 - **Parallel Processing**: Efficient parallel execution with map tasks
 - **Task Outputs**: Collect and access structured outputs from tasks
+- **Throttling**: Semaphore-based rate limiting for external APIs
 - **Type Safety**: Full RBS type definitions for enhanced reliability
 - **Context Persistence**: Automatic serialization of workflow state
 - **Built-in Resilience**: Retry logic and error handling
@@ -117,6 +118,36 @@ class BatchProcessingJob < ApplicationJob
 end
 ```
 
+### Throttling for Rate-Limited APIs
+
+Control concurrent access to external APIs with semaphore-based throttling:
+
+```ruby
+class APIBatchJob < ApplicationJob
+  include JobFlow::DSL
+  
+  argument :user_ids, "Array[Integer]"
+  
+  # Limit to 5 concurrent API calls
+  task :fetch_users,
+       throttle: 5,
+       each: ->(ctx) { ctx.arguments.user_ids },
+       output: { user: "Hash" } do |ctx|
+    { user: ExternalAPI.fetch_user(ctx.each_value) }
+  end
+end
+
+# Share throttle limits across different jobs
+class StripeJob < ApplicationJob
+  include JobFlow::DSL
+  
+  task :create_customer,
+       throttle: { key: "stripe_api", limit: 10 } do |ctx|
+    Stripe::Customer.create(ctx.arguments.data)
+  end
+end
+```
+
 ## Core Concepts
 
 ### Arguments and Context
@@ -181,6 +212,7 @@ Topics covered:
 - Task dependencies and execution order
 - Parallel processing patterns
 - Task outputs and data flow
+- Throttling and rate limiting
 - Error handling and retries
 - Conditional execution
 - Testing strategies

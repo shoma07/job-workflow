@@ -50,6 +50,9 @@ module JobFlow
     # :  () { () -> void } -> void
     def _with_task_throttle: () { () -> void } -> void
 
+    # :  (limit: Integer, ?key: String?, ?ttl: Integer) { () -> void } -> void
+    def throttle: (limit: Integer, ?key: String?, ?ttl: Integer) { () -> void } -> void
+
     # :  () -> untyped
     def each_value: () -> untyped
 
@@ -78,11 +81,16 @@ module JobFlow
 
     attr_accessor enabled_with_each_value: bool
 
+    attr_accessor throttle_index: Integer
+
     # :  () -> DSL
     def current_job: () -> DSL
 
     # :  (Task, Enumerator::Yielder) -> void
     def with_each_context: (Task, Enumerator::Yielder) -> void
+
+    # :  () -> void
+    def clear_each_context: () -> void
 
     # :  (Task) { (untyped, Integer) -> void } -> void
     def with_each_index_and_value: (Task) { (untyped, Integer) -> void } -> void

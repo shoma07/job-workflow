@@ -11,10 +11,10 @@ module JobFlow
       def from_primitive_value_with_task(value:, task:)
         case value
         when Integer
-          new(key: "#{task.job_name}:#{task.name}", limit: value)
+          new(key: task.throttle_prefix_key, limit: value)
         when Hash
           new(
-            key: value[:key] || "#{task.job_name}:#{task.name}",
+            key: value[:key] || task.throttle_prefix_key,
             limit: value[:limit],
             ttl: value[:ttl] || 180
           )

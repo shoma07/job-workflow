@@ -55,5 +55,10 @@ module JobFlow
       @throttle = TaskThrottle.from_primitive_value_with_task(value: throttle, task: self)
     end
     # rubocop:enable Metrics/ParameterLists, Metrics/MethodLength
+
+    #:  () -> String
+    def throttle_prefix_key
+      "#{job_name}:#{name}"
+    end
   end
 end

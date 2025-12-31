@@ -58,6 +58,7 @@ module JobFlow
       self.output = output
       self.job_status = job_status
       self.enabled_with_each_value = false
+      self.throttle_index = 0
     end
 
     #:  () -> Hash[String, untyped]
@@ -116,6 +117,21 @@ module JobFlow
       semaphore.with(&)
     end
 
+    #:  (limit: Integer, ?key: String?, ?ttl: Integer) { () -> void } -> void
+    def throttle(limit:, key: nil, ttl: 180, &)
+      task = current_task || (raise "throttle can be called only in task")
+
+      semaphore = Semaphore.new(
+        concurrency_key: key || "#{task.throttle_prefix_key}:#{throttle_index}",
+        concurrency_limit: limit,
+        concurrency_duration: ttl.seconds
+      )
+
+      self.throttle_index += 1
+
+      semaphore.with(&)
+    end
+
     #:  () -> untyped
     def each_value
       raise "each_value can be called only within each_values block" unless each_context.enabled?
@@ -153,6 +169,7 @@ module JobFlow
     attr_writer :job_status #: JobStatus
     attr_accessor :each_context #: EachContext
     attr_accessor :enabled_with_each_value #: bool
+    attr_accessor :throttle_index #: Integer
 
     #:  () -> DSL
     def current_job
@@ -171,9 +188,15 @@ module JobFlow
           yielder << self
         end
       ensure
-        self.current_task = nil
-        self.each_context = EachContext.new
+        clear_each_context
       end
+    end
+
+    #:  () -> void
+    def clear_each_context
+      self.current_task = nil
+      self.each_context = EachContext.new
+      self.throttle_index = 0
     end
 
     #:  (Task) { (untyped, Integer) -> void } -> void
