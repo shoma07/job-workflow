@@ -65,6 +65,15 @@ module JobFlow
       #     ?throttle: Integer | Hash[Symbol, untyped],
       #   ) { (untyped) -> void } -> void
       def task: (Symbol task_name, ?each: ^(Context) -> untyped, ?enqueue: ^(Context) -> bool | nil, ?concurrency: Integer?, ?retry: Integer | Hash[Symbol, untyped], ?output: Hash[Symbol, String], ?depends_on: Array[Symbol], ?condition: ^(Context) -> bool, ?throttle: Integer | Hash[Symbol, untyped]) { (untyped) -> void } -> void
+
+      # :  (*Symbol) { (Context) -> void } -> void
+      def before: (*Symbol) { (Context) -> void } -> void
+
+      # :  (*Symbol) { (Context) -> void } -> void
+      def after: (*Symbol) { (Context) -> void } -> void
+
+      # :  (*Symbol) { (Context, TaskCallable) -> void } -> void
+      def around: (*Symbol) { (Context, TaskCallable) -> void } -> void
     end
   end
 end

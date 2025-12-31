@@ -1,0 +1,34 @@
+# Generated from lib/job_flow/hook_registry.rb with RBS::Inline
+
+module JobFlow
+  class HookRegistry
+    # :  () -> void
+    def initialize: () -> void
+
+    # :  (task_names: Array[Symbol], block: ^(Context, ?TaskCallable) -> void) -> void
+    def add_before_hook: (task_names: Array[Symbol], block: ^(Context, ?TaskCallable) -> void) -> void
+
+    # :  (task_names: Array[Symbol], block: ^(Context, ?TaskCallable) -> void) -> void
+    def add_after_hook: (task_names: Array[Symbol], block: ^(Context, ?TaskCallable) -> void) -> void
+
+    # :  (task_names: Array[Symbol], block: ^(Context, ?TaskCallable) -> void) -> void
+    def add_around_hook: (task_names: Array[Symbol], block: ^(Context, ?TaskCallable) -> void) -> void
+
+    # :  (Symbol) -> Array[Hook]
+    def before_hooks_for: (Symbol) -> Array[Hook]
+
+    # :  (Symbol) -> Array[Hook]
+    def after_hooks_for: (Symbol) -> Array[Hook]
+
+    # :  (Symbol) -> Array[Hook]
+    def around_hooks_for: (Symbol) -> Array[Hook]
+
+    private
+
+    attr_accessor before_hooks: Array[Hook]
+
+    attr_accessor after_hooks: Array[Hook]
+
+    attr_accessor around_hooks: Array[Hook]
+  end
+end

@@ -62,4 +62,54 @@ RSpec.describe JobFlow::Workflow do
       it { is_expected.to be_nil }
     end
   end
+
+  describe "#add_hook" do
+    subject(:add_hook) { workflow.add_hook(type, task_names: [:task_a], block:) }
+
+    let(:workflow) { described_class.new }
+
+    context "when type is :before" do
+      let(:type) { :before }
+      let(:block) { ->(_ctx) {} }
+
+      it "adds a before hook to the registry" do
+        expect { add_hook }.to change { workflow.hooks.before_hooks_for(:task_a).size }.from(0).to(1)
+      end
+    end
+
+    context "when type is :after" do
+      let(:type) { :after }
+      let(:block) { ->(_ctx) {} }
+
+      it "adds an after hook to the registry" do
+        expect { add_hook }.to change { workflow.hooks.after_hooks_for(:task_a).size }.from(0).to(1)
+      end
+    end
+
+    context "when type is :around" do
+      let(:type) { :around }
+      let(:block) { ->(_ctx, _task) {} }
+
+      it "adds an around hook to the registry" do
+        expect { add_hook }.to change { workflow.hooks.around_hooks_for(:task_a).size }.from(0).to(1)
+      end
+    end
+
+    context "when type is invalid" do
+      let(:type) { :invalid }
+      let(:block) { ->(_ctx) {} }
+
+      it "raises ArgumentError" do
+        expect { add_hook }.to raise_error(ArgumentError, "Invalid hook type: :invalid")
+      end
+    end
+  end
+
+  describe "#hooks" do
+    subject(:hooks) { workflow.hooks }
+
+    let(:workflow) { described_class.new }
+
+    it { is_expected.to be_a(JobFlow::HookRegistry) }
+  end
 end

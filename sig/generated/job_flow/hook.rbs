@@ -1,0 +1,18 @@
+# Generated from lib/job_flow/hook.rb with RBS::Inline
+
+module JobFlow
+  class Hook
+    attr_reader task_names: Set[Symbol]
+
+    attr_reader block: ^(Context, ?TaskCallable) -> void
+
+    # :  (task_names: Array[Symbol], block: ^(Context, ?TaskCallable) -> void) -> void
+    def initialize: (task_names: Array[Symbol], block: ^(Context, ?TaskCallable) -> void) -> void
+
+    # :  (Symbol) -> bool
+    def applies_to?: (Symbol) -> bool
+
+    # :  () -> bool
+    def global?: () -> bool
+  end
+end
