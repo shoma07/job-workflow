@@ -6,28 +6,60 @@ module JobFlow
     attr_reader :output #: Output
     attr_reader :job_status #: JobStatus
 
-    #:  (
-    #     ?arguments: Hash[Symbol, untyped],
-    #     ?each_context: Hash[Symbol, untyped],
-    #     ?task_outputs: Array[Hash[Symbol, untyped]],
-    #     ?task_job_statuses: Array[Hash[Symbol, untyped]]
-    #   ) -> void
-    def initialize(
-      arguments: {},
-      each_context: {},
-      task_outputs: [],
-      task_job_statuses: []
-    )
-      self.arguments = Arguments.new(data: arguments)
-      self.each_context = EachContext.new(**each_context.symbolize_keys)
-      self.output = Output.from_hash_array(task_outputs)
-      self.job_status = JobStatus.from_hash_array(task_job_statuses)
+    class << self
+      #:  (Hash[Symbol, untyped]) -> Context
+      def from_hash(hash)
+        new(
+          arguments: Arguments.new(data: hash[:arguments] || {}),
+          each_context: EachContext.new(**(hash[:each_context] || {}).symbolize_keys),
+          output: Output.from_hash_array(hash.fetch(:task_outputs, [])),
+          job_status: JobStatus.from_hash_array(hash.fetch(:task_job_statuses, []))
+        )
+      end
+
+      #:  (Hash[String, untyped]) -> Context
+      def deserialize(hash)
+        empty_hash = {} #: Hash[String, untyped]
+        new(
+          arguments: Arguments.new(
+            data: hash.fetch("arguments", empty_hash).symbolize_keys
+          ),
+          each_context: EachContext.deserialize(hash["each_context"]),
+          output: Output.new(
+            task_outputs: hash.fetch("task_outputs", []).map { |shash| TaskOutput.deserialize(shash) }
+          ),
+          job_status: JobStatus.new(
+            task_job_statuses: hash.fetch("task_job_statuses", []).map { |shash| TaskJobStatus.deserialize(shash) }
+          )
+        )
+      end
     end
 
-    #:  (Hash[Symbol, untyped]) -> Context
-    def _init_arguments(arguments)
-      self.arguments = Arguments.new(data: arguments)
-      self
+    #:  (
+    #     arguments: Arguments,
+    #     each_context: EachContext,
+    #     output: Output,
+    #     job_status: JobStatus
+    #   ) -> void
+    def initialize(
+      arguments:,
+      each_context:,
+      output:,
+      job_status:
+    )
+      self.arguments = arguments
+      self.each_context = each_context
+      self.output = output
+      self.job_status = job_status
+    end
+
+    #:  () -> Hash[String, untyped]
+    def serialize
+      {
+        "each_context" => _each_context.serialize,
+        "task_outputs" => output.flat_task_outputs.map(&:serialize),
+        "task_job_statuses" => job_status.flat_task_job_statuses.map(&:serialize)
+      }
     end
 
     #:  (Hash[Symbol, untyped]) -> Context

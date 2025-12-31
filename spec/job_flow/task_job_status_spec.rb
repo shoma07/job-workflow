@@ -146,49 +146,6 @@ RSpec.describe JobFlow::TaskJobStatus do
     end
   end
 
-  describe "#to_h" do
-    subject(:to_h) { described_class.new(**attributes).to_h }
-
-    context "with all attributes set" do
-      let(:attributes) do
-        {
-          task_name: :my_task,
-          job_id: "abc123",
-          each_index: 5,
-          status: :succeeded
-        }
-      end
-
-      it do
-        expect(to_h).to eq(
-          task_name: :my_task,
-          job_id: "abc123",
-          each_index: 5,
-          status: :succeeded
-        )
-      end
-    end
-
-    context "without each_index" do
-      let(:attributes) do
-        {
-          task_name: :my_task,
-          job_id: "abc123",
-          status: :running
-        }
-      end
-
-      it do
-        expect(to_h).to eq(
-          task_name: :my_task,
-          job_id: "abc123",
-          each_index: nil,
-          status: :running
-        )
-      end
-    end
-  end
-
   describe ".from_hash" do
     subject(:from_hash) { described_class.from_hash(hash) }
 
