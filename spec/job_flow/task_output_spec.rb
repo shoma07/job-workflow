@@ -5,12 +5,12 @@ RSpec.describe JobFlow::TaskOutput do
     subject(:task_output) { described_class.new(**arguments) }
 
     context "when only task_name is provided" do
-      let(:arguments) { { task_name: :sample_task } }
+      let(:arguments) { { task_name: :sample_task, each_index: 0 } }
 
       it "creates a TaskOutput with default values" do
         expect(task_output).to have_attributes(
           task_name: :sample_task,
-          each_index: nil,
+          each_index: 0,
           data: {}
         )
       end
@@ -41,6 +41,7 @@ RSpec.describe JobFlow::TaskOutput do
     let(:task_output) do
       described_class.new(
         task_name: :sample_task,
+        each_index: 0,
         data: { result: 100, message: "done" }
       )
     end
@@ -82,6 +83,7 @@ RSpec.describe JobFlow::TaskOutput do
     let(:task_output) do
       described_class.new(
         task_name: :sample_task,
+        each_index: 0,
         data: { result: 100 }
       )
     end
@@ -103,6 +105,7 @@ RSpec.describe JobFlow::TaskOutput do
     let(:task_output) do
       described_class.new(
         task_name: :sample_task,
+        each_index: 0,
         data: { count: 5, status: "active", total: 150 }
       )
     end

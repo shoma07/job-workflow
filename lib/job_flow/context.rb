@@ -93,16 +93,6 @@ module JobFlow
       [each_context.parent_job_id, task.name].compact.join("/")
     end
 
-    #:  (Task) { () -> void } -> void
-    def _with_task(task)
-      raise "Nested _with_task calls are not allowed" if current_task
-
-      self.current_task = task
-      yield
-    ensure
-      self.current_task = nil
-    end
-
     #:  (Task) -> Enumerator[Context]
     def _with_each_value(task)
       raise "Nested _with_each_value calls are not allowed" if each_context.enabled?
@@ -157,8 +147,8 @@ module JobFlow
 
     #:  (Task, Enumerator::Yielder) -> void
     def iterate_each_value(task, yielder)
-      each = task.each #: ^(Context) -> untyped
-      each.call(self).each.with_index do |value, index|
+      task.each.call(self).each.with_index do |value, index|
+        self.current_task = task
         self.each_context = EachContext.new(
           parent_job_id: current_job_id,
           index:,
@@ -166,6 +156,7 @@ module JobFlow
         )
         yielder << self
       ensure
+        self.current_task = nil
         self.each_context = EachContext.new
       end
     end

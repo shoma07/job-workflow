@@ -3,12 +3,12 @@
 module JobFlow
   class TaskOutput
     attr_reader :task_name #: Symbol
-    attr_reader :each_index #: Integer?
+    attr_reader :each_index #: Integer
     attr_reader :data #: Hash[Symbol, untyped]
 
     class << self
-      #:  (task: Task, ?each_index: Integer?, data: Hash[Symbol, untyped]) -> TaskOutput
-      def from_task(task:, data:, each_index: nil)
+      #:  (task: Task, each_index: Integer, data: Hash[Symbol, untyped]) -> TaskOutput
+      def from_task(task:, data:, each_index:)
         normalized_data = task.output.to_h { |output_def| [output_def.name, nil] }
         normalized_data.merge!(data.slice(*normalized_data.keys))
         new(task_name: task.name, each_index:, data: normalized_data)
@@ -24,8 +24,8 @@ module JobFlow
       end
     end
 
-    #:  (task_name: Symbol, ?each_index: Integer?, ?data: Hash[Symbol, untyped]) -> void
-    def initialize(task_name:, each_index: nil, data: {})
+    #:  (task_name: Symbol, each_index: Integer, ?data: Hash[Symbol, untyped]) -> void
+    def initialize(task_name:, each_index:, data: {})
       @task_name = task_name
       @each_index = each_index
       @data = data

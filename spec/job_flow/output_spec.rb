@@ -22,22 +22,16 @@ RSpec.describe JobFlow::Output do
       let(:arguments) do
         {
           task_outputs: [
-            JobFlow::TaskOutput.new(task_name: :task_one, data: { result: 10 }),
-            JobFlow::TaskOutput.new(task_name: :task_two, data: { result: 20 })
+            JobFlow::TaskOutput.new(task_name: :task_one, each_index: 0, data: { result: 10 }),
+            JobFlow::TaskOutput.new(task_name: :task_two, each_index: 0, data: { result: 20 })
           ]
         }
       end
 
       it "creates an Output with given task outputs" do
         expect(output).to have_attributes(
-          task_one: have_attributes(
-            class: JobFlow::TaskOutput,
-            result: 10
-          ),
-          task_two: have_attributes(
-            class: JobFlow::TaskOutput,
-            result: 20
-          )
+          task_one: contain_exactly(have_attributes(class: JobFlow::TaskOutput, result: 10)),
+          task_two: contain_exactly(have_attributes(class: JobFlow::TaskOutput, result: 20))
         )
       end
     end
@@ -49,7 +43,7 @@ RSpec.describe JobFlow::Output do
     let(:output) do
       described_class.new(
         task_outputs: [
-          JobFlow::TaskOutput.new(task_name: :single_task, data: { value: 1 }),
+          JobFlow::TaskOutput.new(task_name: :single_task, each_index: 0, data: { value: 1 }),
           JobFlow::TaskOutput.new(task_name: :multi_task, each_index: 0, data: { value: 10 }),
           JobFlow::TaskOutput.new(task_name: :multi_task, each_index: 1, data: { value: 20 })
         ]
@@ -92,16 +86,16 @@ RSpec.describe JobFlow::Output do
     let(:output) do
       described_class.new(
         task_outputs: [
-          JobFlow::TaskOutput.new(task_name: :single_task, data: { value: 1 }),
+          JobFlow::TaskOutput.new(task_name: :single_task, each_index: 0, data: { value: 1 }),
           JobFlow::TaskOutput.new(task_name: :multi_task, each_index: 0, data: { value: 10 }),
           JobFlow::TaskOutput.new(task_name: :multi_task, each_index: 1, data: { value: 20 })
         ]
       )
     end
 
-    context "when fetching a single task" do
+    context "when fetching a single task at index 0" do
       let(:task_name) { :single_task }
-      let(:each_index) { nil }
+      let(:each_index) { 0 }
 
       it "returns the TaskOutput" do
         expect(fetch).to have_attributes(value: 1)
@@ -139,6 +133,7 @@ RSpec.describe JobFlow::Output do
         [
           JobFlow::TaskOutput.new(
             task_name: :regular_task,
+            each_index: 0,
             data: { result: 42 }
           )
         ]
@@ -147,7 +142,7 @@ RSpec.describe JobFlow::Output do
       it "adds the task output" do
         add
         expect(output).to have_attributes(
-          regular_task: have_attributes(result: 42)
+          regular_task: contain_exactly(have_attributes(result: 42))
         )
       end
     end
@@ -215,13 +210,14 @@ RSpec.describe JobFlow::Output do
         output.add_task_output(
           JobFlow::TaskOutput.new(
             task_name: :regular_task,
+            each_index: 0,
             data: { result: 100 }
           )
         )
       end
 
-      it "returns the TaskOutput" do
-        expect(access_task).to have_attributes(class: JobFlow::TaskOutput, result: 100)
+      it "returns an array with the TaskOutput" do
+        expect(access_task).to contain_exactly(have_attributes(class: JobFlow::TaskOutput, result: 100))
       end
     end
 
@@ -266,6 +262,7 @@ RSpec.describe JobFlow::Output do
         output.add_task_output(
           JobFlow::TaskOutput.new(
             task_name: :regular_task,
+            each_index: 0,
             data: { result: 100 }
           )
         )
@@ -281,6 +278,7 @@ RSpec.describe JobFlow::Output do
         output.add_task_output(
           JobFlow::TaskOutput.new(
             task_name: :regular_task,
+            each_index: 0,
             data: { result: 100 }
           )
         )
@@ -296,6 +294,7 @@ RSpec.describe JobFlow::Output do
         output.add_task_output(
           JobFlow::TaskOutput.new(
             task_name: :regular_task,
+            each_index: 0,
             data: { result: 100 }
           )
         )
@@ -316,6 +315,7 @@ RSpec.describe JobFlow::Output do
       output.add_task_output(
         JobFlow::TaskOutput.new(
           task_name: :existing_task,
+          each_index: 0,
           data: { result: 100 }
         )
       )
@@ -338,19 +338,19 @@ RSpec.describe JobFlow::Output do
     let(:output) do
       described_class.new(
         task_outputs: [
-          JobFlow::TaskOutput.new(task_name: :setup, data: { status: "ready" }),
+          JobFlow::TaskOutput.new(task_name: :setup, each_index: 0, data: { status: "ready" }),
           JobFlow::TaskOutput.new(task_name: :process, each_index: 0, data: { result: 10 }),
           JobFlow::TaskOutput.new(task_name: :process, each_index: 1, data: { result: 20 }),
           JobFlow::TaskOutput.new(task_name: :process, each_index: 2, data: { result: 30 }),
-          JobFlow::TaskOutput.new(task_name: :cleanup, data: { status: "done" })
+          JobFlow::TaskOutput.new(task_name: :cleanup, each_index: 0, data: { status: "done" })
         ]
       )
     end
 
     it "allows accessing regular tasks" do
       expect(output).to have_attributes(
-        setup: have_attributes(status: "ready"),
-        cleanup: have_attributes(status: "done")
+        setup: contain_exactly(have_attributes(status: "ready")),
+        cleanup: contain_exactly(have_attributes(status: "done"))
       )
     end
 

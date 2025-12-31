@@ -2,8 +2,11 @@
 
 module JobFlow
   class EachContext
+    NULL_VALUE = nil #: nil
+    public_constant :NULL_VALUE
+
     attr_reader :parent_job_id #: String?
-    attr_reader :index #: Integer?
+    attr_reader :index #: Integer
     attr_reader :value #: untyped
 
     class << self
@@ -17,8 +20,8 @@ module JobFlow
       end
     end
 
-    #:  (?parent_job_id: String?, ?index: Integer?, ?value: untyped) -> void
-    def initialize(parent_job_id: nil, index: nil, value: nil)
+    #:  (?parent_job_id: String?, ?index: Integer, ?value: untyped) -> void
+    def initialize(parent_job_id: nil, index: 0, value: nil)
       self.parent_job_id = parent_job_id
       self.index = index
       self.value = value
@@ -41,7 +44,7 @@ module JobFlow
     private
 
     attr_writer :parent_job_id #: String?
-    attr_writer :index #: Integer?
+    attr_writer :index #: Integer
     attr_writer :value #: untyped
   end
 end

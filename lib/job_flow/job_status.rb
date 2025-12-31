@@ -25,9 +25,9 @@ module JobFlow
       task_job_statuses.fetch(task_name, []).compact
     end
 
-    #:  (task_name: Symbol, ?index: Integer?) -> TaskJobStatus?
-    def fetch(task_name:, index: nil)
-      task_job_statuses.fetch(task_name, [])[index || 0]
+    #:  (task_name: Symbol, index: Integer) -> TaskJobStatus?
+    def fetch(task_name:, index:)
+      task_job_statuses.fetch(task_name, [])[index]
     end
 
     #:  (task_name: Symbol) -> Array[String]
@@ -40,16 +40,19 @@ module JobFlow
       task_job_statuses.values.flatten
     end
 
+    # @note
+    #   - If the array is empty, the task is not enqueued and is considered completed.
+    #   - If we add a task existence check in the future, we'll check here.
+    #
     #:  (Symbol) -> bool
-    def task_job_finished?(task_name)
-      statuses = task_job_statuses.fetch(task_name, [])
-      !statuses.empty? && statuses.all?(&:finished?)
+    def needs_waiting?(task_name)
+      task_job_statuses.fetch(task_name, []).all?(&:finished?)
     end
 
     #:  (TaskJobStatus) -> void
     def update_task_job_status(task_job_status)
       task_job_statuses[task_job_status.task_name] ||= []
-      task_job_statuses[task_job_status.task_name][task_job_status.each_index || 0] = task_job_status
+      task_job_statuses[task_job_status.task_name][task_job_status.each_index] = task_job_status
     end
 
     #:  (task_name: Symbol, jobs: Array[DSL]) -> void

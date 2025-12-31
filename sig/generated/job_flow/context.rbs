@@ -43,9 +43,6 @@ module JobFlow
     # :  () -> String?
     def concurrency_key: () -> String?
 
-    # :  (Task) { () -> void } -> void
-    def _with_task: (Task) { () -> void } -> void
-
     # :  (Task) -> Enumerator[Context]
     def _with_each_value: (Task) -> Enumerator[Context]
 

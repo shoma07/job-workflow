@@ -15,7 +15,7 @@ RSpec.describe JobFlow::DSL do
         end
 
         task :task_two, output: { value: "Integer" }, depends_on: %i[task_one] do |ctx|
-          { value: ctx.output.task_one.value + 2 }
+          { value: ctx.output.task_one.first.value + 2 }
         end
       end
     end
@@ -24,7 +24,7 @@ RSpec.describe JobFlow::DSL do
 
     it "modifies context through tasks" do
       perform
-      expect(job._context.output.task_two.value).to eq(3)
+      expect(job._context.output.task_two.first.value).to eq(3)
     end
   end
 
@@ -147,7 +147,7 @@ RSpec.describe JobFlow::DSL do
         task
         job = klass.new
         job.perform({})
-        expect(job._context.output.task_two.value).to eq(12)
+        expect(job._context.output.task_two.first.value).to eq(12)
       end
 
       it do
@@ -224,7 +224,7 @@ RSpec.describe JobFlow::DSL do
         expect(_context).to have_attributes(
           class: JobFlow::Context,
           arguments: have_attributes(value: 42),
-          output: have_attributes(increment: have_attributes(value: 52))
+          output: have_attributes(increment: contain_exactly(have_attributes(value: 52)))
         )
       end
     end
@@ -267,7 +267,7 @@ RSpec.describe JobFlow::DSL do
           "current_task_name" => nil,
           "each_context" => {
             "parent_job_id" => nil,
-            "index" => nil,
+            "index" => 0,
             "value" => nil
           },
           "task_job_statuses" => []
@@ -282,7 +282,7 @@ RSpec.describe JobFlow::DSL do
               "_aj_symbol_keys" => %w[value],
               "value" => 52
             },
-            "each_index" => nil,
+            "each_index" => 0,
             "task_name" => "increment"
           }
         )
@@ -389,9 +389,9 @@ RSpec.describe JobFlow::DSL do
         expect(job._context).to have_attributes(
           arguments: have_attributes(value: 0, items: [10, 20]),
           output: have_attributes(
-            task_one: have_attributes(value: 1),
+            task_one: contain_exactly(have_attributes(value: 1)),
             task_two: contain_exactly(have_attributes(value: 10), have_attributes(value: 20)),
-            task_three: have_attributes(value: 30)
+            task_three: contain_exactly(have_attributes(value: 30))
           )
         )
       end
@@ -428,7 +428,7 @@ RSpec.describe JobFlow::DSL do
           serialize: include("continuation" => { "completed" => %w[task_one task_two task_three] }),
           _context: have_attributes(
             arguments: have_attributes(value: 0, items: [1, 2, 3, 4, 5]),
-            output: have_attributes(task_three: have_attributes(value: 15))
+            output: have_attributes(task_three: contain_exactly(have_attributes(value: 15)))
           )
         )
       end
@@ -447,7 +447,7 @@ RSpec.describe JobFlow::DSL do
           last: have_attributes(
             _context: have_attributes(
               arguments: have_attributes(value: 0, items: []),
-              output: have_attributes(task_three: have_attributes(value: 60))
+              output: have_attributes(task_three: contain_exactly(have_attributes(value: 60)))
             )
           )
         )

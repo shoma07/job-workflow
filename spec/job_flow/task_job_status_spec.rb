@@ -35,17 +35,6 @@ RSpec.describe JobFlow::TaskJobStatus do
 
       it { is_expected.to have_attributes(status: :pending) }
     end
-
-    context "when each_index is not provided" do
-      let(:arguments) do
-        {
-          task_name: :my_task,
-          job_id: "abc123"
-        }
-      end
-
-      it { is_expected.to have_attributes(each_index: nil) }
-    end
   end
 
   describe "#update_status" do
@@ -165,25 +154,6 @@ RSpec.describe JobFlow::TaskJobStatus do
           job_id: "abc123",
           each_index: 0,
           status: :succeeded
-        )
-      end
-    end
-
-    context "with missing optional attributes in hash" do
-      let(:hash) do
-        {
-          task_name: :my_task,
-          job_id: "abc123",
-          status: :running
-        }
-      end
-
-      it do
-        expect(from_hash).to have_attributes(
-          task_name: :my_task,
-          job_id: "abc123",
-          each_index: nil,
-          status: :running
         )
       end
     end
