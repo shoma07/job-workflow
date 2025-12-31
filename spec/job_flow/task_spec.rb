@@ -19,7 +19,14 @@ RSpec.describe JobFlow::Task do
     )
     workflow
   end
-  let(:ctx) { workflow.build_context }
+  let(:ctx) do
+    JobFlow::Context.from_hash(
+      workflow:,
+      each_context: {},
+      task_outputs: [],
+      task_job_statuses: []
+    )
+  end
 
   describe "#initialize" do
     let(:task) { described_class.new(**arguments) }

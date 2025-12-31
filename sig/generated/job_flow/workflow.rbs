@@ -22,8 +22,5 @@ module JobFlow
 
     # :  () -> Hash[Symbol, untyped]
     def build_arguments_hash: () -> Hash[Symbol, untyped]
-
-    # :  () -> Context
-    def build_context: () -> Context
   end
 end

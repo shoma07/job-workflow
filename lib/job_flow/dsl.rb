@@ -22,7 +22,7 @@ module JobFlow
 
     #:  (Hash[untyped, untyped] | Context) -> void
     def perform(arguments)
-      @_context ||= self.class._workflow.build_context
+      @_context ||= Context.from_hash({ workflow: self.class._workflow })
       Runner.new(job: self, context: @_context._update_arguments(arguments)).run
     end
 
@@ -41,11 +41,7 @@ module JobFlow
       super
 
       job_data["job_flow_context"]&.then do |context_data|
-        @_context = Context.deserialize(
-          context_data.merge(
-            "arguments" => self.class._workflow.build_arguments_hash
-          )
-        )
+        @_context = Context.deserialize(context_data.merge("workflow" => self.class._workflow))
       end
     end
 

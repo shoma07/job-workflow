@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 RSpec.describe JobFlow::Output do
+  let(:workflow) { JobFlow::Workflow.new }
+
   describe ".initialize" do
     subject(:output) { described_class.new(**arguments) }
 
@@ -364,7 +366,7 @@ RSpec.describe JobFlow::Output do
   end
 
   describe "#update_task_outputs_from_jobs" do
-    subject(:update_task_outputs_from_jobs) { output.update_task_outputs_from_jobs(jobs) }
+    subject(:update_task_outputs_from_jobs) { output.update_task_outputs_from_jobs(jobs, workflow) }
 
     let(:output) { described_class.new }
     let(:all_jobs) do
@@ -376,6 +378,7 @@ RSpec.describe JobFlow::Output do
       allow(all_jobs[0]).to receive(:arguments).and_return(
         {
           "job_flow_context" => JobFlow::Context.new(
+            workflow:,
             arguments: JobFlow::Arguments.new(data: {}),
             each_context: JobFlow::EachContext.new(parent_job_id: "parent-id", task_name: :sample_task, index: 0,
                                                    value: 10),
@@ -389,6 +392,7 @@ RSpec.describe JobFlow::Output do
       allow(all_jobs[1]).to receive(:arguments).and_return(
         {
           "job_flow_context" => JobFlow::Context.new(
+            workflow:,
             arguments: JobFlow::Arguments.new(data: {}),
             each_context: JobFlow::EachContext.new(parent_job_id: "parent-id", task_name: :sample_task, index: 1,
                                                    value: 11),
@@ -402,6 +406,7 @@ RSpec.describe JobFlow::Output do
       allow(all_jobs[2]).to receive(:arguments).and_return(
         {
           "job_flow_context" => JobFlow::Context.new(
+            workflow:,
             arguments: JobFlow::Arguments.new(data: {}),
             each_context: JobFlow::EachContext.new(parent_job_id: "parent-id", task_name: :sample_task, index: 2,
                                                    value: 12),
@@ -444,7 +449,7 @@ RSpec.describe JobFlow::Output do
   end
 
   describe "#update_task_outputs_from_db" do
-    subject(:update_task_outputs_from_db) { output.update_task_outputs_from_db(job_ids) }
+    subject(:update_task_outputs_from_db) { output.update_task_outputs_from_db(job_ids, workflow) }
 
     let(:output) { described_class.new }
     let(:job_ids) { %w[job1 job2] }
@@ -457,6 +462,7 @@ RSpec.describe JobFlow::Output do
       allow(solid_jobs[0]).to receive(:arguments).and_return(
         {
           "job_flow_context" => JobFlow::Context.new(
+            workflow:,
             arguments: JobFlow::Arguments.new(data: {}),
             each_context: JobFlow::EachContext.new(parent_job_id: "parent-id", task_name: :db_task, index: 0,
                                                    value: 10),
@@ -470,6 +476,7 @@ RSpec.describe JobFlow::Output do
       allow(solid_jobs[1]).to receive(:arguments).and_return(
         {
           "job_flow_context" => JobFlow::Context.new(
+            workflow:,
             arguments: JobFlow::Arguments.new(data: {}),
             each_context: JobFlow::EachContext.new(parent_job_id: "parent-id", task_name: :db_task, index: 1,
                                                    value: 20),
