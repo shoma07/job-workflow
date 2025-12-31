@@ -6,6 +6,7 @@ module JobFlow
     def initialize
       @task_graph = TaskGraph.new
       @argument_defs = {} #: Hash[Symbol, ArgumentDef]
+      @hook_registry = HookRegistry.new
     end
 
     #:  (Task) -> void
@@ -16,6 +17,25 @@ module JobFlow
     #:  (ArgumentDef) -> void
     def add_argument(argument_def)
       @argument_defs[argument_def.name] = argument_def
+    end
+
+    #:  (Symbol, task_names: Array[Symbol], block: untyped) -> void
+    def add_hook(type, task_names:, block:)
+      case type
+      when :before
+        @hook_registry.add_before_hook(task_names:, block:)
+      when :after
+        @hook_registry.add_after_hook(task_names:, block:)
+      when :around
+        @hook_registry.add_around_hook(task_names:, block:)
+      else
+        raise ArgumentError, "Invalid hook type: #{type.inspect}"
+      end
+    end
+
+    #:  () -> HookRegistry
+    def hooks
+      @hook_registry
     end
 
     #:  () -> Array[Task]

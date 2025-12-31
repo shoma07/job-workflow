@@ -1028,5 +1028,291 @@ RSpec.describe JobFlow::Runner do
         expect(ctx.output.throttled_task.map(&:value)).to eq([2, 4, 6])
       end
     end
+
+    context "when task has before hooks" do
+      let(:execution_log) { [] }
+      let(:job) do
+        log = execution_log
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          argument :value, "Integer", default: 0
+
+          before(:my_task) { |_ctx| log << "before:my_task" }
+          before { |_ctx| log << "before:global" }
+
+          task :my_task do |_ctx|
+            log << "task:my_task"
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments({ value: 1 })
+      end
+
+      it "executes before hooks in definition order then task" do
+        run
+        expect(execution_log).to eq(%w[before:my_task before:global task:my_task])
+      end
+    end
+
+    context "when task has after hooks" do
+      let(:execution_log) { [] }
+      let(:job) do
+        log = execution_log
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          argument :value, "Integer", default: 0
+
+          after(:my_task) { |_ctx| log << "after:my_task" }
+          after { |_ctx| log << "after:global" }
+
+          task :my_task do |_ctx|
+            log << "task:my_task"
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments({ value: 1 })
+      end
+
+      it "executes task then after hooks in definition order" do
+        run
+        expect(execution_log).to eq(%w[task:my_task after:my_task after:global])
+      end
+    end
+
+    context "when task has around hooks" do
+      let(:execution_log) { [] }
+      let(:job) do
+        log = execution_log
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          argument :value, "Integer", default: 0
+
+          # NOTE: This is JobFlow's DSL around hook, not RSpec's around block
+          around(:my_task) do |_hook_ctx, task| # rubocop:disable RSpec/AroundBlock
+            log << "around:my_task:before"
+            task.call
+            log << "around:my_task:after"
+          end
+
+          around do |_hook_ctx, task| # rubocop:disable RSpec/AroundBlock
+            log << "around:global:before"
+            task.call
+            log << "around:global:after"
+          end
+
+          task :my_task do |_ctx|
+            log << "task:my_task"
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments({ value: 1 })
+      end
+
+      it "executes around hooks wrapping task in nested order" do
+        run
+        expect(execution_log).to eq(%w[
+                                      around:my_task:before
+                                      around:global:before
+                                      task:my_task
+                                      around:global:after
+                                      around:my_task:after
+                                    ])
+      end
+    end
+
+    context "when around hook does not call task.call" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          argument :value, "Integer", default: 0
+
+          # rubocop:disable RSpec/AroundBlock, RSpec/EmptyHook
+          around(:my_task) do |_hook_ctx, _task|
+            # Intentionally not calling task.call to test TaskCallable::NotCalledError
+          end
+          # rubocop:enable RSpec/AroundBlock, RSpec/EmptyHook
+
+          task :my_task do |_ctx|
+            # This should not be executed
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments({ value: 1 })
+      end
+
+      it "raises TaskCallable::NotCalledError" do
+        expect do
+          run
+        end.to raise_error(JobFlow::TaskCallable::NotCalledError, "around hook for 'my_task' did not call task.call")
+      end
+    end
+
+    context "when before hook raises exception" do
+      let(:execution_log) { [] }
+      let(:job) do
+        log = execution_log
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          argument :value, "Integer", default: 0
+
+          before(:my_task) do |_ctx|
+            log << "before:my_task"
+            raise "Validation failed"
+          end
+
+          task :my_task do |_ctx|
+            log << "task:my_task"
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments({ value: 1 })
+      end
+
+      it "raises exception" do
+        expect { run }.to raise_error(RuntimeError, "Validation failed")
+      end
+
+      it "skips task execution" do
+        run
+      rescue RuntimeError
+        expect(execution_log).to eq(%w[before:my_task])
+      end
+    end
+
+    context "when task has all hook types combined" do
+      let(:execution_log) { [] }
+      let(:job) do
+        log = execution_log
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          argument :value, "Integer", default: 0
+
+          before { |_ctx| log << "before:global" }
+          before(:my_task) { |_ctx| log << "before:my_task" }
+
+          # NOTE: This is JobFlow's DSL around hook, not RSpec's around block
+          around do |_hook_ctx, task| # rubocop:disable RSpec/AroundBlock
+            log << "around:global:before"
+            task.call
+            log << "around:global:after"
+          end
+
+          around(:my_task) do |_hook_ctx, task| # rubocop:disable RSpec/AroundBlock
+            log << "around:my_task:before"
+            task.call
+            log << "around:my_task:after"
+          end
+
+          after { |_ctx| log << "after:global" }
+          after(:my_task) { |_ctx| log << "after:my_task" }
+
+          task :my_task do |_ctx|
+            log << "task:my_task"
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments({ value: 1 })
+      end
+
+      it "executes hooks in correct order: before → around → task → around end → after" do
+        run
+        expect(execution_log).to eq(%w[
+                                      before:global
+                                      before:my_task
+                                      around:global:before
+                                      around:my_task:before
+                                      task:my_task
+                                      around:my_task:after
+                                      around:global:after
+                                      after:global
+                                      after:my_task
+                                    ])
+      end
+    end
+
+    context "when task has each option with hooks" do
+      let(:execution_log) { [] }
+      let(:job) do
+        log = execution_log
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          argument :items, "Array[Integer]", default: []
+
+          before(:process_items) { |ctx| log << "before:#{ctx.each_value}" }
+          after(:process_items) { |ctx| log << "after:#{ctx.each_value}" }
+
+          task :process_items, each: ->(ctx) { ctx.arguments.items } do |ctx|
+            log << "task:#{ctx.each_value}"
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments({ items: [1, 2, 3] })
+      end
+
+      it "executes hooks for each iteration" do
+        run
+        expect(execution_log).to eq(%w[
+                                      before:1 task:1 after:1
+                                      before:2 task:2 after:2
+                                      before:3 task:3 after:3
+                                    ])
+      end
+    end
+
+    context "when hooks apply to multiple tasks" do
+      let(:execution_log) { [] }
+      let(:job) do
+        log = execution_log
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          argument :value, "Integer", default: 0
+
+          before(:task_a, :task_b) { |_ctx| log << "before:a_or_b" }
+
+          task :task_a do |_ctx|
+            log << "task:a"
+          end
+
+          task :task_b, depends_on: [:task_a] do |_ctx|
+            log << "task:b"
+          end
+
+          task :task_c, depends_on: [:task_b] do |_ctx|
+            log << "task:c"
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments({ value: 1 })
+      end
+
+      it "executes hook for task_a and task_b but not task_c" do
+        run
+        expect(execution_log).to eq(%w[before:a_or_b task:a before:a_or_b task:b task:c])
+      end
+    end
   end
 end

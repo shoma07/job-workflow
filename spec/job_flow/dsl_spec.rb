@@ -524,4 +524,78 @@ RSpec.describe JobFlow::DSL do
       end
     end
   end
+
+  describe ".before" do
+    subject(:add_before) { klass.before(:task_a, :task_b) { |_ctx| "before" } }
+
+    let(:klass) do
+      Class.new(ActiveJob::Base) do
+        include JobFlow::DSL
+      end
+    end
+
+    it "adds a before hook to workflow" do
+      expect { add_before }.to change { klass._workflow.hooks.before_hooks_for(:task_a).size }.from(0).to(1)
+    end
+
+    it "applies to multiple tasks" do
+      add_before
+      expect(klass._workflow.hooks.before_hooks_for(:task_b).size).to eq(1)
+    end
+
+    context "when no task names specified (global hook)" do
+      subject(:add_global_before) { klass.before { |_ctx| "global before" } }
+
+      it "applies to any task" do
+        add_global_before
+        expect(klass._workflow.hooks.before_hooks_for(:any_task).size).to eq(1)
+      end
+    end
+  end
+
+  describe ".after" do
+    subject(:add_after) { klass.after(:task_a) { |_ctx| "after" } }
+
+    let(:klass) do
+      Class.new(ActiveJob::Base) do
+        include JobFlow::DSL
+      end
+    end
+
+    it "adds an after hook to workflow" do
+      expect { add_after }.to change { klass._workflow.hooks.after_hooks_for(:task_a).size }.from(0).to(1)
+    end
+
+    context "when no task names specified (global hook)" do
+      subject(:add_global_after) { klass.after { |_ctx| "global after" } }
+
+      it "applies to any task" do
+        add_global_after
+        expect(klass._workflow.hooks.after_hooks_for(:any_task).size).to eq(1)
+      end
+    end
+  end
+
+  describe ".around" do
+    subject(:add_around) { klass.around(:task_a) { |_ctx, task| task.call } }
+
+    let(:klass) do
+      Class.new(ActiveJob::Base) do
+        include JobFlow::DSL
+      end
+    end
+
+    it "adds an around hook to workflow" do
+      expect { add_around }.to change { klass._workflow.hooks.around_hooks_for(:task_a).size }.from(0).to(1)
+    end
+
+    context "when no task names specified (global hook)" do
+      subject(:add_global_around) { klass.around { |_ctx, task| task.call } }
+
+      it "applies to any task" do
+        add_global_around
+        expect(klass._workflow.hooks.around_hooks_for(:any_task).size).to eq(1)
+      end
+    end
+  end
 end

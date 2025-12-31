@@ -33,6 +33,11 @@ module JobFlow
       workflow.tasks
     end
 
+    #:  () -> HookRegistry
+    def hooks
+      workflow.hooks
+    end
+
     #:  () -> void
     def run_workflow
       tasks.each do |task|
@@ -49,11 +54,31 @@ module JobFlow
     def run_task(task)
       context._with_each_value(task).each do |each_ctx|
         each_ctx._with_task_throttle do
-          data = task.block.call(each_ctx)
-          each_index = each_ctx._each_context.index
-          add_task_output(ctx: each_ctx, task:, each_index:, data:)
+          run_hooks(task, each_ctx) do
+            data = task.block.call(each_ctx)
+            each_index = each_ctx._each_context.index
+            add_task_output(ctx: each_ctx, task:, each_index:, data:)
+          end
         end
       end
+    end
+
+    #:  (Task, Context) { () -> void } -> void
+    def run_hooks(task, ctx, &)
+      hooks.before_hooks_for(task.name).each { |hook| hook.block.call(ctx) }
+      run_around_hooks(task, ctx, hooks.around_hooks_for(task.name), &)
+      hooks.after_hooks_for(task.name).each { |hook| hook.block.call(ctx) }
+    end
+
+    #:  (Task, Context, Array[Hook]) { () -> void } -> void
+    def run_around_hooks(task, ctx, around_hooks, &)
+      return yield if around_hooks.empty?
+
+      hook = around_hooks.first
+      remaining = around_hooks[1..] || []
+      callable = TaskCallable.new { run_around_hooks(task, ctx, remaining, &) }
+      hook.block.call(ctx, callable)
+      raise TaskCallable::NotCalledError, task.name unless callable.called?
     end
 
     #:  (Task) -> void

@@ -981,7 +981,65 @@ end
 
 ## Lifecycle Hooks
 
-JobFlow provides lifecycle hooks to insert processing before and after task execution. Use `before`, `after`, and `around` hooks to implement cross-cutting concerns.
+JobFlow provides lifecycle hooks to insert processing before and after task execution. Use `before`, `after`, and `around` hooks to implement cross-cutting concerns such as logging, validation, metrics collection, and notifications.
+
+### Hook Scope
+
+Hooks can be applied globally (to all tasks) or to specific tasks.
+
+#### Global Hooks (No Task Names)
+
+When no task names are specified, the hook applies to all tasks:
+
+```ruby
+class GlobalLoggingJob < ApplicationJob
+  include JobFlow::DSL
+  
+  # This hook runs before EVERY task
+  before do |ctx|
+    Rails.logger.info("Starting task execution")
+  end
+  
+  # This hook runs after EVERY task
+  after do |ctx|
+    Rails.logger.info("Task execution completed")
+  end
+  
+  task :first_task do |ctx|
+    # before and after hooks run here
+  end
+  
+  task :second_task do |ctx|
+    # before and after hooks also run here
+  end
+end
+```
+
+#### Task-Specific Hooks (Single Task)
+
+Specify a task name to apply the hook only to that task:
+
+```ruby
+before :validate_order do |ctx|
+  # Only runs before :validate_order task
+end
+```
+
+#### Multiple Task Hooks (Variable-Length Arguments)
+
+Specify multiple task names to apply the same hook to several tasks:
+
+```ruby
+before :task_a, :task_b, :task_c do |ctx|
+  # Runs before each of :task_a, :task_b, and :task_c
+end
+
+around :fetch_users, :fetch_orders, :fetch_products do |ctx, task|
+  start_time = Time.current
+  task.call
+  Metrics.timing("api.duration", Time.current - start_time)
+end
+```
 
 ### Hook Types
 
@@ -1050,7 +1108,7 @@ end
 
 #### around Hook
 
-Execute processing that wraps task execution.
+Execute processing that wraps task execution. **Important:** You must call `task.call` to execute the task.
 
 ```ruby
 class MetricsWorkflowJob < ApplicationJob
@@ -1062,7 +1120,7 @@ class MetricsWorkflowJob < ApplicationJob
     
     Rails.logger.info("Starting expensive_task")
     
-    # Execute task
+    # Execute task - THIS IS REQUIRED
     task.call
     
     duration = Time.current - start_time
@@ -1078,6 +1136,141 @@ class MetricsWorkflowJob < ApplicationJob
     { result: heavy_computation }
   end
 end
+```
+
+### Execution Order
+
+Hooks are executed in definition order. When multiple hooks apply to a task, they execute as follows:
+
+```ruby
+class OrderedHooksJob < ApplicationJob
+  include JobFlow::DSL
+  
+  before do |ctx|
+    puts "1. Global before"
+  end
+  
+  before :my_task do |ctx|
+    puts "2. Task-specific before"
+  end
+  
+  around do |ctx, task|
+    puts "3. Global around (before)"
+    task.call
+    puts "6. Global around (after)"
+  end
+  
+  around :my_task do |ctx, task|
+    puts "4. Task-specific around (before)"
+    task.call
+    puts "5. Task-specific around (after)"
+  end
+  
+  task :my_task do |ctx|
+    puts "--- Task execution ---"
+  end
+  
+  after :my_task do |ctx|
+    puts "7. Task-specific after"
+  end
+  
+  after do |ctx|
+    puts "8. Global after"
+  end
+end
+
+# Output:
+# 1. Global before
+# 2. Task-specific before
+# 3. Global around (before)
+# 4. Task-specific around (before)
+# --- Task execution ---
+# 5. Task-specific around (after)
+# 6. Global around (after)
+# 7. Task-specific after
+# 8. Global after
+```
+
+### around Hook: task.call is Required
+
+In around hooks, you **must** call `task.call` to execute the task. If you forget to call it, JobFlow raises `TaskCallable::NotCalledError`:
+
+```ruby
+# ❌ BAD: Missing task.call
+around :my_task do |ctx, task|
+  puts "Before task"
+  # Forgot task.call!
+  puts "After task"
+end
+# => Raises: JobFlow::TaskCallable::NotCalledError:
+#    around hook for 'my_task' did not call task.call
+
+# ✅ GOOD: Properly calling task.call
+around :my_task do |ctx, task|
+  puts "Before task"
+  task.call  # Required!
+  puts "After task"
+end
+```
+
+Additionally, `task.call` can only be called once. Calling it multiple times raises `TaskCallable::AlreadyCalledError`:
+
+```ruby
+# ❌ BAD: Calling task.call multiple times
+around :my_task do |ctx, task|
+  task.call
+  task.call  # => Raises: JobFlow::TaskCallable::AlreadyCalledError
+end
+```
+
+### Error Handling
+
+| Hook Type | Behavior on Exception |
+|-----------|----------------------|
+| `before` | Task is skipped, exception is re-raised |
+| `after` | Exception is re-raised (task result is preserved) |
+| `around` | Exception is re-raised |
+
+```ruby
+class ErrorHandlingJob < ApplicationJob
+  include JobFlow::DSL
+  
+  # If before hook raises, task won't execute
+  before :process_order do |ctx|
+    order = Order.find(ctx.arguments.order_id)
+    raise "Out of stock" unless order.items_in_stock?
+  end
+  
+  task :process_order do |ctx|
+    # Only executes if validation passes
+    OrderProcessor.process(ctx.arguments.order_id)
+  end
+end
+```
+
+### Hooks with Map Tasks (each/concurrency)
+
+When using hooks with map tasks (`each` or `concurrency`), the hooks execute for **each iteration**:
+
+```ruby
+class BatchWithHooksJob < ApplicationJob
+  include JobFlow::DSL
+  
+  argument :user_ids, "Array[Integer]"
+  
+  # This hook runs for EACH user
+  before :fetch_users do |ctx|
+    Rails.logger.info("Fetching user: #{ctx.each_value}")
+  end
+  
+  task :fetch_users,
+       each: ->(ctx) { ctx.arguments.user_ids },
+       output: { user: "Hash" } do |ctx|
+    { user: UserAPI.fetch(ctx.each_value) }
+  end
+end
+
+# With user_ids: [1, 2, 3], the before hook runs 3 times
 ```
 
 ---
