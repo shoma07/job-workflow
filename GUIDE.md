@@ -362,39 +362,22 @@ end
 argument :api_key, "String"
 
 # Simple retry (up to 3 times)
-task :flaky_api, retry_count: 3, output: { response: "Hash" } do |ctx|
+task :flaky_api, retry: 3, output: { response: "Hash" } do |ctx|
   api_key = ctx.arguments.api_key
   { response: ExternalAPI.call(api_key) }
 end
 
-# Advanced retry configuration
+# Advanced retry configuration with exponential backoff
 task :advanced_retry, 
-  retry_options: {
-    count: 5,
-    strategy: :exponential,  # :linear, :exponential, :custom
+  retry: {
+    count: 5,                # Maximum retry attempts
+    strategy: :exponential,  # :linear or :exponential
     base_delay: 2,           # Initial wait time in seconds
-    max_delay: 60,           # Maximum wait time in seconds
-    jitter: true,            # Add random jitter
-    dlq: true                # Send to DLQ on failure
+    jitter: true             # Add ±randomness to prevent thundering herd
   },
   output: { result: "String" } do |ctx|
   { result: unreliable_operation }
-end
-```
-
-#### Timeout
-
-```ruby
-task :slow_operation, timeout: 30.seconds, output: { result: "String" } do |ctx|
-  { result: long_running_process }
-end
-
-# Combining timeout and retry
-task :critical_task, 
-  timeout: 10.seconds, 
-  retry_count: 3,
-  output: { result: "String" } do |ctx|
-  { result: critical_operation }
+  # Retry intervals: 2±1s, 4±2s, 8±4s, 16±8s, 32±16s
 end
 ```
 
@@ -857,17 +840,19 @@ end
 
 ## Error Handling
 
-JobFlow provides robust error handling features. With retry strategies, timeouts, and custom error handling, you can build reliable workflows.
+JobFlow provides robust error handling features. With retry strategies and custom error handling, you can build reliable workflows.
 
-### Retry Strategies
+### Retry Configuration
 
-#### Basic Retry
+#### Simple Retry
+
+Specify the maximum retry count with a simple integer.
 
 ```ruby
 argument :api_endpoint, "String"
 
 # Simple retry (up to 3 times)
-task :fetch_data, retry_count: 3, output: { data: "Hash" } do |ctx|
+task :fetch_data, retry: 3, output: { data: "Hash" } do |ctx|
   endpoint = ctx.arguments.api_endpoint
   { data: ExternalAPI.fetch(endpoint) }
 end
@@ -875,113 +860,43 @@ end
 
 #### Advanced Retry Configuration
 
+Use a Hash for detailed retry configuration with exponential backoff.
+
 ```ruby
 task :advanced_retry, 
-  retry_options: {
+  retry: {
     count: 5,                # Maximum retry attempts
-    strategy: :exponential,  # Retry strategy
+    strategy: :exponential,  # :linear or :exponential
     base_delay: 2,           # Initial wait time in seconds
-    max_delay: 300,          # Maximum wait time in seconds
-    jitter: true,            # Add random jitter
-    dlq: true                # Send to DLQ on failure
+    jitter: true             # Add ±randomness to prevent thundering herd
   },
   output: { result: "String" } do |ctx|
   { result: unreliable_operation }
+  # Retry intervals: 2±1s, 4±2s, 8±4s, 16±8s, 32±16s
 end
 ```
 
-#### Retry Strategy Types
+#### Retry Strategies
 
-##### Linear
-
-Retries at fixed intervals.
+**Linear**: Retries at fixed intervals.
 
 ```ruby
 task :linear_retry, 
-  retry_options: {
-    count: 5,
-    strategy: :linear,
-    base_delay: 10  # Always wait 10 seconds
-  },
+  retry: { count: 5, strategy: :linear, base_delay: 10 },
   output: { result: "String" } do |ctx|
   { result: operation }
   # Retry intervals: 10s, 10s, 10s, 10s, 10s
 end
 ```
 
-##### Exponential (Recommended)
-
-Doubles wait time with each retry.
+**Exponential** (Recommended): Doubles wait time with each retry.
 
 ```ruby
 task :exponential_retry, 
-  retry_options: {
-    count: 5,
-    strategy: :exponential,
-    base_delay: 2,
-    max_delay: 60
-  },
+  retry: { count: 5, strategy: :exponential, base_delay: 2, jitter: true },
   output: { result: "String" } do |ctx|
   { result: operation }
-  # Retry intervals: 2s, 4s, 8s, 16s, 32s
-  # Capped at max_delay
-end
-```
-
-##### Jitter
-
-Adds randomness to prevent thundering herd.
-
-```ruby
-task :jitter_retry, 
-  retry_options: {
-    count: 5,
-    strategy: :exponential,
-    base_delay: 2,
-    jitter: true
-  },
-  output: { result: "String" } do |ctx|
-  { result: operation }
-  # Retry intervals: 2±0.5s, 4±1s, 8±2s, ...
-  # Effective against thundering herd
-end
-```
-
-### Timeout
-
-#### Task-Level Timeout
-
-```ruby
-# Timeout after 30 seconds
-task :slow_operation, timeout: 30.seconds, output: { result: "String" } do |ctx|
-  { result: long_running_process }
-end
-
-# Combining timeout and retry
-task :timeout_with_retry,
-     timeout: 10.seconds,
-     retry_count: 3,
-     output: { result: "String" } do |ctx|
-  { result: potentially_slow_operation }
-  # Timeout → Retry → Timeout → ...
-end
-```
-
-### Dead Letter Queue (DLQ)
-
-Failed tasks that exhaust retries are sent to DLQ for later analysis and reprocessing.
-
-#### Enabling DLQ
-
-```ruby
-task :critical_task, 
-  retry_options: {
-    count: 5,
-    strategy: :exponential,
-    dlq: true  # Enable DLQ
-  },
-  output: { result: "String" } do |ctx|
-  { result: critical_operation }
+  # Retry intervals: 2±1s, 4±2s, 8±4s, 16±8s, 32±16s
 end
 ```
 
@@ -1606,9 +1521,12 @@ task(name, **options, &block)
   - `each` (Proc): Proc that returns an enumerable for map task execution
   - `enqueue` (Proc): Optional proc that returns boolean. When true, task iterations are enqueued as sub-jobs instead of executing synchronously (default: nil)
   - `concurrency` (Integer): Concurrency limit for parallel processing (default: unlimited). Only effective when `enqueue:` is true
-  - `retry_count` (Integer): Number of retries
-  - `retry_options` (Hash): Advanced retry settings
-  - `timeout` (ActiveSupport::Duration): Timeout duration
+  - `retry` (Integer | Hash): Retry configuration. Integer for simple retry count, Hash for advanced settings
+    - `count` (Integer): Maximum retry attempts (default: 3 when Hash)
+    - `strategy` (Symbol): `:linear` or `:exponential` (default: `:exponential`)
+    - `base_delay` (Integer): Base delay in seconds (default: 1)
+    - `jitter` (bool): Add randomness to delays (default: false)
+  - `timeout` (ActiveSupport::Duration): Timeout duration (planned feature)
   - `condition` (Proc): Execute only if returns true (default: `->(_ctx) { true }`)
   - `throttle` (Hash): Throttling settings
   - `output` (Hash): Task output definition
@@ -1628,8 +1546,7 @@ end
 
 task :with_dependencies,
      depends_on: [:simple],
-     retry_count: 3,
-     timeout: 30.seconds,
+     retry: 3,
      output: { final: "String" } do |ctx|
   result = ctx.output.simple.result
   { final: process(result) }

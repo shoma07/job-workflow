@@ -274,7 +274,8 @@ RSpec.describe JobFlow::Context do
           "each_context" => {
             "parent_job_id" => "parent-id",
             "index" => 0,
-            "value" => 10
+            "value" => 10,
+            "retry_count" => 0
           },
           "task_outputs" => [
             { "task_name" => "task_a", "each_index" => 0,
@@ -742,6 +743,16 @@ RSpec.describe JobFlow::Context do
           each_ctx._with_each_value(nested_task).to_a
         end
       end.to raise_error("Nested _with_each_value calls are not allowed")
+    end
+  end
+
+  describe "#with_retry" do
+    context "when called without current_task" do
+      it "raises an error" do
+        expect { ctx.send(:with_retry) { |retry_count| retry_count } }.to raise_error(
+          "with_retry can be called only within iterate_each_value"
+        )
+      end
     end
   end
 end
