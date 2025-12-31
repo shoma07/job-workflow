@@ -9,6 +9,7 @@ JobFlow is a declarative workflow orchestration engine for Ruby on Rails applica
 - **Parallel Processing**: Efficient parallel execution with map tasks
 - **Task Outputs**: Collect and access structured outputs from tasks
 - **Throttling**: Semaphore-based rate limiting for external APIs
+- **Lifecycle Hooks**: before/after/around hooks for cross-cutting concerns
 - **Type Safety**: Full RBS type definitions for enhanced reliability
 - **Context Persistence**: Automatic serialization of workflow state
 - **Built-in Resilience**: Retry logic and error handling
@@ -144,6 +145,39 @@ class PaymentJob < ApplicationJob
   task :create_customer,
        throttle: { key: "payment_api", limit: 10 } do |ctx|
     PaymentService.create_customer(ctx.arguments.data)
+  end
+end
+```
+
+### Lifecycle Hooks
+
+Insert cross-cutting concerns with before, after, and around hooks:
+
+```ruby
+class OrderWorkflowJob < ApplicationJob
+  include JobFlow::DSL
+  
+  argument :order_id, "Integer"
+  
+  # Global logging hook for all tasks
+  before do |ctx|
+    Rails.logger.info("Starting task for order #{ctx.arguments.order_id}")
+  end
+  
+  # Validation hook for specific task
+  before :process_payment do |ctx|
+    raise "Invalid order" unless Order.find(ctx.arguments.order_id).valid?
+  end
+  
+  # Metrics hook wrapping task execution
+  around :process_payment do |ctx, task|
+    start_time = Time.current
+    task.call  # Must call task.call to execute the task
+    Metrics.timing("payment.duration", Time.current - start_time)
+  end
+  
+  task :process_payment, output: { payment_id: "String" } do |ctx|
+    { payment_id: PaymentService.charge(ctx.arguments.order_id) }
   end
 end
 ```

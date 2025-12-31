@@ -20,11 +20,20 @@ module JobFlow
     # :  () -> Array[Task]
     def tasks: () -> Array[Task]
 
+    # :  () -> HookRegistry
+    def hooks: () -> HookRegistry
+
     # :  () -> void
     def run_workflow: () -> void
 
     # :  (Task) -> void
     def run_task: (Task) -> void
+
+    # :  (Task, Context) { () -> void } -> void
+    def run_hooks: (Task, Context) { () -> void } -> void
+
+    # :  (Task, Context, Array[Hook]) { () -> void } -> void
+    def run_around_hooks: (Task, Context, Array[Hook]) { () -> void } -> void
 
     # :  (Task) -> void
     def enqueue_task: (Task) -> void

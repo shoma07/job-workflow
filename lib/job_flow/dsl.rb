@@ -130,6 +130,21 @@ module JobFlow
         end
       end
       # rubocop:enable Metrics/ParameterLists
+
+      #:  (*Symbol) { (Context) -> void } -> void
+      def before(*task_names, &block)
+        _workflow.add_hook(:before, task_names:, block:)
+      end
+
+      #:  (*Symbol) { (Context) -> void } -> void
+      def after(*task_names, &block)
+        _workflow.add_hook(:after, task_names:, block:)
+      end
+
+      #:  (*Symbol) { (Context, TaskCallable) -> void } -> void
+      def around(*task_names, &block)
+        _workflow.add_hook(:around, task_names:, block:)
+      end
     end
   end
 end

@@ -11,6 +11,12 @@ module JobFlow
     # :  (ArgumentDef) -> void
     def add_argument: (ArgumentDef) -> void
 
+    # :  (Symbol, task_names: Array[Symbol], block: untyped) -> void
+    def add_hook: (Symbol, task_names: Array[Symbol], block: untyped) -> void
+
+    # :  () -> HookRegistry
+    def hooks: () -> HookRegistry
+
     # :  () -> Array[Task]
     def tasks: () -> Array[Task]
 
