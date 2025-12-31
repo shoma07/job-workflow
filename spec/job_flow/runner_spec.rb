@@ -190,13 +190,15 @@ RSpec.describe JobFlow::Runner do
       end
       let(:ctx) do
         ctx = JobFlow::Context.new(
-          arguments: { items: [1, 2] },
-          each_context: {
+          arguments: JobFlow::Arguments.new(data: { items: [1, 2] }),
+          each_context: JobFlow::EachContext.new(
             task_name: :process_items,
             parent_job_id: "parent-job-id",
             index: 0,
             value: 1
-          }
+          ),
+          output: JobFlow::Output.new,
+          job_status: JobFlow::JobStatus.new
         )
         ctx._current_job = job
         ctx
@@ -417,14 +419,25 @@ RSpec.describe JobFlow::Runner do
                 failed?: false,
                 claimed?: false,
                 arguments: {
-                  "job_flow_context" => JobFlow::ContextSerializer.instance.serialize(
-                    JobFlow::Context.new(
-                      arguments: {},
-                      each_context: { parent_job_id: job.job_id, task_name: :parallel_process, index: idx,
-                                      value: idx + 1 },
-                      task_outputs: [{ task_name: :parallel_process, each_index: idx, data: { value: (idx + 1) * 10 } }]
-                    )
-                  )
+                  "job_flow_context" => JobFlow::Context.new(
+                    arguments: JobFlow::Arguments.new(data: {}),
+                    each_context: JobFlow::EachContext.new(
+                      parent_job_id: job.job_id,
+                      task_name: :parallel_process,
+                      index: idx,
+                      value: idx + 1
+                    ),
+                    output: JobFlow::Output.new(
+                      task_outputs: [
+                        JobFlow::TaskOutput.new(
+                          task_name: :parallel_process,
+                          each_index: idx,
+                          data: { value: (idx + 1) * 10 }
+                        )
+                      ]
+                    ),
+                    job_status: JobFlow::JobStatus.new
+                  ).serialize
                 }
               )
               mock_job
@@ -563,14 +576,25 @@ RSpec.describe JobFlow::Runner do
               failed?: false,
               claimed?: false,
               arguments: {
-                "job_flow_context" => JobFlow::ContextSerializer.instance.serialize(
-                  JobFlow::Context.new(
-                    arguments: {},
-                    each_context: { parent_job_id: job.job_id, task_name: :fast_parallel, index: idx,
-                                    value: [10, 20][idx] },
-                    task_outputs: [{ task_name: :fast_parallel, each_index: idx, data: { value: [10, 20][idx] } }]
-                  )
-                )
+                "job_flow_context" => JobFlow::Context.new(
+                  arguments: JobFlow::Arguments.new(data: {}),
+                  each_context: JobFlow::EachContext.new(
+                    parent_job_id: job.job_id,
+                    task_name: :fast_parallel,
+                    index: idx,
+                    value: [10, 20][idx]
+                  ),
+                  output: JobFlow::Output.new(
+                    task_outputs: [
+                      JobFlow::TaskOutput.new(
+                        task_name: :fast_parallel,
+                        each_index: idx,
+                        data: { value: [10, 20][idx] }
+                      )
+                    ]
+                  ),
+                  job_status: JobFlow::JobStatus.new
+                ).serialize
               }
             )
             mock_job
@@ -654,15 +678,25 @@ RSpec.describe JobFlow::Runner do
               failed?: false,
               claimed?: false,
               arguments: {
-                "job_flow_context" => JobFlow::ContextSerializer.instance.serialize(
-                  JobFlow::Context.new(
-                    arguments: {},
-                    each_context: { parent_job_id: job.job_id, task_name: :parallel_compute, index: idx,
-                                    value: [2, 3][idx] },
-                    task_outputs: [{ task_name: :parallel_compute, each_index: idx,
-                                     data: { squared: [2, 3][idx]**2 } }]
-                  )
-                )
+                "job_flow_context" => JobFlow::Context.new(
+                  arguments: JobFlow::Arguments.new(data: {}),
+                  each_context: JobFlow::EachContext.new(
+                    parent_job_id: job.job_id,
+                    task_name: :parallel_compute,
+                    index: idx,
+                    value: [2, 3][idx]
+                  ),
+                  output: JobFlow::Output.new(
+                    task_outputs: [
+                      JobFlow::TaskOutput.new(
+                        task_name: :parallel_compute,
+                        each_index: idx,
+                        data: { squared: [2, 3][idx]**2 }
+                      )
+                    ]
+                  ),
+                  job_status: JobFlow::JobStatus.new
+                ).serialize
               }
             )
             mock_job

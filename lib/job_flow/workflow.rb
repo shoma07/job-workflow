@@ -40,7 +40,7 @@ module JobFlow
 
     #:  () -> Context
     def build_context
-      Context.new(arguments: arguments.to_h { |def_obj| [def_obj.name, def_obj.default] })
+      Context.from_hash({ arguments: arguments.to_h { |def_obj| [def_obj.name, def_obj.default] } })
     end
   end
 end

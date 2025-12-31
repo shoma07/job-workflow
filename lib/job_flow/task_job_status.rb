@@ -18,6 +18,16 @@ module JobFlow
         )
       end
 
+      #:  (Hash[String, untyped]) -> TaskJobStatus
+      def deserialize(hash)
+        new(
+          task_name: hash["task_name"].to_sym,
+          job_id: hash["job_id"],
+          each_index: hash["each_index"],
+          status: hash["status"].to_sym
+        )
+      end
+
       #:  (SolidQueue::Job) -> Symbol
       def status_value_from_job(job)
         return :failed if job.failed?
@@ -61,14 +71,9 @@ module JobFlow
       status == :failed
     end
 
-    #:  () -> Hash[Symbol, untyped]
-    def to_h
-      {
-        task_name:,
-        job_id:,
-        each_index:,
-        status:
-      }
+    #:  () -> Hash[String, untyped]
+    def serialize
+      { "task_name" => task_name.to_s, "job_id" => job_id, "each_index" => each_index, "status" => status.to_s }
     end
   end
 end

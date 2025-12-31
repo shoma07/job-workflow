@@ -33,12 +33,7 @@ module JobFlow
 
     #:  () -> Hash[String, untyped]
     def serialize
-      context = @_context
-      if context.nil?
-        super
-      else
-        super.merge("job_flow_context" => ContextSerializer.instance.serialize(context))
-      end
+      super.merge({ "job_flow_context" => _context&.serialize }.compact)
     end
 
     #:  (Hash[String, untyped]) -> void
@@ -46,8 +41,11 @@ module JobFlow
       super
 
       job_data["job_flow_context"]&.then do |context_data|
-        @_context = ContextSerializer.instance.deserialize(context_data)
-        @_context._init_arguments(self.class._workflow.build_arguments_hash)
+        @_context = Context.deserialize(
+          context_data.merge(
+            "arguments" => self.class._workflow.build_arguments_hash
+          )
+        )
       end
     end
 

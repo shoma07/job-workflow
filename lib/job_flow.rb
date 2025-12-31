@@ -17,13 +17,10 @@ require_relative "job_flow/each_context"
 require_relative "job_flow/task_job_status"
 require_relative "job_flow/job_status"
 require_relative "job_flow/context"
-require_relative "job_flow/context_serializer"
 require_relative "job_flow/output_def"
 require_relative "job_flow/task_output"
 require_relative "job_flow/output"
 
 module JobFlow
   class Error < StandardError; end
-
-  ActiveJob::Serializers.add_serializers(JobFlow::ContextSerializer)
 end

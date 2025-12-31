@@ -13,6 +13,15 @@ module JobFlow
         normalized_data.merge!(data.slice(*normalized_data.keys))
         new(task_name: task.name, each_index:, data: normalized_data)
       end
+
+      #:  (Hash[String, untyped]) -> TaskOutput
+      def deserialize(hash)
+        new(
+          task_name: hash["task_name"].to_sym,
+          each_index: hash["each_index"],
+          data: ActiveJob::Arguments.deserialize([hash["data"]]).first
+        )
+      end
     end
 
     #:  (task_name: Symbol, ?each_index: Integer?, ?data: Hash[Symbol, untyped]) -> void
@@ -22,13 +31,9 @@ module JobFlow
       @data = data
     end
 
-    #:  () -> Hash[Symbol, untyped]
-    def to_h
-      {
-        task_name:,
-        each_index:,
-        data:
-      }
+    #:  () -> Hash[String, untyped]
+    def serialize
+      { "task_name" => task_name.to_s, "each_index" => each_index, "data" => ActiveJob::Arguments.serialize([data]).first }
     end
 
     #:  ...

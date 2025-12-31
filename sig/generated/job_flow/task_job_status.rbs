@@ -13,6 +13,9 @@ module JobFlow
     # :  (Hash[Symbol, untyped]) -> TaskJobStatus
     def self.from_hash: (Hash[Symbol, untyped]) -> TaskJobStatus
 
+    # :  (Hash[String, untyped]) -> TaskJobStatus
+    def self.deserialize: (Hash[String, untyped]) -> TaskJobStatus
+
     # :  (SolidQueue::Job) -> Symbol
     def self.status_value_from_job: (SolidQueue::Job) -> Symbol
 
@@ -36,7 +39,7 @@ module JobFlow
     # :  () -> bool
     def failed?: () -> bool
 
-    # :  () -> Hash[Symbol, untyped]
-    def to_h: () -> Hash[Symbol, untyped]
+    # :  () -> Hash[String, untyped]
+    def serialize: () -> Hash[String, untyped]
   end
 end

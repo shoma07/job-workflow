@@ -375,35 +375,39 @@ RSpec.describe JobFlow::Output do
     before do
       allow(all_jobs[0]).to receive(:arguments).and_return(
         {
-          "job_flow_context" => JobFlow::ContextSerializer.instance.serialize(
-            JobFlow::Context.new(
-              arguments: {},
-              each_context: { parent_job_id: "parent-id", task_name: :sample_task, index: 0, value: 10 },
-              task_outputs: [{ task_name: :sample_task, each_index: 0, data: { result: 42 } }]
-            )
-          )
+          "job_flow_context" => JobFlow::Context.new(
+            arguments: JobFlow::Arguments.new(data: {}),
+            each_context: JobFlow::EachContext.new(parent_job_id: "parent-id", task_name: :sample_task, index: 0,
+                                                   value: 10),
+            output: described_class.new(
+              task_outputs: [JobFlow::TaskOutput.new(task_name: :sample_task, each_index: 0, data: { result: 42 })]
+            ),
+            job_status: JobFlow::JobStatus.new
+          ).serialize
         }
       )
       allow(all_jobs[1]).to receive(:arguments).and_return(
         {
-          "job_flow_context" => JobFlow::ContextSerializer.instance.serialize(
-            JobFlow::Context.new(
-              arguments: {},
-              each_context: { parent_job_id: "parent-id", task_name: :sample_task, index: 1, value: 11 },
-              task_outputs: [{ task_name: :sample_task, each_index: 1, data: { result: 82 } }]
-            )
-          )
+          "job_flow_context" => JobFlow::Context.new(
+            arguments: JobFlow::Arguments.new(data: {}),
+            each_context: JobFlow::EachContext.new(parent_job_id: "parent-id", task_name: :sample_task, index: 1,
+                                                   value: 11),
+            output: described_class.new(
+              task_outputs: [JobFlow::TaskOutput.new(task_name: :sample_task, each_index: 1, data: { result: 82 })]
+            ),
+            job_status: JobFlow::JobStatus.new
+          ).serialize
         }
       )
       allow(all_jobs[2]).to receive(:arguments).and_return(
         {
-          "job_flow_context" => JobFlow::ContextSerializer.instance.serialize(
-            JobFlow::Context.new(
-              arguments: {},
-              each_context: { parent_job_id: "parent-id", task_name: :sample_task, index: 2, value: 12 },
-              task_outputs: []
-            )
-          )
+          "job_flow_context" => JobFlow::Context.new(
+            arguments: JobFlow::Arguments.new(data: {}),
+            each_context: JobFlow::EachContext.new(parent_job_id: "parent-id", task_name: :sample_task, index: 2,
+                                                   value: 12),
+            output: described_class.new,
+            job_status: JobFlow::JobStatus.new
+          ).serialize
         }
       )
     end
@@ -452,24 +456,28 @@ RSpec.describe JobFlow::Output do
     before do
       allow(solid_jobs[0]).to receive(:arguments).and_return(
         {
-          "job_flow_context" => JobFlow::ContextSerializer.instance.serialize(
-            JobFlow::Context.new(
-              arguments: {},
-              each_context: { parent_job_id: "parent-id", task_name: :db_task, index: 0, value: 10 },
-              task_outputs: [{ task_name: :db_task, each_index: 0, data: { result: 100 } }]
-            )
-          )
+          "job_flow_context" => JobFlow::Context.new(
+            arguments: JobFlow::Arguments.new(data: {}),
+            each_context: JobFlow::EachContext.new(parent_job_id: "parent-id", task_name: :db_task, index: 0,
+                                                   value: 10),
+            output: described_class.new(
+              task_outputs: [JobFlow::TaskOutput.new(task_name: :db_task, each_index: 0, data: { result: 100 })]
+            ),
+            job_status: JobFlow::JobStatus.new
+          ).serialize
         }
       )
       allow(solid_jobs[1]).to receive(:arguments).and_return(
         {
-          "job_flow_context" => JobFlow::ContextSerializer.instance.serialize(
-            JobFlow::Context.new(
-              arguments: {},
-              each_context: { parent_job_id: "parent-id", task_name: :db_task, index: 1, value: 20 },
-              task_outputs: [{ task_name: :db_task, each_index: 1, data: { result: 200 } }]
-            )
-          )
+          "job_flow_context" => JobFlow::Context.new(
+            arguments: JobFlow::Arguments.new(data: {}),
+            each_context: JobFlow::EachContext.new(parent_job_id: "parent-id", task_name: :db_task, index: 1,
+                                                   value: 20),
+            output: described_class.new(
+              task_outputs: [JobFlow::TaskOutput.new(task_name: :db_task, each_index: 1, data: { result: 200 })]
+            ),
+            job_status: JobFlow::JobStatus.new
+          ).serialize
         }
       )
 

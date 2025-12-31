@@ -10,6 +10,9 @@ module JobFlow
 
     attr_reader value: untyped
 
+    # :  (Hash[String, untyped]) -> EachContext
+    def self.deserialize: (Hash[String, untyped]) -> EachContext
+
     # :  (?parent_job_id: String?, ?task_name: Symbol?, ?index: Integer?, ?value: untyped) -> void
     def initialize: (?parent_job_id: String?, ?task_name: Symbol?, ?index: Integer?, ?value: untyped) -> void
 
@@ -19,8 +22,8 @@ module JobFlow
     # :  () -> String?
     def concurrency_key: () -> String?
 
-    # :  () -> Hash[Symbol, untyped]
-    def to_h: () -> Hash[Symbol, untyped]
+    # :  () -> Hash[String, untyped]
+    def serialize: () -> Hash[String, untyped]
 
     private
 
