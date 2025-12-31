@@ -4,8 +4,6 @@ module JobFlow
   class EachContext
     attr_reader parent_job_id: String?
 
-    attr_reader task_name: Symbol?
-
     attr_reader index: Integer?
 
     attr_reader value: untyped
@@ -13,14 +11,11 @@ module JobFlow
     # :  (Hash[String, untyped]) -> EachContext
     def self.deserialize: (Hash[String, untyped]) -> EachContext
 
-    # :  (?parent_job_id: String?, ?task_name: Symbol?, ?index: Integer?, ?value: untyped) -> void
-    def initialize: (?parent_job_id: String?, ?task_name: Symbol?, ?index: Integer?, ?value: untyped) -> void
+    # :  (?parent_job_id: String?, ?index: Integer?, ?value: untyped) -> void
+    def initialize: (?parent_job_id: String?, ?index: Integer?, ?value: untyped) -> void
 
     # :  () -> bool
     def enabled?: () -> bool
-
-    # :  () -> String?
-    def concurrency_key: () -> String?
 
     # :  () -> Hash[String, untyped]
     def serialize: () -> Hash[String, untyped]
@@ -28,8 +23,6 @@ module JobFlow
     private
 
     attr_writer parent_job_id: String?
-
-    attr_writer task_name: Symbol?
 
     attr_writer index: Integer?
 

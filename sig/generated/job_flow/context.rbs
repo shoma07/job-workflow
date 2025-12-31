@@ -6,6 +6,8 @@ module JobFlow
 
     attr_reader arguments: Arguments
 
+    attr_reader current_task: Task?
+
     attr_reader output: Output
 
     attr_reader job_status: JobStatus
@@ -21,9 +23,10 @@ module JobFlow
     #      arguments: Arguments,
     #      each_context: EachContext,
     #      output: Output,
-    #      job_status: JobStatus
+    #      job_status: JobStatus,
+    #      ?current_task: Task?
     #    ) -> void
-    def initialize: (workflow: Workflow, arguments: Arguments, each_context: EachContext, output: Output, job_status: JobStatus) -> void
+    def initialize: (workflow: Workflow, arguments: Arguments, each_context: EachContext, output: Output, job_status: JobStatus, ?current_task: Task?) -> void
 
     # :  () -> Hash[String, untyped]
     def serialize: () -> Hash[String, untyped]
@@ -38,7 +41,10 @@ module JobFlow
     def current_job_id: () -> String
 
     # :  () -> String?
-    def each_task_concurrency_key: () -> String?
+    def concurrency_key: () -> String?
+
+    # :  (Task) { () -> void } -> void
+    def _with_task: (Task) { () -> void } -> void
 
     # :  (Task) -> Enumerator[Context]
     def _with_each_value: (Task) -> Enumerator[Context]
@@ -60,6 +66,8 @@ module JobFlow
     attr_writer workflow: Workflow
 
     attr_writer arguments: Arguments
+
+    attr_writer current_task: Task?
 
     attr_writer output: Output
 

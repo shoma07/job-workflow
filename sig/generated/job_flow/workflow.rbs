@@ -14,8 +14,8 @@ module JobFlow
     # :  () -> Array[Task]
     def tasks: () -> Array[Task]
 
-    # :  (Symbol?) -> Task
-    def fetch_task: (Symbol?) -> Task
+    # :  (Symbol?) -> Task?
+    def fetch_task: (Symbol?) -> Task?
 
     # :  () -> Array[ArgumentDef]
     def arguments: () -> Array[ArgumentDef]

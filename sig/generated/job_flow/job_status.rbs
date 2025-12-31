@@ -5,6 +5,9 @@ module JobFlow
     # :  (Array[Hash[untyped, untyped]]) -> JobStatus
     def self.from_hash_array: (Array[Hash[untyped, untyped]]) -> JobStatus
 
+    # :  (Hash[String, untyped]) -> JobStatus
+    def self.deserialize: (Hash[String, untyped]) -> JobStatus
+
     # :  (?task_job_statuses: Array[TaskJobStatus]) -> void
     def initialize: (?task_job_statuses: Array[TaskJobStatus]) -> void
 
