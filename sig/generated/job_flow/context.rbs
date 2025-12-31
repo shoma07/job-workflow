@@ -73,11 +73,16 @@ module JobFlow
 
     attr_accessor each_context: EachContext
 
+    attr_accessor enabled_with_each_value: bool
+
     # :  () -> DSL
     def current_job: () -> DSL
 
     # :  (Task, Enumerator::Yielder) -> void
-    def iterate_each_value: (Task, Enumerator::Yielder) -> void
+    def with_each_context: (Task, Enumerator::Yielder) -> void
+
+    # :  (Task) { (untyped, Integer) -> void } -> void
+    def with_each_index_and_value: (Task) { (untyped, Integer) -> void } -> void
 
     # :  () { (Integer) -> void } -> void
     def with_retry: () { (Integer) -> void } -> void

@@ -73,9 +73,42 @@ RSpec.describe JobFlow::Context do
         )
       end
 
-      it "raises error on nested _with_each_value" do
-        task = JobFlow::Task.new(name: :ctx_two, each: ->(ctx) { ctx.arguments.ctx_two }, block: ->(_ctx) {})
-        expect { init._with_each_value(task) }.to raise_error("Nested _with_each_value calls are not allowed")
+      it "allows resuming _with_each_value from restored each_context index" do
+        job = Class.new(ActiveJob::Base) { include JobFlow::DSL }.new
+        init._current_job = job
+        task = JobFlow::Task.new(name: :ctx_two, each: ->(_ctx) { [0, 1, 2, 3] }, block: ->(_ctx) {})
+        indices = init._with_each_value(task).map { |ctx| ctx._each_context.index }
+        expect(indices).to eq([1, 2, 3])
+      end
+    end
+
+    context "when each_context has retry_count for resumption" do
+      subject(:context_with_retry) do
+        described_class.new(
+          workflow:,
+          arguments: JobFlow::Arguments.new(data: { arg_one: nil, arg_two: [1, 2] }),
+          each_context: JobFlow::EachContext.new(
+            parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076",
+            index: 0,
+            retry_count: 2
+          ),
+          output: JobFlow::Output.new,
+          job_status: JobFlow::JobStatus.new
+        )
+      end
+
+      let(:task_with_retry) do
+        JobFlow::Task.new(name: :retry_task, each: ->(_ctx) { [:a] }, block: ->(_ctx) {}, task_retry: 3)
+      end
+
+      before do
+        job_instance = Class.new(ActiveJob::Base) { include JobFlow::DSL }.new
+        context_with_retry._current_job = job_instance
+      end
+
+      it "allows resuming _with_each_value from restored each_context retry_count" do
+        retry_counts = context_with_retry._with_each_value(task_with_retry).map { |ctx| ctx._each_context.retry_count }
+        expect(retry_counts).to eq([2])
       end
     end
 

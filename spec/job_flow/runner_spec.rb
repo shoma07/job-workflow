@@ -32,6 +32,37 @@ RSpec.describe JobFlow::Runner do
 
     let(:runner) { described_class.new(job:, context: ctx) }
 
+    context "when current_task is set (sub-job execution)" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          argument :items, "Array[Integer]", default: []
+
+          task :process_items, each: ->(ctx) { ctx.arguments.items }, output: { doubled: "Integer" } do |ctx|
+            { doubled: ctx.each_value * 2 }
+          end
+        end
+        klass.new
+      end
+      let(:task) { job.class._workflow.fetch_task(:process_items) }
+      let(:ctx) do
+        JobFlow::Context.new(
+          workflow: job.class._workflow,
+          arguments: JobFlow::Arguments.new(data: { items: [10, 20] }),
+          each_context: JobFlow::EachContext.new(parent_job_id: "parent-job-id", index: 1, value: 20),
+          output: JobFlow::Output.new,
+          job_status: JobFlow::JobStatus.new,
+          current_task: task
+        )
+      end
+
+      it "runs only the current task starting from restored index" do
+        run
+        expect(ctx.output.fetch(task_name: :process_items, each_index: 1)).to have_attributes(doubled: 40)
+      end
+    end
+
     context "with simple tasks" do
       let(:job) do
         klass = Class.new(ActiveJob::Base) do
@@ -197,27 +228,15 @@ RSpec.describe JobFlow::Runner do
           argument :items, "Array[Integer]", default: []
 
           task :process_items, output: { result: "Integer" }, each: ->(ctx) { ctx.arguments.items } do |ctx|
+            nested_task = JobFlow::Task.new(name: :nested, each: ->(_) { [1, 2] }, block: ->(_) {})
+            ctx._with_each_value(nested_task).to_a
             { result: ctx.each_value * 2 }
           end
         end
         klass.new
       end
       let(:ctx) do
-        task = job.class._workflow.fetch_task(:process_items)
-        ctx = JobFlow::Context.new(
-          workflow: job.class._workflow,
-          arguments: JobFlow::Arguments.new(data: { items: [1, 2] }),
-          each_context: JobFlow::EachContext.new(
-            parent_job_id: "parent-job-id",
-            index: 0,
-            value: 1
-          ),
-          output: JobFlow::Output.new,
-          job_status: JobFlow::JobStatus.new,
-          current_task: task
-        )
-        ctx._current_job = job
-        ctx
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments({ items: [1, 2] })
       end
 
       it "raises error" do
