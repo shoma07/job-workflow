@@ -203,4 +203,18 @@ RSpec.describe JobFlow::Task do
       end
     end
   end
+
+  describe "#throttle_prefix_key" do
+    subject(:throttle_prefix_key) { task.throttle_prefix_key }
+
+    let(:task) do
+      described_class.new(
+        job_name: "MyJob",
+        name: :fetch_data,
+        block: ->(_ctx) {}
+      )
+    end
+
+    it { is_expected.to eq("MyJob:fetch_data") }
+  end
 end
