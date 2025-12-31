@@ -30,5 +30,17 @@ module JobFlow
       @limit = limit
       @ttl = ttl
     end
+
+    #:  () -> Semaphore?
+    def semaphore
+      local_limit = limit
+      return if local_limit.nil?
+
+      Semaphore.new(
+        concurrency_key: key,
+        concurrency_duration: ttl.seconds,
+        concurrency_limit: local_limit
+      )
+    end
   end
 end

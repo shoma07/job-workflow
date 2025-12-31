@@ -13,5 +13,8 @@ module JobFlow
 
     # :  (key: String, ?limit: Integer?, ?ttl: Integer) -> void
     def initialize: (key: String, ?limit: Integer?, ?ttl: Integer) -> void
+
+    # :  () -> Semaphore?
+    def semaphore: () -> Semaphore?
   end
 end

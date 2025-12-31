@@ -47,6 +47,9 @@ module JobFlow
     # :  (Task) -> Enumerator[Context]
     def _with_each_value: (Task) -> Enumerator[Context]
 
+    # :  () { () -> void } -> void
+    def _with_task_throttle: () { () -> void } -> void
+
     # :  () -> untyped
     def each_value: () -> untyped
 

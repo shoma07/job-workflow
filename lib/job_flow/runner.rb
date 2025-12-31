@@ -48,9 +48,11 @@ module JobFlow
     #:  (Task) -> void
     def run_task(task)
       context._with_each_value(task).each do |each_ctx|
-        data = task.block.call(each_ctx)
-        each_index = each_ctx._each_context.index
-        add_task_output(ctx: each_ctx, task:, each_index:, data:)
+        each_ctx._with_task_throttle do
+          data = task.block.call(each_ctx)
+          each_index = each_ctx._each_context.index
+          add_task_output(ctx: each_ctx, task:, each_index:, data:)
+        end
       end
     end
 

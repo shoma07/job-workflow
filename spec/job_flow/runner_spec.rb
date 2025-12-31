@@ -991,5 +991,42 @@ RSpec.describe JobFlow::Runner do
         expect { run }.to raise_error(StandardError, "Simulated failure")
       end
     end
+
+    context "when task has throttle configuration" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          argument :items, "Array[Integer]", default: []
+
+          task :throttled_task,
+               each: ->(ctx) { ctx.arguments.items },
+               throttle: 5,
+               output: { value: "Integer" } do |ctx|
+            { value: ctx.each_value * 2 }
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments({ items: [1, 2, 3] })
+      end
+
+      before do
+        allow(ctx).to receive(:_with_task_throttle).and_wrap_original do |method, &block|
+          method.call(&block)
+        end
+      end
+
+      it do
+        run
+        expect(ctx).to have_received(:_with_task_throttle).exactly(3).times
+      end
+
+      it do
+        run
+        expect(ctx.output.throttled_task.map(&:value)).to eq([2, 4, 6])
+      end
+    end
   end
 end

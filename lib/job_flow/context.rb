@@ -106,6 +106,16 @@ module JobFlow
       end
     end
 
+    #:  () { () -> void } -> void
+    def _with_task_throttle(&)
+      task = current_task || (raise "with_throttle can be called only within iterate_each_value")
+
+      semaphore = task.throttle.semaphore
+      return yield if semaphore.nil?
+
+      semaphore.with(&)
+    end
+
     #:  () -> untyped
     def each_value
       raise "each_value can be called only within each_values block" unless each_context.enabled?
