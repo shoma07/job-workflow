@@ -111,7 +111,7 @@ end
 
 # Access outputs from previous tasks
 task :use_result, depends_on: [:process] do |ctx|
-  result = ctx.output.process.result
+  result = ctx.output.process.first.result
   puts result
 end
 ```
@@ -149,13 +149,13 @@ class DataPipelineJob < ApplicationJob
   
   # Task 2: Data transformation (depends on extract)
   task :transform, depends_on: [:extract], output: { transformed_data: "Hash" } do |ctx|
-    raw_data = ctx.output.extract.raw_data
+    raw_data = ctx.output.extract.first.raw_data
     { transformed_data: JSON.parse(raw_data) }
   end
   
   # Task 3: Data loading (depends on transform)
   task :load, depends_on: [:transform] do |ctx|
-    transformed_data = ctx.output.transform.transformed_data
+    transformed_data = ctx.output.transform.first.transformed_data
     DataModel.create!(transformed_data)
   end
 end
@@ -215,7 +215,7 @@ end
 
 # Access the output in another task
 task :next_task, depends_on: [:simple_task] do |ctx|
-  result = ctx.output.simple_task.result
+  result = ctx.output.simple_task.first.result
   puts result  # => "completed"
 end
 ```
@@ -230,7 +230,7 @@ task :fetch_data, output: { data: "Hash" } do |ctx|
 end
 
 task :process_data, depends_on: [:fetch_data], output: { result: "String" } do |ctx|
-  data = ctx.output.fetch_data.data
+  data = ctx.output.fetch_data.first.data
   { result: process(data) }
 end
 ```
@@ -247,8 +247,8 @@ task :task_b, output: { b: "Integer" } do |ctx|
 end
 
 task :task_c, depends_on: [:task_a, :task_b], output: { result: "Integer" } do |ctx|
-  a = ctx.output.task_a.a
-  b = ctx.output.task_b.b
+  a = ctx.output.task_a.first.a
+  b = ctx.output.task_b.first.b
   { result: a + b }  # => 3
 end
 ```
@@ -344,7 +344,7 @@ task :fetch, output: { result: "String" } do |ctx|
 end
 
 task :process, depends_on: [:fetch] do |ctx|
-  result = ctx.output.fetch.result
+  result = ctx.output.fetch.first.result
   process_data(result)
 end
 
@@ -475,8 +475,8 @@ class DataProcessingJob < ApplicationJob
   
   # Access the output from another task
   task :report, depends_on: [:calculate] do |ctx|
-    puts "Result: #{ctx.output.calculate.result}"
-    puts "Message: #{ctx.output.calculate.message}"
+    puts "Result: #{ctx.output.calculate.first.result}"
+    puts "Message: #{ctx.output.calculate.first.message}"
   end
 end
 ```
@@ -542,8 +542,8 @@ end
 
 task :process, depends_on: [:fetch_data] do |ctx|
   # Access output fields directly
-  puts "Received #{ctx.output.fetch_data.count} items"
-  ctx.output.fetch_data.items.each do |item|
+  puts "Received #{ctx.output.fetch_data.first.count} items"
+  ctx.output.fetch_data.first.items.each do |item|
     process_item(item)
   end
 end
@@ -591,8 +591,8 @@ task :example, output: { required: "String", optional: "Integer" } do |ctx|
 end
 
 task :check_output, depends_on: [:example] do |ctx|
-  puts ctx.output.example.required  # => "value"
-  puts ctx.output.example.optional  # => nil
+  puts ctx.output.example.first.required  # => "value"
+  puts ctx.output.example.first.optional  # => nil
 end
 ```
 
@@ -646,7 +646,7 @@ class WellDesignedJob < ApplicationJob
   task :fetch_permissions,
     depends_on: [:fetch_user],
     output: { permissions: "Array[String]" } do |ctx|
-    role = ctx.output.fetch_user.role
+    role = ctx.output.fetch_user.first.role
     {
       permissions: PermissionService.get_permissions(role)
     }
@@ -656,8 +656,8 @@ class WellDesignedJob < ApplicationJob
   task :generate_report,
     depends_on: [:fetch_user, :fetch_permissions],
     output: { final_report: "Hash" } do |ctx|
-    user = ctx.output.fetch_user
-    perms = ctx.output.fetch_permissions
+    user = ctx.output.fetch_user.first
+    perms = ctx.output.fetch_permissions.first
     
     {
       final_report: {
@@ -754,20 +754,55 @@ end
 
 #### Controlling Concurrency
 
-```ruby
-# Process up to 10 items concurrently
-task :process_items,
-     each: ->(ctx) { ctx.arguments.items },
-     concurrency: 10 do |ctx|
-  process_item(ctx.each_value)
-end
+##### Synchronous Execution (Default)
 
-# Default (unlimited)
-task :unlimited,
+By default, map tasks execute synchronously (in-process):
+
+```ruby
+# Synchronous map task (default)
+# All iterations execute sequentially in the current job
+task :process_items,
      each: ->(ctx) { ctx.arguments.items } do |ctx|
   process_item(ctx.each_value)
 end
 ```
+
+##### Asynchronous Execution with Concurrency
+
+To execute map task iterations in separate sub-jobs with concurrency control, use the `enqueue:` option combined with `concurrency:`:
+
+```ruby
+# Process up to 10 items concurrently in sub-jobs
+task :process_items,
+     each: ->(ctx) { ctx.arguments.items },
+     enqueue: ->(_ctx) { true },           # Enable sub-job enqueueing
+     concurrency: 10 do |ctx|
+  process_item(ctx.each_value)
+end
+
+# When enqueue is true:
+# - Each iteration is executed in a separate sub-job
+# - Sub-jobs are created via perform_all_later
+# - Concurrency limit controls how many sub-jobs run in parallel
+# - Parent job waits for all sub-jobs to complete before continuing
+# - Outputs from sub-jobs are automatically collected
+```
+
+##### Understanding `enqueue` Option
+
+The `enqueue:` option determines how map task iterations are executed:
+
+- **`enqueue:` is nil/false (default)**: Iterations execute synchronously in the current job
+  - Simple and fast for small datasets
+  - Good for CPU-bound operations
+  - No network overhead
+
+- **`enqueue: ->(_ctx) { true }`**: Each iteration is enqueued as a separate sub-job
+  - Enables true parallel execution across multiple workers
+  - Better for I/O-bound operations (API calls, database queries)
+  - Can accept dynamic condition: `enqueue: ->(ctx) { ctx.arguments.use_concurrency? }`
+
+**Note**: `enqueue:` works with both regular tasks and map tasks. For map tasks, it enables asynchronous sub-job execution. For regular tasks, it allows conditional enqueueing as a separate job.
 
 ### Fork-Join Pattern
 
@@ -1074,7 +1109,7 @@ class NotificationWorkflowJob < ApplicationJob
   # Send notification in after hook
   after :perform_action do |ctx|
     user_id = ctx.arguments.user_id
-    action_result = ctx.output.perform_action.action_result
+    action_result = ctx.output.perform_action.first.action_result
     
     UserMailer.action_completed(
       user_id,
@@ -1154,7 +1189,7 @@ class ECommerceOrderJob < ApplicationJob
     
     task :send_receipt, depends_on: [:charge] do |ctx|
       order = ctx.arguments.order
-      payment_result = ctx.output.payment__charge.payment_result
+      payment_result = ctx.output.payment__charge.first.payment_result
       ReceiptMailer.send(order, payment_result)
     end
   end
@@ -1568,13 +1603,15 @@ task(name, **options, &block)
 - `name` (Symbol): Task name
 - `options` (Hash): Task options
   - `depends_on` (Symbol | Array<Symbol>): Dependent tasks
-  - `each` (Symbol): Context field name (Array) for parallel processing
-  - `concurrency` (Integer): Concurrency limit for parallel processing (default: unlimited)
+  - `each` (Proc): Proc that returns an enumerable for map task execution
+  - `enqueue` (Proc): Optional proc that returns boolean. When true, task iterations are enqueued as sub-jobs instead of executing synchronously (default: nil)
+  - `concurrency` (Integer): Concurrency limit for parallel processing (default: unlimited). Only effective when `enqueue:` is true
   - `retry_count` (Integer): Number of retries
   - `retry_options` (Hash): Advanced retry settings
   - `timeout` (ActiveSupport::Duration): Timeout duration
   - `condition` (Proc): Execute only if returns true (default: `->(_ctx) { true }`)
   - `throttle` (Hash): Throttling settings
+  - `output` (Hash): Task output definition
 - `block` (Proc): Task implementation (always takes `|ctx|`)
   - Without `each`: regular task execution
   - With `each`: access current element via `ctx.each_value`

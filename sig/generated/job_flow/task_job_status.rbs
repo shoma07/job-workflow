@@ -6,7 +6,7 @@ module JobFlow
 
     attr_reader job_id: String
 
-    attr_reader each_index: Integer?
+    attr_reader each_index: Integer
 
     attr_reader status: Symbol
 
@@ -22,10 +22,10 @@ module JobFlow
     # :  (
     #       task_name: Symbol,
     #       job_id: String,
-    #       ?each_index: Integer?,
+    #       each_index: Integer,
     #       ?status: Symbol
     #     ) -> void
-    def initialize: (task_name: Symbol, job_id: String, ?each_index: Integer?, ?status: Symbol) -> void
+    def initialize: (task_name: Symbol, job_id: String, each_index: Integer, ?status: Symbol) -> void
 
     # :  (Symbol) -> void
     def update_status: (Symbol) -> void

@@ -24,7 +24,6 @@ module JobFlow
     #:  (?task_outputs: Array[TaskOutput]) -> void
     def initialize(task_outputs: [])
       self.task_outputs = {}
-      self.each_task_names = Set.new
       task_outputs.each { |task_output| add_task_output(task_output) }
     end
 
@@ -34,17 +33,16 @@ module JobFlow
       task_outputs.fetch(fixed_type_task_name, []).compact
     end
 
-    #:  (task_name: Symbol?, ?each_index: Integer?) -> TaskOutput?
-    def fetch(task_name:, each_index: nil)
+    #:  (task_name: Symbol?, each_index: Integer) -> TaskOutput?
+    def fetch(task_name:, each_index:)
       fixed_type_task_name = task_name #: Symbol
-      task_outputs.fetch(fixed_type_task_name, [])[each_index || 0]
+      task_outputs.fetch(fixed_type_task_name, [])[each_index]
     end
 
     #:  (TaskOutput) -> void
     def add_task_output(task_output)
       task_outputs[task_output.task_name] ||= []
-      task_outputs[task_output.task_name][task_output.each_index || 0] = task_output
-      each_task_names << task_output.task_name if task_output.each_index
+      task_outputs[task_output.task_name][task_output.each_index] = task_output
     end
 
     #:  (Array[String], Workflow) -> void
@@ -78,10 +76,7 @@ module JobFlow
       return super unless block.nil?
       return super unless task_outputs.key?(name.to_sym)
 
-      task_output_array = task_outputs[name.to_sym]
-      return task_output_array if each_task_names.include?(name.to_sym)
-
-      task_output_array.first
+      task_outputs[name.to_sym]
     end
 
     #:  (Symbol, bool) -> bool
@@ -92,6 +87,5 @@ module JobFlow
     private
 
     attr_accessor :task_outputs #: Hash[Symbol, Array[TaskOutput]]
-    attr_accessor :each_task_names #: Set[Symbol]
   end
 end

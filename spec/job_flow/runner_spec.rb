@@ -44,14 +44,14 @@ RSpec.describe JobFlow::Runner do
           end
 
           task :task_two, output: { value: "Integer" }, depends_on: %i[task_one] do |ctx|
-            { value: ctx.output.task_one.value + 2 }
+            { value: ctx.output.task_one.first.value + 2 }
           end
 
           task :task_ignore,
                output: { value: "Integer" },
                condition: ->(_ctx) { false },
                depends_on: %i[task_two] do |ctx|
-            { value: ctx.output.task_two.value + 100 }
+            { value: ctx.output.task_two.first.value + 100 }
           end
         end
         klass.new
@@ -62,7 +62,7 @@ RSpec.describe JobFlow::Runner do
 
       it do
         run
-        expect(ctx.output.task_two.value).to eq(3)
+        expect(ctx.output.task_two.first.value).to eq(3)
       end
     end
 
@@ -89,7 +89,7 @@ RSpec.describe JobFlow::Runner do
 
       it do
         run
-        expect(ctx.output.aggregate_sum.value).to eq(6)
+        expect(ctx.output.aggregate_sum.first.value).to eq(6)
       end
     end
 
@@ -108,7 +108,7 @@ RSpec.describe JobFlow::Runner do
                output: { value: "Integer" },
                each: ->(ctx) { ctx.arguments.items },
                depends_on: %i[setup] do |ctx|
-            { value: ctx.each_value * ctx.output.setup.value }
+            { value: ctx.each_value * ctx.output.setup.first.value }
           end
 
           task :finalize, output: { value: "Integer" }, depends_on: %i[process_items] do |ctx|
@@ -123,7 +123,7 @@ RSpec.describe JobFlow::Runner do
 
       it do
         run
-        expect(ctx.output.finalize.value).to eq(90)
+        expect(ctx.output.finalize.first.value).to eq(90)
       end
     end
 
@@ -166,6 +166,7 @@ RSpec.describe JobFlow::Runner do
 
           task :process_items,
                each: ->(ctx) { ctx.arguments.items },
+               enqueue: ->(_ctx) { true },
                concurrency: 2,
                output: { doubled: "Integer" } do |ctx|
             { doubled: (ctx.each_value * 2) }
@@ -188,7 +189,7 @@ RSpec.describe JobFlow::Runner do
       end
     end
 
-    context "when context has each_task_concurrency_key" do
+    context "when nested _with_each_value calls" do
       let(:job) do
         klass = Class.new(ActiveJob::Base) do
           include JobFlow::DSL
@@ -219,9 +220,8 @@ RSpec.describe JobFlow::Runner do
         ctx
       end
 
-      it "executes the task as a sub task" do
-        run
-        expect(ctx.output.process_items).to contain_exactly(have_attributes(result: 2))
+      it "raises error" do
+        expect { run }.to raise_error(RuntimeError, "Nested _with_each_value calls are not allowed")
       end
     end
 
@@ -245,7 +245,7 @@ RSpec.describe JobFlow::Runner do
 
       it "collects output from the task" do
         run
-        expect(ctx.output.calculate).to have_attributes(result: 126, message: "done")
+        expect(ctx.output.calculate).to contain_exactly(have_attributes(result: 126, message: "done"))
       end
     end
 
@@ -315,7 +315,7 @@ RSpec.describe JobFlow::Runner do
 
       it "wraps value in Hash with :value key" do
         run
-        expect(ctx.output.simple_value.value).to eq(42)
+        expect(ctx.output.simple_value.first.value).to eq(42)
       end
     end
 
@@ -328,6 +328,7 @@ RSpec.describe JobFlow::Runner do
 
           task :process_items,
                each: ->(ctx) { ctx.arguments.items },
+               enqueue: ->(_ctx) { true },
                concurrency: 2,
                output: { result: "Integer" } do |ctx|
             { result: ctx.each_value * 2 }
@@ -359,7 +360,7 @@ RSpec.describe JobFlow::Runner do
           end
 
           task :second_task, depends_on: [:first_task], output: { step2: "Integer" } do |ctx|
-            { step2: 10 + ctx.output.first_task.step1 }
+            { step2: 10 + ctx.output.first_task.first.step1 }
           end
         end
         klass.new
@@ -370,7 +371,7 @@ RSpec.describe JobFlow::Runner do
 
       it "has access to dependency outputs" do
         run
-        expect(ctx.output.second_task.step2).to eq(20)
+        expect(ctx.output.second_task.first.step2).to eq(20)
       end
     end
 
@@ -384,6 +385,7 @@ RSpec.describe JobFlow::Runner do
 
           task :parallel_process,
                each: ->(ctx) { ctx.arguments.items },
+               enqueue: ->(_ctx) { true },
                concurrency: 2,
                output: { value: "Integer" } do |ctx|
             { value: ctx.each_value * 10 }
@@ -412,6 +414,7 @@ RSpec.describe JobFlow::Runner do
         end
 
         allow(step_mock).to receive(:checkpoint!)
+        allow(step_mock).to receive(:advance!)
         allow(job).to receive(:step).and_yield(step_mock)
 
         # Simulate DB polling: first call returns pending jobs, second call returns finished jobs
@@ -475,7 +478,7 @@ RSpec.describe JobFlow::Runner do
 
       it "waits for concurrent task completion and collects outputs" do
         run
-        expect(ctx.output.summarize.result).to eq(30)
+        expect(ctx.output.summarize.first.result).to eq(30)
       end
 
       it "polls DB until all jobs are finished" do
@@ -513,7 +516,7 @@ RSpec.describe JobFlow::Runner do
 
       it "does not wait for sequential map tasks" do
         run
-        expect(ctx.output.sum_task.total).to eq(30)
+        expect(ctx.output.sum_task.first.total).to eq(30)
       end
     end
 
@@ -529,7 +532,7 @@ RSpec.describe JobFlow::Runner do
           end
 
           task :dependent_task, depends_on: [:regular_task], output: { value: "Integer" } do |ctx|
-            { value: 5 + ctx.output.regular_task.num }
+            { value: 5 + ctx.output.regular_task.first.num }
           end
         end
         klass.new
@@ -540,7 +543,7 @@ RSpec.describe JobFlow::Runner do
 
       it "does not wait for regular tasks" do
         run
-        expect(ctx.output.dependent_task.value).to eq(10)
+        expect(ctx.output.dependent_task.first.value).to eq(10)
       end
     end
 
@@ -554,6 +557,7 @@ RSpec.describe JobFlow::Runner do
 
           task :fast_parallel,
                each: ->(ctx) { ctx.arguments.items },
+               enqueue: ->(_ctx) { true },
                concurrency: 2,
                output: { value: "Integer" } do |ctx|
             { value: ctx.each_value }
@@ -629,12 +633,13 @@ RSpec.describe JobFlow::Runner do
         end
 
         allow(step_mock).to receive(:checkpoint!)
+        allow(step_mock).to receive(:advance!)
         allow(job).to receive(:step).and_yield(step_mock)
       end
 
       it "skips waiting when jobs are already finished" do
         run
-        expect(ctx.output.consume_result.sum).to eq(30)
+        expect(ctx.output.consume_result.first.sum).to eq(30)
       end
 
       it "updates outputs from finished jobs" do
@@ -653,6 +658,7 @@ RSpec.describe JobFlow::Runner do
 
           task :parallel_compute,
                each: ->(ctx) { ctx.arguments.numbers },
+               enqueue: ->(_ctx) { true },
                concurrency: 2,
                output: { squared: "Integer" } do |ctx|
             { squared: ctx.each_value**2 }
@@ -732,12 +738,13 @@ RSpec.describe JobFlow::Runner do
         end
 
         allow(step_mock).to receive(:checkpoint!)
+        allow(step_mock).to receive(:advance!)
         allow(job).to receive(:step).and_yield(step_mock)
       end
 
       it "skips waiting for already finished parallel task" do
         run
-        expect(ctx.output.final_task.result).to eq("total: 13")
+        expect(ctx.output.final_task.first.result).to eq("total: 13")
       end
     end
 
@@ -756,6 +763,7 @@ RSpec.describe JobFlow::Runner do
 
           task :parallel_work,
                each: ->(ctx) { ctx.arguments.items },
+               enqueue: ->(_ctx) { true },
                concurrency: 2,
                output: { result: "Integer" },
                condition: ->(ctx) { !ctx.arguments.skip_parallel } do |ctx|
@@ -805,12 +813,13 @@ RSpec.describe JobFlow::Runner do
         end
 
         allow(step_mock).to receive(:checkpoint!)
+        allow(step_mock).to receive(:advance!)
         allow(job).to receive(:step).and_yield(step_mock)
       end
 
       it "skips waiting when dependent parallel task is already finished" do
         run
-        expect(ctx.output.post_task.sum).to eq(15)
+        expect(ctx.output.post_task.first.sum).to eq(15)
       end
     end
   end
