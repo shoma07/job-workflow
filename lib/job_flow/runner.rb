@@ -48,7 +48,7 @@ module JobFlow
     #:  (Task, ActiveJob::Continuation::Step) -> void
     def run_task(task, step)
       context._with_each_value(task).each do |each_ctx|
-        data = task.block.call(context)
+        data = task.block.call(each_ctx)
         each_index = each_ctx._each_context.index
         add_task_output(ctx: each_ctx, task:, each_index:, data:)
         step.advance! from: each_index

@@ -90,6 +90,7 @@ module JobFlow
       #     ?each: ^(Context) -> untyped,
       #     ?enqueue: ^(Context) -> bool | nil,
       #     ?concurrency: Integer?,
+      #     ?retry: Integer | Hash[Symbol, untyped],
       #     ?output: Hash[Symbol, String],
       #     ?depends_on: Array[Symbol],
       #     ?condition: ^(Context) -> bool,
@@ -99,6 +100,7 @@ module JobFlow
         each: ->(_ctx) { [EachContext::NULL_VALUE] },
         enqueue: nil,
         concurrency: nil,
+        retry: 0,
         output: {},
         depends_on: [],
         condition: ->(_ctx) { true },
@@ -111,6 +113,7 @@ module JobFlow
             enqueue:,
             each:,
             concurrency:,
+            task_retry: binding.local_variable_get(:retry),
             output:,
             depends_on:,
             condition:

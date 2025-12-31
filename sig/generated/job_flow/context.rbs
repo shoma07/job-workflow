@@ -2,6 +2,7 @@
 
 module JobFlow
   class Context
+    # rubocop:disable Metrics/ClassLength
     attr_reader workflow: Workflow
 
     attr_reader arguments: Arguments
@@ -77,5 +78,8 @@ module JobFlow
 
     # :  (Task, Enumerator::Yielder) -> void
     def iterate_each_value: (Task, Enumerator::Yielder) -> void
+
+    # :  () { (Integer) -> void } -> void
+    def with_retry: () { (Integer) -> void } -> void
   end
 end

@@ -191,6 +191,60 @@ RSpec.describe JobFlow::DSL do
         expect(klass).to have_received(:limits_concurrency).with(to: 3, key: be_instance_of(Proc)).once
       end
     end
+
+    context "with retry option as Integer" do
+      subject(:task) do
+        klass.task :example_task, retry: 5 do |ctx|
+          ctx.arguments.sum
+        end
+      end
+
+      it do
+        task
+        expect(klass._workflow.tasks[0].task_retry).to have_attributes(
+          count: 5,
+          strategy: :exponential,
+          base_delay: 1,
+          jitter: false
+        )
+      end
+    end
+
+    context "with retry option as Hash" do
+      subject(:task) do
+        klass.task :example_task, retry: { count: 3, strategy: :linear, base_delay: 2, jitter: true } do |ctx|
+          ctx.arguments.sum
+        end
+      end
+
+      it do
+        task
+        expect(klass._workflow.tasks[0].task_retry).to have_attributes(
+          count: 3,
+          strategy: :linear,
+          base_delay: 2,
+          jitter: true
+        )
+      end
+    end
+
+    context "without retry option" do
+      subject(:task) do
+        klass.task :example_task do |ctx|
+          ctx.arguments.sum
+        end
+      end
+
+      it do
+        task
+        expect(klass._workflow.tasks[0].task_retry).to have_attributes(
+          count: 0,
+          strategy: :exponential,
+          base_delay: 1,
+          jitter: false
+        )
+      end
+    end
   end
 
   describe "#_context" do
@@ -268,7 +322,8 @@ RSpec.describe JobFlow::DSL do
           "each_context" => {
             "parent_job_id" => nil,
             "index" => 0,
-            "value" => nil
+            "value" => nil,
+            "retry_count" => 0
           },
           "task_job_statuses" => []
         )

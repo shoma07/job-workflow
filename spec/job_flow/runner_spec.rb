@@ -822,5 +822,155 @@ RSpec.describe JobFlow::Runner do
         expect(ctx.output.post_task.first.sum).to eq(15)
       end
     end
+
+    context "when task has retry configuration" do
+      let(:fail_count) { 0 }
+      let(:job) do
+        current_fail_count = fail_count
+        fail_counter = { count: 0 }
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          argument :value, "Integer", default: 0
+
+          task :retryable_task, retry: 3, output: { result: "Integer" } do |ctx|
+            if fail_counter[:count] < current_fail_count
+              fail_counter[:count] += 1
+              raise StandardError, "Simulated failure"
+            end
+            { result: ctx.arguments.value + 1 }
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments({ value: 10 })
+      end
+
+      before do
+        allow(ctx).to receive(:sleep)
+      end
+
+      it "returns result without retry when task succeeds on first attempt" do
+        run
+        expect(ctx.output.retryable_task.first.result).to eq(11)
+      end
+
+      it "does not call sleep when task succeeds on first attempt" do
+        run
+        expect(ctx).not_to have_received(:sleep)
+      end
+    end
+
+    context "when task fails once then succeeds with retry" do
+      let(:fail_count) { 1 }
+      let(:job) do
+        current_fail_count = fail_count
+        fail_counter = { count: 0 }
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          argument :value, "Integer", default: 0
+
+          task :retryable_task, retry: 3, output: { result: "Integer" } do |ctx|
+            if fail_counter[:count] < current_fail_count
+              fail_counter[:count] += 1
+              raise StandardError, "Simulated failure"
+            end
+            { result: ctx.arguments.value + 1 }
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments({ value: 10 })
+      end
+
+      before do
+        allow(ctx).to receive(:sleep)
+      end
+
+      it "retries and returns the result" do
+        run
+        expect(ctx.output.retryable_task.first.result).to eq(11)
+      end
+
+      it "calls sleep once with calculated delay" do
+        run
+        expect(ctx).to have_received(:sleep).once
+      end
+    end
+
+    context "when task fails twice then succeeds with retry" do
+      let(:fail_count) { 2 }
+      let(:job) do
+        current_fail_count = fail_count
+        fail_counter = { count: 0 }
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          argument :value, "Integer", default: 0
+
+          task :retryable_task, retry: 3, output: { result: "Integer" } do |ctx|
+            if fail_counter[:count] < current_fail_count
+              fail_counter[:count] += 1
+              raise StandardError, "Simulated failure"
+            end
+            { result: ctx.arguments.value + 1 }
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments({ value: 10 })
+      end
+
+      before do
+        allow(ctx).to receive(:sleep)
+      end
+
+      it "retries twice and returns the result" do
+        run
+        expect(ctx.output.retryable_task.first.result).to eq(11)
+      end
+
+      it "calls sleep twice" do
+        run
+        expect(ctx).to have_received(:sleep).twice
+      end
+    end
+
+    context "when task always fails and exhausts retries" do
+      let(:fail_count) { 10 }
+      let(:job) do
+        current_fail_count = fail_count
+        fail_counter = { count: 0 }
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          argument :value, "Integer", default: 0
+
+          task :retryable_task, retry: 3, output: { result: "Integer" } do |ctx|
+            if fail_counter[:count] < current_fail_count
+              fail_counter[:count] += 1
+              raise StandardError, "Simulated failure"
+            end
+            { result: ctx.arguments.value + 1 }
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments({ value: 10 })
+      end
+
+      before do
+        allow(ctx).to receive(:sleep)
+      end
+
+      it "raises error after retry exhaustion" do
+        expect { run }.to raise_error(StandardError, "Simulated failure")
+      end
+    end
   end
 end

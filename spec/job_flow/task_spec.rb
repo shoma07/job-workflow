@@ -138,5 +138,61 @@ RSpec.describe JobFlow::Task do
         expect(task.output).to eq([])
       end
     end
+
+    context "when task_retry parameter is not provided" do
+      let(:arguments) do
+        {
+          name: :sample_task,
+          block: ->(ctx) { ctx.arguments.arg_one }
+        }
+      end
+
+      it "has default task_retry" do
+        expect(task.task_retry).to have_attributes(
+          count: 0,
+          strategy: :exponential,
+          base_delay: 1,
+          jitter: false
+        )
+      end
+    end
+
+    context "when task_retry parameter is an Integer" do
+      let(:arguments) do
+        {
+          name: :sample_task,
+          block: ->(ctx) { ctx.arguments.arg_one },
+          task_retry: 3
+        }
+      end
+
+      it "creates TaskRetry with count" do
+        expect(task.task_retry).to have_attributes(
+          count: 3,
+          strategy: :exponential,
+          base_delay: 1,
+          jitter: false
+        )
+      end
+    end
+
+    context "when task_retry parameter is a Hash" do
+      let(:arguments) do
+        {
+          name: :sample_task,
+          block: ->(ctx) { ctx.arguments.arg_one },
+          task_retry: { count: 5, strategy: :linear, base_delay: 2, jitter: true }
+        }
+      end
+
+      it "creates TaskRetry from hash" do
+        expect(task.task_retry).to have_attributes(
+          count: 5,
+          strategy: :linear,
+          base_delay: 2,
+          jitter: true
+        )
+      end
+    end
   end
 end
