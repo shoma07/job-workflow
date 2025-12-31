@@ -809,4 +809,51 @@ RSpec.describe JobFlow::Context do
       end
     end
   end
+
+  describe "#_with_task_throttle" do
+    before { ctx._current_job = job }
+
+    context "when current_task is nil" do
+      it do
+        expect { ctx._with_task_throttle { "result" } }.to raise_error(
+          "with_throttle can be called only within iterate_each_value"
+        )
+      end
+    end
+
+    context "when semaphore is nil (no throttle limit)" do
+      subject(:throttle_results) do
+        ctx._with_each_value(task_without_throttle).map do |each_ctx|
+          each_ctx._with_task_throttle { "no_throttle_result" }
+        end
+      end
+
+      let(:task_without_throttle) do
+        JobFlow::Task.new(
+          job_name: "TestJob", name: :no_throttle_task,
+          each: ->(_ctx) { [1] }, block: ->(_ctx) {}
+        )
+      end
+
+      it { is_expected.to eq(["no_throttle_result"]) }
+    end
+
+    context "when semaphore is present (throttle limit set)" do
+      subject(:throttle_results) do
+        ctx._with_each_value(task_with_throttle).map do |each_ctx|
+          each_ctx._with_task_throttle { "throttled_result" }
+        end
+      end
+
+      let(:task_with_throttle) do
+        JobFlow::Task.new(
+          job_name: "TestJob", name: :throttled_task,
+          each: ->(_ctx) { [1] }, block: ->(_ctx) {},
+          throttle: 5
+        )
+      end
+
+      it { is_expected.to eq(["throttled_result"]) }
+    end
+  end
 end

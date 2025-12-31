@@ -64,4 +64,27 @@ RSpec.describe JobFlow::TaskThrottle do
       it { is_expected.to have_attributes(key: "custom_key", limit: 5, ttl: 300) }
     end
   end
+
+  describe "#semaphore" do
+    subject(:semaphore) { task_throttle.semaphore }
+
+    context "when limit is nil" do
+      let(:task_throttle) { described_class.new(key: "test_key", limit: nil) }
+
+      it { is_expected.to be_nil }
+    end
+
+    context "when limit is set" do
+      let(:task_throttle) { described_class.new(key: "api_rate_limit", limit: 10, ttl: 120) }
+
+      it do
+        expect(semaphore).to have_attributes(
+          class: JobFlow::Semaphore,
+          concurrency_key: "api_rate_limit",
+          concurrency_limit: 10,
+          concurrency_duration: 120.seconds
+        )
+      end
+    end
+  end
 end
