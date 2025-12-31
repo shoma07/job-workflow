@@ -2,7 +2,7 @@
 
 module JobFlow
   class Semaphore
-    DEFAULT_POLLING_INTERVAL: ::Integer
+    DEFAULT_POLLING_INTERVAL: Float
 
     attr_reader concurrency_key: String
 

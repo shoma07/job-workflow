@@ -2,7 +2,7 @@
 
 module JobFlow
   class Semaphore
-    DEFAULT_POLLING_INTERVAL = 3
+    DEFAULT_POLLING_INTERVAL = 3.0 #: Float
     private_constant :DEFAULT_POLLING_INTERVAL
 
     attr_reader :concurrency_key #: String
