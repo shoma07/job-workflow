@@ -13,11 +13,16 @@ RSpec.describe JobFlow::Context do
     klass.new
   end
 
-  describe ".initialize" do
-    subject(:init) { described_class.new(**arguments) }
-
-    context "when option is not provided" do
-      let(:arguments) { { arguments: { arg_one: nil, arg_two: 1 } } }
+  describe "#initialize" do
+    context "when all arguments are minimal" do
+      subject(:init) do
+        described_class.new(
+          arguments: JobFlow::Arguments.new(data: { arg_one: nil, arg_two: 1 }),
+          each_context: JobFlow::EachContext.new,
+          output: JobFlow::Output.new,
+          job_status: JobFlow::JobStatus.new
+        )
+      end
 
       it "creates a context with given arguments" do
         expect(init).to have_attributes(
@@ -25,20 +30,24 @@ RSpec.describe JobFlow::Context do
             to_h: { arg_one: nil, arg_two: 1 },
             arg_one: nil,
             arg_two: 1
-          )
+          ),
+          output: be_a(JobFlow::Output),
+          job_status: be_a(JobFlow::JobStatus)
         )
       end
     end
 
-    context "when each_context is provided" do
-      let(:arguments) do
-        {
-          arguments: { arg_one: nil, arg_two: [1, 2] },
-          each_context: {
+    context "when each_context has values" do
+      subject(:init) do
+        described_class.new(
+          arguments: JobFlow::Arguments.new(data: { arg_one: nil, arg_two: [1, 2] }),
+          each_context: JobFlow::EachContext.new(
             parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076",
             index: 1
-          }
-        }
+          ),
+          output: JobFlow::Output.new,
+          job_status: JobFlow::JobStatus.new
+        )
       end
 
       it "creates a context with given arguments and each_context" do
@@ -61,15 +70,19 @@ RSpec.describe JobFlow::Context do
       end
     end
 
-    context "when task_outputs is provided" do
-      let(:arguments) do
-        {
-          arguments: { arg_one: nil, arg_two: 1 },
-          task_outputs: [
-            { task_name: :task_one, each_index: nil, data: { result: 100 } },
-            { task_name: :task_two, each_index: nil, data: { result: 200 } }
-          ]
-        }
+    context "when output has task_outputs" do
+      subject(:init) do
+        described_class.new(
+          arguments: JobFlow::Arguments.new(data: { arg_one: nil, arg_two: 1 }),
+          each_context: JobFlow::EachContext.new,
+          output: JobFlow::Output.new(
+            task_outputs: [
+              JobFlow::TaskOutput.new(task_name: :task_one, data: { result: 100 }),
+              JobFlow::TaskOutput.new(task_name: :task_two, data: { result: 200 })
+            ]
+          ),
+          job_status: JobFlow::JobStatus.new
+        )
       end
 
       it "creates a context with task outputs" do
@@ -82,15 +95,19 @@ RSpec.describe JobFlow::Context do
       end
     end
 
-    context "when task_job_statuses is provided" do
-      let(:arguments) do
-        {
-          arguments: { arg_one: nil, arg_two: 1 },
-          task_job_statuses: [
-            { task_name: :task_a, job_id: "job1", each_index: 0, status: :succeeded },
-            { task_name: :task_a, job_id: "job2", each_index: 1, status: :pending }
-          ]
-        }
+    context "when job_status has task_job_statuses" do
+      subject(:init) do
+        described_class.new(
+          arguments: JobFlow::Arguments.new(data: { arg_one: nil, arg_two: 1 }),
+          each_context: JobFlow::EachContext.new,
+          output: JobFlow::Output.new,
+          job_status: JobFlow::JobStatus.new(
+            task_job_statuses: [
+              JobFlow::TaskJobStatus.new(task_name: :task_a, job_id: "job1", each_index: 0, status: :succeeded),
+              JobFlow::TaskJobStatus.new(task_name: :task_a, job_id: "job2", each_index: 1, status: :pending)
+            ]
+          )
+        )
       end
 
       it "creates a context with job status" do
@@ -105,8 +122,15 @@ RSpec.describe JobFlow::Context do
       end
     end
 
-    context "when no task_job_statuses is provided" do
-      let(:arguments) { { arguments: { arg_one: nil, arg_two: 1 } } }
+    context "when job_status is empty" do
+      subject(:init) do
+        described_class.new(
+          arguments: JobFlow::Arguments.new(data: { arg_one: nil, arg_two: 1 }),
+          each_context: JobFlow::EachContext.new,
+          output: JobFlow::Output.new,
+          job_status: JobFlow::JobStatus.new
+        )
+      end
 
       it "creates a context with empty job status" do
         expect(init.job_status).to be_a(JobFlow::JobStatus)
@@ -115,6 +139,138 @@ RSpec.describe JobFlow::Context do
       it "has no task_job_statuses" do
         expect(init.job_status.flat_task_job_statuses).to be_empty
       end
+    end
+  end
+
+  describe ".from_hash" do
+    subject(:from_hash) { described_class.from_hash(hash) }
+
+    let(:hash) do
+      {
+        arguments: { arg_one: "test", arg_two: 42 },
+        each_context: { parent_job_id: "parent-id", task_name: :my_task, index: 0, value: 10 },
+        task_outputs: [
+          { task_name: :task_a, each_index: nil, data: { result: 100 } },
+          { task_name: :task_b, each_index: 0, data: { value: 200 } }
+        ],
+        task_job_statuses: [
+          { task_name: :task_a, job_id: "job1", each_index: nil, status: :succeeded }
+        ]
+      }
+    end
+
+    it "creates a Context from hash" do
+      expect(from_hash).to have_attributes(
+        arguments: have_attributes(arg_one: "test", arg_two: 42),
+        _each_context: have_attributes(parent_job_id: "parent-id", task_name: :my_task, index: 0, value: 10),
+        output: have_attributes(
+          task_a: have_attributes(result: 100),
+          task_b: contain_exactly(have_attributes(value: 200))
+        ),
+        job_status: be_a(JobFlow::JobStatus)
+      )
+    end
+  end
+
+  describe ".deserialize" do
+    subject(:deserialized) { described_class.deserialize(serialized_hash) }
+
+    context "with full data" do
+      let(:serialized_hash) do
+        {
+          "arguments" => { "arg_one" => "test", "arg_two" => 42 },
+          "each_context" => {
+            "parent_job_id" => "parent-id",
+            "task_name" => "my_task",
+            "index" => 0,
+            "value" => 10
+          },
+          "task_outputs" => [
+            { "task_name" => "task_a", "each_index" => nil,
+              "data" => { "_aj_symbol_keys" => %w[result], "result" => 100 } },
+            { "task_name" => "task_b", "each_index" => 0, "data" => { "_aj_symbol_keys" => %w[value], "value" => 200 } }
+          ],
+          "task_job_statuses" => [
+            { "task_name" => "task_a", "job_id" => "job1", "each_index" => nil, "status" => "succeeded" }
+          ]
+        }
+      end
+
+      it "deserializes a Context from hash" do
+        expect(deserialized).to have_attributes(
+          arguments: have_attributes(arg_one: "test", arg_two: 42),
+          _each_context: have_attributes(parent_job_id: "parent-id", task_name: :my_task, index: 0, value: 10),
+          output: have_attributes(
+            task_a: have_attributes(result: 100),
+            task_b: contain_exactly(have_attributes(value: 200))
+          ),
+          job_status: be_a(JobFlow::JobStatus)
+        )
+      end
+    end
+
+    context "with empty arguments" do
+      let(:serialized_hash) do
+        {
+          "each_context" => {
+            "parent_job_id" => nil,
+            "task_name" => nil,
+            "index" => nil,
+            "value" => nil
+          },
+          "task_outputs" => [],
+          "task_job_statuses" => []
+        }
+      end
+
+      it "creates context with empty arguments" do
+        expect(deserialized).to have_attributes(
+          arguments: have_attributes(to_h: {}),
+          output: have_attributes(flat_task_outputs: be_empty),
+          job_status: have_attributes(flat_task_job_statuses: be_empty)
+        )
+      end
+    end
+  end
+
+  describe "#serialize" do
+    subject(:serialized) { ctx.serialize }
+
+    let(:ctx) do
+      described_class.new(
+        arguments: JobFlow::Arguments.new(data: { arg_one: "test", arg_two: 42 }),
+        each_context: JobFlow::EachContext.new(parent_job_id: "parent-id", task_name: :my_task, index: 0, value: 10),
+        output: JobFlow::Output.new(
+          task_outputs: [
+            JobFlow::TaskOutput.new(task_name: :task_a, data: { result: 100 })
+          ]
+        ),
+        job_status: JobFlow::JobStatus.new(
+          task_job_statuses: [
+            JobFlow::TaskJobStatus.new(task_name: :task_a, job_id: "job1", status: :succeeded)
+          ]
+        )
+      )
+    end
+
+    it "serializes the context to a hash" do
+      expect(serialized).to eq(
+        {
+          "each_context" => {
+            "parent_job_id" => "parent-id",
+            "task_name" => "my_task",
+            "index" => 0,
+            "value" => 10
+          },
+          "task_outputs" => [
+            { "task_name" => "task_a", "each_index" => nil,
+              "data" => { "_aj_symbol_keys" => %w[result], "result" => 100 } }
+          ],
+          "task_job_statuses" => [
+            { "task_name" => "task_a", "job_id" => "job1", "each_index" => nil, "status" => "succeeded" }
+          ]
+        }
+      )
     end
   end
 
@@ -209,13 +365,15 @@ RSpec.describe JobFlow::Context do
 
     let(:ctx) do
       described_class.new(
-        arguments: {},
-        each_context: { parent_job_id:, task_name: }
+        arguments: JobFlow::Arguments.new(data: {}),
+        each_context: JobFlow::EachContext.new(parent_job_id:, task_name:),
+        output: JobFlow::Output.new,
+        job_status: JobFlow::JobStatus.new
       )
     end
 
     context "when enabled and task_name is set" do
-      let(:task_name) { "task_name" }
+      let(:task_name) { :task_name }
       let(:parent_job_id) { "019b6901-8bdf-7fd4-83aa-6c18254fe076" }
 
       it { is_expected.to eq("019b6901-8bdf-7fd4-83aa-6c18254fe076/task_name") }
@@ -229,7 +387,7 @@ RSpec.describe JobFlow::Context do
     end
 
     context "when not enabled and task_name is set" do
-      let(:task_name) { "task_name" }
+      let(:task_name) { :task_name }
       let(:parent_job_id) { nil }
 
       it { is_expected.to be_nil }
@@ -411,19 +569,27 @@ RSpec.describe JobFlow::Context do
   describe "#each_task_output" do
     subject(:each_task_output) { ctx.each_task_output }
 
-    let(:ctx) { described_class.new(arguments: {}, each_context:, task_outputs:) }
+    let(:ctx) do
+      described_class.new(
+        arguments: JobFlow::Arguments.new(data: {}),
+        each_context:,
+        output:,
+        job_status: JobFlow::JobStatus.new
+      )
+    end
 
     context "when called outside with_each_value" do
-      let(:ctx) { workflow.build_context }
-      let(:each_context) { {} }
-      let(:task_outputs) do
-        [
-          {
-            task_name: :task_name,
-            each_index: 2,
-            data: { result: "output_0" }
-          }
-        ]
+      let(:each_context) { JobFlow::EachContext.new }
+      let(:output) do
+        JobFlow::Output.new(
+          task_outputs: [
+            JobFlow::TaskOutput.new(
+              task_name: :task_name,
+              each_index: 2,
+              data: { result: "output_0" }
+            )
+          ]
+        )
       end
 
       it do
@@ -433,20 +599,22 @@ RSpec.describe JobFlow::Context do
 
     context "when called inside _with_each_value but no matching output" do
       let(:each_context) do
-        {
+        JobFlow::EachContext.new(
           parent_job_id: "parent_job",
           task_name: :task_name,
           index: 2
-        }
+        )
       end
-      let(:task_outputs) do
-        [
-          {
-            task_name: :task_name,
-            each_index: 1,
-            data: { result: "output_0" }
-          }
-        ]
+      let(:output) do
+        JobFlow::Output.new(
+          task_outputs: [
+            JobFlow::TaskOutput.new(
+              task_name: :task_name,
+              each_index: 1,
+              data: { result: "output_0" }
+            )
+          ]
+        )
       end
 
       it { is_expected.to be_nil }
@@ -454,20 +622,22 @@ RSpec.describe JobFlow::Context do
 
     context "when called inside _with_each_value with matching output" do
       let(:each_context) do
-        {
+        JobFlow::EachContext.new(
           parent_job_id: "parent_job",
           task_name: :task_name,
           index: 2
-        }
+        )
       end
-      let(:task_outputs) do
-        [
-          {
-            task_name: :task_name,
-            each_index: 2,
-            data: { result: "output_0" }
-          }
-        ]
+      let(:output) do
+        JobFlow::Output.new(
+          task_outputs: [
+            JobFlow::TaskOutput.new(
+              task_name: :task_name,
+              each_index: 2,
+              data: { result: "output_0" }
+            )
+          ]
+        )
       end
 
       it { is_expected.to have_attributes(result: "output_0") }

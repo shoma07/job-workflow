@@ -53,7 +53,7 @@ module JobFlow
     #:  (Array[SolidQueue::Job]) -> void
     def update_task_outputs_from_jobs(jobs)
       jobs.each do |job|
-        context = ContextSerializer.instance.deserialize(job.arguments["job_flow_context"])
+        context = Context.deserialize(job.arguments["job_flow_context"])
         task_output = context.each_task_output
         next if task_output.nil?
 

@@ -256,32 +256,33 @@ RSpec.describe JobFlow::DSL do
     context "when job has been performed" do
       before { job.perform({ value: 42 }) }
 
-      it do
-        expect(serialize).to include(
-          "job_flow_context" => {
-            "_aj_serialized" => "JobFlow::ContextSerializer",
-            "each_context" => {
-              "_aj_symbol_keys" => [],
-              "parent_job_id" => nil,
-              "task_name" => nil,
-              "index" => nil,
-              "value" => nil
+      it "includes job_flow_context key" do
+        expect(serialize).to have_key("job_flow_context")
+      end
+
+      it "includes each_context and task_job_statuses" do
+        context_data = serialize["job_flow_context"]
+        expect(context_data).to include(
+          "each_context" => {
+            "parent_job_id" => nil,
+            "task_name" => nil,
+            "index" => nil,
+            "value" => nil
+          },
+          "task_job_statuses" => []
+        )
+      end
+
+      it "includes task_outputs" do
+        context_data = serialize["job_flow_context"]
+        expect(context_data["task_outputs"]).to contain_exactly(
+          {
+            "data" => {
+              "_aj_symbol_keys" => %w[value],
+              "value" => 52
             },
-            "task_outputs" => [
-              {
-                "_aj_symbol_keys" => [],
-                "data" => {
-                  "_aj_symbol_keys" => %w[value],
-                  "value" => 52
-                },
-                "each_index" => nil,
-                "task_name" => {
-                  "_aj_serialized" => "ActiveJob::Serializers::SymbolSerializer",
-                  "value" => "increment"
-                }
-              }
-            ],
-            "task_job_statuses" => []
+            "each_index" => nil,
+            "task_name" => "increment"
           }
         )
       end
@@ -312,15 +313,14 @@ RSpec.describe JobFlow::DSL do
       let(:job_data) do
         {
           "job_flow_context" => {
-            "_aj_serialized" => "JobFlow::ContextSerializer",
             "each_context" => {
-              "_aj_symbol_keys" => %w[parent_job_id task_name index value],
               "parent_job_id" => nil,
               "task_name" => nil,
               "index" => nil,
               "value" => nil
             },
-            "task_outputs" => []
+            "task_outputs" => [],
+            "task_job_statuses" => []
           }
         }
       end

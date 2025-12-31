@@ -7,6 +7,18 @@ module JobFlow
     attr_reader :index #: Integer?
     attr_reader :value #: untyped
 
+    class << self
+      #:  (Hash[String, untyped]) -> EachContext
+      def deserialize(hash)
+        new(
+          parent_job_id: hash["parent_job_id"],
+          task_name: hash["task_name"]&.to_sym,
+          index: hash["index"],
+          value: ActiveJob::Arguments.deserialize([hash["value"]]).first
+        )
+      end
+    end
+
     #:  (?parent_job_id: String?, ?task_name: Symbol?, ?index: Integer?, ?value: untyped) -> void
     def initialize(parent_job_id: nil, task_name: nil, index: nil, value: nil)
       self.parent_job_id = parent_job_id
@@ -27,13 +39,13 @@ module JobFlow
       "#{parent_job_id}/#{task_name}"
     end
 
-    #:  () -> Hash[Symbol, untyped]
-    def to_h
+    #:  () -> Hash[String, untyped]
+    def serialize
       {
-        parent_job_id:,
-        task_name:,
-        index:,
-        value:
+        "parent_job_id" => parent_job_id,
+        "task_name" => task_name&.to_s,
+        "index" => index,
+        "value" => ActiveJob::Arguments.serialize([value]).first
       }
     end
 
