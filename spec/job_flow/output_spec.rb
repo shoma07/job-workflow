@@ -371,7 +371,7 @@ RSpec.describe JobFlow::Output do
     let(:output) { described_class.new }
     let(:workflow) do
       wf = JobFlow::Workflow.new
-      wf.add_task(JobFlow::Task.new(name: :sample_task, block: ->(_ctx) {}))
+      wf.add_task(JobFlow::Task.new(job_name: "TestJob", name: :sample_task, block: ->(_ctx) {}))
       wf
     end
     let(:all_jobs) do
@@ -459,7 +459,7 @@ RSpec.describe JobFlow::Output do
     let(:output) { described_class.new }
     let(:workflow) do
       wf = JobFlow::Workflow.new
-      wf.add_task(JobFlow::Task.new(name: :db_task, block: ->(_ctx) {}))
+      wf.add_task(JobFlow::Task.new(job_name: "TestJob", name: :db_task, block: ->(_ctx) {}))
       wf
     end
     let(:job_ids) { %w[job1 job2] }

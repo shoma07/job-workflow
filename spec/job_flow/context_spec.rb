@@ -76,7 +76,10 @@ RSpec.describe JobFlow::Context do
       it "allows resuming _with_each_value from restored each_context index" do
         job = Class.new(ActiveJob::Base) { include JobFlow::DSL }.new
         init._current_job = job
-        task = JobFlow::Task.new(name: :ctx_two, each: ->(_ctx) { [0, 1, 2, 3] }, block: ->(_ctx) {})
+        task = JobFlow::Task.new(
+          job_name: "TestJob", name: :ctx_two,
+          each: ->(_ctx) { [0, 1, 2, 3] }, block: ->(_ctx) {}
+        )
         indices = init._with_each_value(task).map { |ctx| ctx._each_context.index }
         expect(indices).to eq([1, 2, 3])
       end
@@ -98,7 +101,10 @@ RSpec.describe JobFlow::Context do
       end
 
       let(:task_with_retry) do
-        JobFlow::Task.new(name: :retry_task, each: ->(_ctx) { [:a] }, block: ->(_ctx) {}, task_retry: 3)
+        JobFlow::Task.new(
+          job_name: "TestJob", name: :retry_task,
+          each: ->(_ctx) { [:a] }, block: ->(_ctx) {}, task_retry: 3
+        )
       end
 
       before do
@@ -392,7 +398,10 @@ RSpec.describe JobFlow::Context do
 
     context "when called inside _with_each_value" do
       let(:task) do
-        JobFlow::Task.new(name: :process_items, each: ->(ctx) { ctx.arguments.items }, block: ->(_ctx) {})
+        JobFlow::Task.new(
+          job_name: "TestJob", name: :process_items,
+          each: ->(ctx) { ctx.arguments.items }, block: ->(_ctx) {}
+        )
       end
 
       it "returns the parent job id" do
@@ -411,7 +420,7 @@ RSpec.describe JobFlow::Context do
   describe "#concurrency_key" do
     subject(:concurrency_key) { ctx.concurrency_key }
 
-    let(:task) { JobFlow::Task.new(name: :task_name, block: ->(_ctx) {}) }
+    let(:task) { JobFlow::Task.new(job_name: "TestJob", name: :task_name, block: ->(_ctx) {}) }
 
     context "when enabled and current_task is set" do
       let(:ctx) do
@@ -572,7 +581,10 @@ RSpec.describe JobFlow::Context do
       klass.new
     end
     let(:task) do
-      JobFlow::Task.new(name: :process_items, each: ->(ctx) { ctx.arguments.items }, block: ->(_ctx) {})
+      JobFlow::Task.new(
+        job_name: "TestJob", name: :process_items,
+        each: ->(ctx) { ctx.arguments.items }, block: ->(_ctx) {}
+      )
     end
 
     before { ctx._current_job = job }
@@ -616,7 +628,10 @@ RSpec.describe JobFlow::Context do
       klass.new
     end
     let(:task) do
-      JobFlow::Task.new(name: :process_items, each: ->(ctx) { ctx.arguments.items }, block: ->(_ctx) {})
+      JobFlow::Task.new(
+        job_name: "TestJob", name: :process_items,
+        each: ->(ctx) { ctx.arguments.items }, block: ->(_ctx) {}
+      )
     end
 
     before { ctx._current_job = job }
@@ -669,7 +684,7 @@ RSpec.describe JobFlow::Context do
     end
 
     context "when called with current_task but outside _with_each_value" do
-      let(:task) { JobFlow::Task.new(name: :task_name, block: ->(_ctx) {}) }
+      let(:task) { JobFlow::Task.new(job_name: "TestJob", name: :task_name, block: ->(_ctx) {}) }
       let(:ctx) do
         described_class.new(
           workflow:,
@@ -697,7 +712,7 @@ RSpec.describe JobFlow::Context do
     end
 
     context "when called inside _with_each_value but no matching output" do
-      let(:task) { JobFlow::Task.new(name: :task_name, block: ->(_ctx) {}) }
+      let(:task) { JobFlow::Task.new(job_name: "TestJob", name: :task_name, block: ->(_ctx) {}) }
       let(:ctx) do
         described_class.new(
           workflow:,
@@ -724,7 +739,7 @@ RSpec.describe JobFlow::Context do
     end
 
     context "when called inside _with_each_value with matching output" do
-      let(:task) { JobFlow::Task.new(name: :task_name, block: ->(_ctx) {}) }
+      let(:task) { JobFlow::Task.new(job_name: "TestJob", name: :task_name, block: ->(_ctx) {}) }
       let(:ctx) do
         described_class.new(
           workflow:,
@@ -762,10 +777,16 @@ RSpec.describe JobFlow::Context do
       klass.new
     end
     let(:items_task) do
-      JobFlow::Task.new(name: :process_items, each: ->(ctx) { ctx.arguments.items }, block: ->(_ctx) {})
+      JobFlow::Task.new(
+        job_name: "TestJob", name: :process_items,
+        each: ->(ctx) { ctx.arguments.items }, block: ->(_ctx) {}
+      )
     end
     let(:nested_task) do
-      JobFlow::Task.new(name: :process_nested, each: ->(ctx) { ctx.arguments.nested }, block: ->(_ctx) {})
+      JobFlow::Task.new(
+        job_name: "TestJob", name: :process_nested,
+        each: ->(ctx) { ctx.arguments.nested }, block: ->(_ctx) {}
+      )
     end
 
     before { ctx._current_job = job }
