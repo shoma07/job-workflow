@@ -11,7 +11,12 @@ RSpec.describe JobFlow::Runner do
       klass.new
     end
     let(:ctx) do
-      job.class._workflow.build_context
+      JobFlow::Context.from_hash(
+        workflow: job.class._workflow,
+        each_context: {},
+        task_outputs: [],
+        task_job_statuses: []
+      )
     end
 
     # NOTE: Could not be verified with change matcher
@@ -51,7 +56,9 @@ RSpec.describe JobFlow::Runner do
         end
         klass.new
       end
-      let(:ctx) { job.class._workflow.build_context._update_arguments({ a: 0 }) }
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments({ a: 0 })
+      end
 
       it do
         run
@@ -76,7 +83,9 @@ RSpec.describe JobFlow::Runner do
         end
         klass.new
       end
-      let(:ctx) { job.class._workflow.build_context._update_arguments({ items: [1, 2, 3] }) }
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments({ items: [1, 2, 3] })
+      end
 
       it do
         run
@@ -108,7 +117,9 @@ RSpec.describe JobFlow::Runner do
         end
         klass.new
       end
-      let(:ctx) { job.class._workflow.build_context._update_arguments({ items: [10, 20] }) }
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments({ items: [10, 20] })
+      end
 
       it do
         run
@@ -135,7 +146,8 @@ RSpec.describe JobFlow::Runner do
         klass.new
       end
       let(:ctx) do
-        job.class._workflow.build_context._update_arguments({ items: [1, 2, 3], sum: 0, enabled: false })
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })
+                        ._update_arguments({ items: [1, 2, 3], sum: 0, enabled: false })
       end
 
       it "does not execute the each task" do
@@ -162,7 +174,8 @@ RSpec.describe JobFlow::Runner do
         klass.new
       end
       let(:ctx) do
-        job.class._workflow.build_context._update_arguments({ items: [1, 2, 3], results: [] })
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })
+                        ._update_arguments({ items: [1, 2, 3], results: [] })
       end
 
       before { allow(job.class).to receive(:perform_all_later).and_return(nil) }
@@ -190,6 +203,7 @@ RSpec.describe JobFlow::Runner do
       end
       let(:ctx) do
         ctx = JobFlow::Context.new(
+          workflow: job.class._workflow,
           arguments: JobFlow::Arguments.new(data: { items: [1, 2] }),
           each_context: JobFlow::EachContext.new(
             task_name: :process_items,
@@ -223,7 +237,10 @@ RSpec.describe JobFlow::Runner do
         end
         klass.new
       end
-      let(:ctx) { job.class._workflow.build_context._update_arguments({ multiplier: 3 }) }
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })
+                        ._update_arguments({ multiplier: 3 })
+      end
 
       it "collects output from the task" do
         run
@@ -245,7 +262,8 @@ RSpec.describe JobFlow::Runner do
         klass.new
       end
       let(:ctx) do
-        job.class._workflow.build_context._update_arguments({ items: [10, 20, 30] })
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })
+                        ._update_arguments({ items: [10, 20, 30] })
       end
 
       it "collects output from each iteration" do
@@ -270,7 +288,7 @@ RSpec.describe JobFlow::Runner do
         klass.new
       end
       let(:ctx) do
-        job.class._workflow.build_context
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })
       end
 
       it "does not collect output" do
@@ -290,7 +308,9 @@ RSpec.describe JobFlow::Runner do
         end
         klass.new
       end
-      let(:ctx) { job.class._workflow.build_context }
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })
+      end
 
       it "wraps value in Hash with :value key" do
         run
@@ -315,7 +335,7 @@ RSpec.describe JobFlow::Runner do
         klass.new
       end
       let(:ctx) do
-        job.class._workflow.build_context._update_arguments({ items: [1, 2, 3] })
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments({ items: [1, 2, 3] })
       end
 
       before { allow(job.class).to receive(:perform_all_later).and_return(nil) }
@@ -343,7 +363,9 @@ RSpec.describe JobFlow::Runner do
         end
         klass.new
       end
-      let(:ctx) { job.class._workflow.build_context }
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })
+      end
 
       it "has access to dependency outputs" do
         run
@@ -373,7 +395,7 @@ RSpec.describe JobFlow::Runner do
         klass.new
       end
       let(:ctx) do
-        job.class._workflow.build_context._update_arguments({ items: [1, 2] })
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments({ items: [1, 2] })
       end
       let(:step_mock) { instance_double(ActiveJob::Continuation::Step) }
       let(:poll_count) { 0 }
@@ -420,6 +442,7 @@ RSpec.describe JobFlow::Runner do
                 claimed?: false,
                 arguments: {
                   "job_flow_context" => JobFlow::Context.new(
+                    workflow: job.class._workflow,
                     arguments: JobFlow::Arguments.new(data: {}),
                     each_context: JobFlow::EachContext.new(
                       parent_job_id: job.job_id,
@@ -484,7 +507,7 @@ RSpec.describe JobFlow::Runner do
         klass.new
       end
       let(:ctx) do
-        job.class._workflow.build_context._update_arguments({ items: [5, 10] })
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments({ items: [5, 10] })
       end
 
       it "does not wait for sequential map tasks" do
@@ -510,7 +533,9 @@ RSpec.describe JobFlow::Runner do
         end
         klass.new
       end
-      let(:ctx) { job.class._workflow.build_context }
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })
+      end
 
       it "does not wait for regular tasks" do
         run
@@ -540,7 +565,7 @@ RSpec.describe JobFlow::Runner do
         klass.new
       end
       let(:ctx) do
-        job.class._workflow.build_context._update_arguments({ items: [10, 20] })
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments({ items: [10, 20] })
       end
       let(:step_mock) { instance_double(ActiveJob::Continuation::Step) }
       let(:created_job_ids) { [] }
@@ -577,6 +602,7 @@ RSpec.describe JobFlow::Runner do
               claimed?: false,
               arguments: {
                 "job_flow_context" => JobFlow::Context.new(
+                  workflow: job.class._workflow,
                   arguments: JobFlow::Arguments.new(data: {}),
                   each_context: JobFlow::EachContext.new(
                     parent_job_id: job.job_id,
@@ -643,7 +669,7 @@ RSpec.describe JobFlow::Runner do
         klass.new
       end
       let(:ctx) do
-        job.class._workflow.build_context._update_arguments({ numbers: [2, 3] })
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments({ numbers: [2, 3] })
       end
       let(:step_mock) { instance_double(ActiveJob::Continuation::Step) }
       let(:created_jobs) { [] }
@@ -679,6 +705,7 @@ RSpec.describe JobFlow::Runner do
               claimed?: false,
               arguments: {
                 "job_flow_context" => JobFlow::Context.new(
+                  workflow: job.class._workflow,
                   arguments: JobFlow::Arguments.new(data: {}),
                   each_context: JobFlow::EachContext.new(
                     parent_job_id: job.job_id,
@@ -741,7 +768,8 @@ RSpec.describe JobFlow::Runner do
         klass.new
       end
       let(:ctx) do
-        ctx = job.class._workflow.build_context._update_arguments({ items: [1, 2], skip_parallel: true })
+        ctx = JobFlow::Context.from_hash({ workflow: job.class._workflow })
+                              ._update_arguments({ items: [1, 2], skip_parallel: true })
 
         # Simulate resuming: parallel_work already completed in previous run
         ctx.job_status.update_task_job_status(

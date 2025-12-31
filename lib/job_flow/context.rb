@@ -2,6 +2,7 @@
 
 module JobFlow
   class Context
+    attr_reader :workflow #: Workflow
     attr_reader :arguments #: Arguments
     attr_reader :output #: Output
     attr_reader :job_status #: JobStatus
@@ -9,8 +10,10 @@ module JobFlow
     class << self
       #:  (Hash[Symbol, untyped]) -> Context
       def from_hash(hash)
+        workflow = hash.fetch(:workflow)
         new(
-          arguments: Arguments.new(data: hash[:arguments] || {}),
+          workflow:,
+          arguments: Arguments.new(data: workflow.build_arguments_hash),
           each_context: EachContext.new(**(hash[:each_context] || {}).symbolize_keys),
           output: Output.from_hash_array(hash.fetch(:task_outputs, [])),
           job_status: JobStatus.from_hash_array(hash.fetch(:task_job_statuses, []))
@@ -19,11 +22,10 @@ module JobFlow
 
       #:  (Hash[String, untyped]) -> Context
       def deserialize(hash)
-        empty_hash = {} #: Hash[String, untyped]
+        workflow = hash.fetch("workflow")
         new(
-          arguments: Arguments.new(
-            data: hash.fetch("arguments", empty_hash).symbolize_keys
-          ),
+          workflow: hash.fetch("workflow"),
+          arguments: Arguments.new(data: workflow.build_arguments_hash),
           each_context: EachContext.deserialize(hash["each_context"]),
           output: Output.new(
             task_outputs: hash.fetch("task_outputs", []).map { |shash| TaskOutput.deserialize(shash) }
@@ -36,17 +38,20 @@ module JobFlow
     end
 
     #:  (
+    #     workflow: Workflow,
     #     arguments: Arguments,
     #     each_context: EachContext,
     #     output: Output,
     #     job_status: JobStatus
     #   ) -> void
     def initialize(
+      workflow:,
       arguments:,
       each_context:,
       output:,
       job_status:
     )
+      self.workflow = workflow
       self.arguments = arguments
       self.each_context = each_context
       self.output = output
@@ -118,6 +123,7 @@ module JobFlow
 
     private
 
+    attr_writer :workflow #: Workflow
     attr_writer :arguments #: Arguments
     attr_writer :output #: Output
     attr_writer :job_status #: JobStatus

@@ -108,11 +108,12 @@ RSpec.describe JobFlow::DSL do
         end
       end
 
+      let(:ctx) { JobFlow::Context.from_hash({ workflow: klass._workflow })._update_arguments({ sum: 1 }) }
+
       it { expect { task }.to change { klass._workflow.tasks.size }.from(0).to(1) }
 
       it do
         task
-        ctx = klass._workflow.build_context._update_arguments({ sum: 1 })
         expect(klass._workflow.tasks[0].block.call(ctx)).to eq({ value: 1 })
       end
     end

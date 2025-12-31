@@ -61,20 +61,4 @@ RSpec.describe JobFlow::Workflow do
       it { expect { fetch_task }.to raise_error(KeyError) }
     end
   end
-
-  describe "#build_context" do
-    subject(:build_context) { workflow.build_context._update_arguments(initial_arguments) }
-
-    let(:workflow) do
-      workflow = described_class.new
-      workflow.add_argument(JobFlow::ArgumentDef.new(name: :example, type: "Integer", default: 0))
-      workflow
-    end
-
-    context "when given a Hash" do
-      let(:initial_arguments) { { example: 1 } }
-
-      it { is_expected.to have_attributes(class: JobFlow::Context, arguments: have_attributes(example: 1)) }
-    end
-  end
 end
