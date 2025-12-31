@@ -36,6 +36,7 @@ RSpec.describe JobFlow::Task do
     context "when only required parameters are provided" do
       let(:arguments) do
         {
+          job_name: "TestJob",
           name: :sample_task,
           block: ->(ctx) { ctx.arguments.arg_one }
         }
@@ -61,6 +62,7 @@ RSpec.describe JobFlow::Task do
     context "when condition option" do
       let(:arguments) do
         {
+          job_name: "TestJob",
           name: :sample_task,
           block: lambda(&:arg_one),
           condition: ->(ctx) { ctx.arguments.arg_two.size > 2 }
@@ -81,6 +83,7 @@ RSpec.describe JobFlow::Task do
     context "when all parameters are provided" do
       let(:arguments) do
         {
+          job_name: "TestJob",
           name: :sample_task,
           block: ->(ctx) { ctx.arguments.arg_one },
           each: :arg_two,
@@ -115,6 +118,7 @@ RSpec.describe JobFlow::Task do
     context "when output parameter is empty" do
       let(:arguments) do
         {
+          job_name: "TestJob",
           name: :sample_task,
           block: ->(ctx) { ctx.arguments.arg_one },
           output: {}
@@ -129,6 +133,7 @@ RSpec.describe JobFlow::Task do
     context "when output parameter is not provided" do
       let(:arguments) do
         {
+          job_name: "TestJob",
           name: :sample_task,
           block: ->(ctx) { ctx.arguments.arg_one }
         }
@@ -142,6 +147,7 @@ RSpec.describe JobFlow::Task do
     context "when task_retry parameter is not provided" do
       let(:arguments) do
         {
+          job_name: "TestJob",
           name: :sample_task,
           block: ->(ctx) { ctx.arguments.arg_one }
         }
@@ -160,6 +166,7 @@ RSpec.describe JobFlow::Task do
     context "when task_retry parameter is an Integer" do
       let(:arguments) do
         {
+          job_name: "TestJob",
           name: :sample_task,
           block: ->(ctx) { ctx.arguments.arg_one },
           task_retry: 3
@@ -179,6 +186,7 @@ RSpec.describe JobFlow::Task do
     context "when task_retry parameter is a Hash" do
       let(:arguments) do
         {
+          job_name: "TestJob",
           name: :sample_task,
           block: ->(ctx) { ctx.arguments.arg_one },
           task_retry: { count: 5, strategy: :linear, base_delay: 2, jitter: true }

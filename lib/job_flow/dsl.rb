@@ -59,6 +59,8 @@ module JobFlow
       #
       #   def new: (Hash[untyped, untyped]) -> DSL
       #
+      #   def name: () -> String
+      #
       #   def perform_all_later: (Array[DSL]) -> void
       #
       #   def enqueue: (Hash[untyped, untyped]) -> void
@@ -94,6 +96,7 @@ module JobFlow
       #     ?output: Hash[Symbol, String],
       #     ?depends_on: Array[Symbol],
       #     ?condition: ^(Context) -> bool,
+      #     ?throttle: Integer | Hash[Symbol, untyped],
       #   ) { (untyped) -> void } -> void
       def task(
         task_name,
@@ -104,10 +107,12 @@ module JobFlow
         output: {},
         depends_on: [],
         condition: ->(_ctx) { true },
+        throttle: {},
         &block
       )
         _workflow.add_task(
           Task.new(
+            job_name: name,
             name: task_name,
             block: block,
             enqueue:,
@@ -116,7 +121,8 @@ module JobFlow
             task_retry: binding.local_variable_get(:retry),
             output:,
             depends_on:,
-            condition:
+            condition:,
+            throttle:
           )
         )
         if !concurrency.nil? && !enqueue.nil? && respond_to?(:limits_concurrency) # rubocop:disable Style/GuardClause

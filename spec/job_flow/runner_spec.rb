@@ -228,7 +228,7 @@ RSpec.describe JobFlow::Runner do
           argument :items, "Array[Integer]", default: []
 
           task :process_items, output: { result: "Integer" }, each: ->(ctx) { ctx.arguments.items } do |ctx|
-            nested_task = JobFlow::Task.new(name: :nested, each: ->(_) { [1, 2] }, block: ->(_) {})
+            nested_task = JobFlow::Task.new(job_name: "TestJob", name: :nested, each: ->(_) { [1, 2] }, block: ->(_) {})
             ctx._with_each_value(nested_task).to_a
             { result: ctx.each_value * 2 }
           end
