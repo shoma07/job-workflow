@@ -57,6 +57,7 @@ module JobFlow
       self.each_context = each_context
       self.output = output
       self.job_status = job_status
+      self.enabled_with_each_value = false
     end
 
     #:  () -> Hash[String, untyped]
@@ -95,9 +96,14 @@ module JobFlow
 
     #:  (Task) -> Enumerator[Context]
     def _with_each_value(task)
-      raise "Nested _with_each_value calls are not allowed" if each_context.enabled?
+      raise "Nested _with_each_value calls are not allowed" if enabled_with_each_value
 
-      Enumerator.new { |y| iterate_each_value(task, y) }
+      self.enabled_with_each_value = true
+      Enumerator.new do |y|
+        with_each_context(task, y)
+      ensure
+        self.enabled_with_each_value = false
+      end
     end
 
     #:  () -> untyped
@@ -136,6 +142,7 @@ module JobFlow
     attr_writer :output #: Output
     attr_writer :job_status #: JobStatus
     attr_accessor :each_context #: EachContext
+    attr_accessor :enabled_with_each_value #: bool
 
     #:  () -> DSL
     def current_job
@@ -146,8 +153,8 @@ module JobFlow
     end
 
     #:  (Task, Enumerator::Yielder) -> void
-    def iterate_each_value(task, yielder)
-      task.each.call(self).each.with_index do |value, index|
+    def with_each_context(task, yielder)
+      with_each_index_and_value(task) do |value, index|
         self.current_task = task
         with_retry do |retry_count|
           self.each_context = EachContext.new(parent_job_id: current_job_id, index:, value:, retry_count:)
@@ -159,19 +166,29 @@ module JobFlow
       end
     end
 
+    #:  (Task) { (untyped, Integer) -> void } -> void
+    def with_each_index_and_value(task)
+      task.each.call(self).each.with_index do |value, index|
+        next if index < each_context.index
+
+        yield value, index
+      end
+    end
+
     #:  () { (Integer) -> void } -> void
     def with_retry
       task = current_task || (raise "with_retry can be called only within iterate_each_value")
 
       task_retry = task.task_retry
       0.upto(task_retry.count) do |retry_count|
+        next if retry_count < each_context.retry_count
+
         yield retry_count
         break
       rescue StandardError => e
-        retry_count += 1
-        raise e if retry_count >= task_retry.count
+        raise e if (retry_count + 1) >= task_retry.count
 
-        sleep(task_retry.delay_for(retry_count))
+        sleep(task_retry.delay_for(retry_count + 1))
       end
     end
   end
