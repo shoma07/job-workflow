@@ -10,11 +10,13 @@ module JobFlow
 
     attr_reader value: untyped
 
+    attr_reader retry_count: Integer
+
     # :  (Hash[String, untyped]) -> EachContext
     def self.deserialize: (Hash[String, untyped]) -> EachContext
 
-    # :  (?parent_job_id: String?, ?index: Integer, ?value: untyped) -> void
-    def initialize: (?parent_job_id: String?, ?index: Integer, ?value: untyped) -> void
+    # :  (?parent_job_id: String?, ?index: Integer, ?value: untyped, ?retry_count: Integer) -> void
+    def initialize: (?parent_job_id: String?, ?index: Integer, ?value: untyped, ?retry_count: Integer) -> void
 
     # :  () -> bool
     def enabled?: () -> bool
@@ -29,5 +31,7 @@ module JobFlow
     attr_writer index: Integer
 
     attr_writer value: untyped
+
+    attr_writer retry_count: Integer
   end
 end

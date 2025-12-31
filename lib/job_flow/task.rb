@@ -10,6 +10,7 @@ module JobFlow
     attr_reader :output #: Array[OutputDef]
     attr_reader :depends_on #: Array[Symbol]
     attr_reader :condition #: ^(Context) -> bool
+    attr_reader :task_retry #: TaskRetry
 
     # rubocop:disable Metrics/ParameterLists
     #
@@ -21,7 +22,8 @@ module JobFlow
     #     ?concurrency: Integer?,
     #     ?output: Hash[Symbol, String],
     #     ?depends_on: Array[Symbol],
-    #     condition: ^(Context) -> bool
+    #     condition: ^(Context) -> bool,
+    #     ?task_retry: Integer | Hash[Symbol, untyped]
     #   ) -> void
     def initialize(
       name:,
@@ -31,7 +33,8 @@ module JobFlow
       concurrency: nil,
       output: {},
       depends_on: [],
-      condition: ->(_ctx) { true }
+      condition: ->(_ctx) { true },
+      task_retry: 0
     )
       @name = name
       @block = block
@@ -41,6 +44,7 @@ module JobFlow
       @output = output.map { |name, type| OutputDef.new(name:, type:) }
       @depends_on = depends_on
       @condition = condition
+      @task_retry = TaskRetry.from_primitive_value(task_retry)
     end
     # rubocop:enable Metrics/ParameterLists
   end

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module JobFlow
-  class Context
+  class Context # rubocop:disable Metrics/ClassLength
     attr_reader :workflow #: Workflow
     attr_reader :arguments #: Arguments
     attr_reader :current_task #: Task?
@@ -149,15 +149,29 @@ module JobFlow
     def iterate_each_value(task, yielder)
       task.each.call(self).each.with_index do |value, index|
         self.current_task = task
-        self.each_context = EachContext.new(
-          parent_job_id: current_job_id,
-          index:,
-          value:
-        )
-        yielder << self
+        with_retry do |retry_count|
+          self.each_context = EachContext.new(parent_job_id: current_job_id, index:, value:, retry_count:)
+          yielder << self
+        end
       ensure
         self.current_task = nil
         self.each_context = EachContext.new
+      end
+    end
+
+    #:  () { (Integer) -> void } -> void
+    def with_retry
+      task = current_task || (raise "with_retry can be called only within iterate_each_value")
+
+      task_retry = task.task_retry
+      0.upto(task_retry.count) do |retry_count|
+        yield retry_count
+        break
+      rescue StandardError => e
+        retry_count += 1
+        raise e if retry_count >= task_retry.count
+
+        sleep(task_retry.delay_for(retry_count))
       end
     end
   end

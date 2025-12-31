@@ -18,6 +18,8 @@ module JobFlow
 
     attr_reader condition: ^(Context) -> bool
 
+    attr_reader task_retry: TaskRetry
+
     # rubocop:disable Metrics/ParameterLists
     #
     # :  (
@@ -28,8 +30,9 @@ module JobFlow
     #     ?concurrency: Integer?,
     #     ?output: Hash[Symbol, String],
     #     ?depends_on: Array[Symbol],
-    #     condition: ^(Context) -> bool
+    #     condition: ^(Context) -> bool,
+    #     ?task_retry: Integer | Hash[Symbol, untyped]
     #   ) -> void
-    def initialize: (name: Symbol, block: ^(untyped) -> void, condition: ^(Context) -> bool, ?each: ^(Context) -> untyped, ?enqueue: ^(Context) -> bool | nil, ?concurrency: Integer?, ?output: Hash[Symbol, String], ?depends_on: Array[Symbol]) -> void
+    def initialize: (name: Symbol, block: ^(untyped) -> void, condition: ^(Context) -> bool, ?each: ^(Context) -> untyped, ?enqueue: ^(Context) -> bool | nil, ?concurrency: Integer?, ?output: Hash[Symbol, String], ?depends_on: Array[Symbol], ?task_retry: Integer | Hash[Symbol, untyped]) -> void
   end
 end
