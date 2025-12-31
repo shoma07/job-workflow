@@ -7,6 +7,11 @@ module JobFlow
       def from_hash_array(array)
         new(task_job_statuses: array.map { |hash| TaskJobStatus.from_hash(hash) })
       end
+
+      #:  (Hash[String, untyped]) -> JobStatus
+      def deserialize(hash)
+        new(task_job_statuses: hash.fetch("task_job_statuses", []).map { |shash| TaskJobStatus.deserialize(shash) })
+      end
     end
 
     #:  (?task_job_statuses: Array[TaskJobStatus]) -> void

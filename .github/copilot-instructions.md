@@ -13,6 +13,7 @@
 - Repository: This file applies only to this repository (JobFlow).
 - Tone: **Strict and prescriptive**. If a requested change is ambiguous or risky, ask a concise clarifying question before making edits.
 - Language: All instructions in this file are written in English for consistency. However, all responses and human-facing messages must be in Japanese (see Language Policy above).
+- **Compliance:** All instructions in this document are MANDATORY. Deviations are not permitted without explicit user approval.
 
 ---
 
@@ -53,8 +54,38 @@ Strictly adhere to the following test conventions for both new tests and modific
 - **Split context by condition:** When conditions differ (e.g., valid/invalid, nil/non-nil), explicitly separate them into distinct `context` blocks.
 - **Verify side effects:** Use the `change` matcher to verify state changes or side effects (e.g., `expect { ... }.to change { ... }`).
 - **Attribute verification:** Use matchers like `have_attributes` for instance attribute verification; do not directly reference instance variables.
+- **Test through public APIs only:** NEVER use `instance_variable_set`, `instance_variable_get`, or any reflection methods to manipulate or inspect object state in tests. Always interact with objects through their public interface. If you need to set up specific internal state, provide proper factory methods, test helpers, or builder patterns. This ensures tests remain maintainable and coupled to the public contract, not internal implementation details.
 - **Avoid logic in tests:** Do not write test logic within `it` blocks; use `before` for pre-processing and `let` for necessary data setup.
 - **Minimize let usage:** Avoid excessive use of `let`; consolidate necessary data into hashes or similar structures to reduce their number.
+- **Handling RSpec/MultipleMemoizedHelpers violations:** When a test context exceeds the `let` limit (default 5), apply ONE of the following strategies:
+  
+  **Strategy 1 - Hash-based configuration (preferred for related parameters):**
+  ```ruby
+  let(:base_config) { { param1: default1, param2: default2, param3: default3 } }
+  let(:config) { base_config }  # Override in nested contexts
+  
+  context "when param1 is special" do
+    let(:config) { base_config.merge(param1: special_value) }
+  end
+  ```
+  
+  **Strategy 2 - Inline let definitions (preferred for independent setup per context):**
+  Move `let` definitions from the parent scope into each `context` block. This reduces the `let` count in the parent scope while keeping test setup clear and localized.
+  ```ruby
+  context "when condition A" do
+    let(:param1) { value_a }
+    let(:param2) { value_a2 }
+    # ... test using param1, param2
+  end
+  
+  context "when condition B" do
+    let(:param1) { value_b }
+    let(:param2) { value_b2 }
+    # ... test using param1, param2
+  end
+  ```
+  
+  Choose the strategy that maintains the best readability for the specific test case. Only apply these patterns when RuboCop reports `RSpec/MultipleMemoizedHelpers` violations; do not use them preemptively.
 - **Named Subject required:** Always define a Named Subject in the format `subject(:name)` (e.g., `subject(:runner) { described_class.new }`).
 - **Emphasize unit tests:** Prioritize unit tests for each method. While integration and end-to-end tests are important, first ensure robust method-level verification.
 - **Restrict stubs/doubles:** Avoid using `double` or `instance_double` as a general rule. Reproduce external dependencies with real objects or lightweight factories whenever possible. If doubles are necessary, include a clear comment explaining the reason within the test.
@@ -69,7 +100,12 @@ Follow the implementation process outlined below:
 - **Branch strategy:** Always work on a separate branch, using branch names in the format `feature/<short-desc>` or `fix/<short-desc>`.
 - **Test-first approach:** Whenever possible, add tests first to make them fail (Red), then implement (Green), then refactor (Refactor).
 - **1 PR = 1 logical change:** Keep PRs small and limited to a single logical change. Do not pack multiple features into one PR.
-- **Local checks:** Before pushing, always run the following and ensure all succeed: `bundle exec rake lint`, `bundle exec rake typecheck`, `bundle exec rake spec` (100% coverage).
+- **Local checks:** Before pushing, always run the following Rake commands and ensure all succeed:
+  - `bundle exec rake spec` (NOT `bundle exec rspec`) - must achieve 100% line and branch coverage
+  - `bundle exec rake lint` (use `lint:fix` or `lint:fixall` for auto-fixes)
+  - `bundle exec rake typecheck`
+  
+  **CRITICAL: Never use `bundle exec rspec` directly. Always use `bundle exec rake spec`.**
 - **PR creation and review responsibility:** PR creation and merge operations should be performed by the user in principle. When implementation is complete, the agent (you as an AI) **must** conduct a comprehensive self-review (including tests, type checks, linting, documentation, and summary of changes) and report the results to the user. The review report should include at least the following: test execution results (e.g., `215 examples, 0 failures`), coverage (line/branch), summary of `bundle exec rake typecheck` output, summary of `bundle exec rake lint`, list of major changed files, and any additional recommended actions if necessary. Follow user instructions if they request PR creation.
 - **Review process:** In PRs, clearly state "why this change is necessary" and assign at least one reviewer.
 - **Public API changes:** When public APIs change, present a deprecation plan (gradual migration), and update README/GUIDE and rbs-inline.
@@ -78,27 +114,35 @@ Follow the implementation process outlined below:
 
 ---
 
-## 6. Development Commands
+## 6. Development Commands (MANDATORY)
 
-Use the following Rake tasks as the canonical commands for development:
+**ALWAYS use these Rake tasks. Do NOT use raw commands like `bundle exec rspec` directly.**
 
 Lint:
-```
-bundle exec rake lint
-bundle exec rake lint:fix
-bundle exec rake lint:fixall
+```bash
+bundle exec rake lint           # Check for style violations
+bundle exec rake lint:fix       # Auto-fix safe violations
+bundle exec rake lint:fixall    # Auto-fix all possible violations
 ```
 
 Type check:
-```
-bundle exec rake typecheck
+```bash
+bundle exec rake typecheck      # Run Steep type checker
 ```
 
 Test:
+```bash
+bundle exec rake spec                    # Run all tests
+bundle exec rake spec SPEC=<TARGET>      # Run specific test file or directory
+# Example: bundle exec rake spec SPEC=spec/job_flow/context_spec.rb
+# Example: bundle exec rake spec SPEC=spec/job_flow/context_spec.rb:42
 ```
-bundle exec rake spec
-bundle exec rake spec SPEC=<TARGET>
-```
+
+**Why use Rake tasks:**
+- They ensure consistent environment setup
+- They may include additional validations or setup steps
+- They are the officially supported interface for this repository
+- Direct use of `bundle exec rspec` bypasses project-specific configuration
 
 ---
 
@@ -147,13 +191,14 @@ Enumerable. This enables map tasks driven by previous task outputs.
 - Do not create, modify, or commit `.rbs` files directly; use `rbs-inline` in implementation files. If direct edits to `sig/` or `.rbs` files are necessary, consult the repository maintainers and request permission before making those changes.
 - Do not change naming conventions (e.g., module names) without explicit approval.
 - **Do not operate on files or directories outside the repository root.** Never modify files outside the repository; if temporary files are needed, use the repository's `./tmp` directory only.
+- **Do not use `instance_variable_set`, `instance_variable_get`, or similar reflection methods in tests.** Always test through public APIs only. If you need to set internal state for testing, provide proper public methods or test helpers. Using reflection to access private state is an anti-pattern that creates brittle tests and violates encapsulation.
 
 ---
 
 ## 11. Custom Instructions (PUT THIS INTO Copilot custom instructions in English)
 > **Always reply to repository collaborators in Japanese.**
 >
-> You are GitHub Copilot, assisting a Ruby library (JobFlow) built on ActiveJob. Be strict: always require tests (with 100% line & branch coverage), RBS updates when APIs change, and clear documentation updates for any behavioral change. Follow these core design principles when proposing or implementing changes: keep code small and simple (single responsibility), prefer composability, favor immutability for inputs (`Arguments`) and use `Output` for side effects, maintain clear boundaries between `Workflow`, `Task`, and `Runner`, and ensure safe evolution with deprecation plans for breaking changes. Use `rbs-inline` comments for type signatures in implementation files and avoid editing `sig/` or generated `.rbs` files directly; if a change to `.rbs` files is absolutely necessary, ask the repository maintainers first. When producing code, include tests, update RBS signatures inline, and ensure `bundle exec rake spec` (coverage 100%), `bundle exec rake lint` (or `bundle exec rake lint:fix` / `bundle exec rake lint:fixall`), and `bundle exec rake typecheck` pass locally. Emphasize unit tests per method, minimal use of doubles/mocks, and adherence to test conventions (one `it` per `expect`, nesting depth ≤ 3, Named Subject required). If a requested change is ambiguous, ask one short clarifying question. Keep responses concise and factual.
+> You are GitHub Copilot, assisting a Ruby library (JobFlow) built on ActiveJob. Be strict: always require tests (with 100% line & branch coverage), RBS updates when APIs change, and clear documentation updates for any behavioral change. Follow these core design principles when proposing or implementing changes: keep code small and simple (single responsibility), prefer composability, favor immutability for inputs (`Arguments`) and use `Output` for side effects, maintain clear boundaries between `Workflow`, `Task`, and `Runner`, and ensure safe evolution with deprecation plans for breaking changes. Use `rbs-inline` comments for type signatures in implementation files and avoid editing `sig/` or generated `.rbs` files directly; if a change to `.rbs` files is absolutely necessary, ask the repository maintainers first. When producing code, include tests, update RBS signatures inline, and ALWAYS run `bundle exec rake spec` (NOT `bundle exec rspec`), `bundle exec rake lint`, and `bundle exec rake typecheck` - these Rake commands are MANDATORY. Tests must achieve 100% coverage, use only public APIs (NEVER use `instance_variable_set` or `instance_variable_get`), follow test conventions (one `it` per `expect`, nesting depth ≤ 3, Named Subject required), and minimize `let` usage (use Hash-based configuration when RSpec/MultipleMemoizedHelpers violations occur). Emphasize unit tests per method and minimal use of doubles/mocks. If a requested change is ambiguous, ask one short clarifying question. Keep responses concise and factual.
 
 ---
 

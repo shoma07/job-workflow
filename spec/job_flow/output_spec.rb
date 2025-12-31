@@ -369,6 +369,11 @@ RSpec.describe JobFlow::Output do
     subject(:update_task_outputs_from_jobs) { output.update_task_outputs_from_jobs(jobs, workflow) }
 
     let(:output) { described_class.new }
+    let(:workflow) do
+      wf = JobFlow::Workflow.new
+      wf.add_task(JobFlow::Task.new(name: :sample_task, block: ->(_ctx) {}))
+      wf
+    end
     let(:all_jobs) do
       stub_const("SolidQueue::Job", Class.new)
       [SolidQueue::Job.new, SolidQueue::Job.new, SolidQueue::Job.new]
@@ -380,8 +385,8 @@ RSpec.describe JobFlow::Output do
           "job_flow_context" => JobFlow::Context.new(
             workflow:,
             arguments: JobFlow::Arguments.new(data: {}),
-            each_context: JobFlow::EachContext.new(parent_job_id: "parent-id", task_name: :sample_task, index: 0,
-                                                   value: 10),
+            current_task: workflow.fetch_task(:sample_task),
+            each_context: JobFlow::EachContext.new(parent_job_id: "parent-id", index: 0, value: 10),
             output: described_class.new(
               task_outputs: [JobFlow::TaskOutput.new(task_name: :sample_task, each_index: 0, data: { result: 42 })]
             ),
@@ -394,8 +399,8 @@ RSpec.describe JobFlow::Output do
           "job_flow_context" => JobFlow::Context.new(
             workflow:,
             arguments: JobFlow::Arguments.new(data: {}),
-            each_context: JobFlow::EachContext.new(parent_job_id: "parent-id", task_name: :sample_task, index: 1,
-                                                   value: 11),
+            current_task: workflow.fetch_task(:sample_task),
+            each_context: JobFlow::EachContext.new(parent_job_id: "parent-id", index: 1, value: 11),
             output: described_class.new(
               task_outputs: [JobFlow::TaskOutput.new(task_name: :sample_task, each_index: 1, data: { result: 82 })]
             ),
@@ -408,8 +413,8 @@ RSpec.describe JobFlow::Output do
           "job_flow_context" => JobFlow::Context.new(
             workflow:,
             arguments: JobFlow::Arguments.new(data: {}),
-            each_context: JobFlow::EachContext.new(parent_job_id: "parent-id", task_name: :sample_task, index: 2,
-                                                   value: 12),
+            current_task: workflow.fetch_task(:sample_task),
+            each_context: JobFlow::EachContext.new(parent_job_id: "parent-id", index: 2, value: 12),
             output: described_class.new,
             job_status: JobFlow::JobStatus.new
           ).serialize
@@ -452,6 +457,11 @@ RSpec.describe JobFlow::Output do
     subject(:update_task_outputs_from_db) { output.update_task_outputs_from_db(job_ids, workflow) }
 
     let(:output) { described_class.new }
+    let(:workflow) do
+      wf = JobFlow::Workflow.new
+      wf.add_task(JobFlow::Task.new(name: :db_task, block: ->(_ctx) {}))
+      wf
+    end
     let(:job_ids) { %w[job1 job2] }
     let(:solid_jobs) do
       stub_const("SolidQueue::Job", Class.new)
@@ -464,8 +474,8 @@ RSpec.describe JobFlow::Output do
           "job_flow_context" => JobFlow::Context.new(
             workflow:,
             arguments: JobFlow::Arguments.new(data: {}),
-            each_context: JobFlow::EachContext.new(parent_job_id: "parent-id", task_name: :db_task, index: 0,
-                                                   value: 10),
+            current_task: workflow.fetch_task(:db_task),
+            each_context: JobFlow::EachContext.new(parent_job_id: "parent-id", index: 0, value: 10),
             output: described_class.new(
               task_outputs: [JobFlow::TaskOutput.new(task_name: :db_task, each_index: 0, data: { result: 100 })]
             ),
@@ -478,8 +488,8 @@ RSpec.describe JobFlow::Output do
           "job_flow_context" => JobFlow::Context.new(
             workflow:,
             arguments: JobFlow::Arguments.new(data: {}),
-            each_context: JobFlow::EachContext.new(parent_job_id: "parent-id", task_name: :db_task, index: 1,
-                                                   value: 20),
+            current_task: workflow.fetch_task(:db_task),
+            each_context: JobFlow::EachContext.new(parent_job_id: "parent-id", index: 1, value: 20),
             output: described_class.new(
               task_outputs: [JobFlow::TaskOutput.new(task_name: :db_task, each_index: 1, data: { result: 200 })]
             ),
