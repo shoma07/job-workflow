@@ -1,0 +1,22 @@
+# Generated from lib/job_flow/auto_scaling/adapter.rb with RBS::Inline
+
+module JobFlow
+  module AutoScaling
+    module Adapter
+      interface _ClassMethods
+        def new: () -> _InstanceMethods
+      end
+
+      interface _InstanceMethods
+        def class: () -> _ClassMethods
+
+        def update_desired_count: (Integer) -> Integer?
+      end
+
+      ADAPTERS: Hash[Symbol, _ClassMethods]
+
+      # :  (Symbol) -> _ClassMethods
+      def self.fetch: (Symbol) -> _ClassMethods
+    end
+  end
+end
