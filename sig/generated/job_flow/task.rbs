@@ -10,9 +10,7 @@ module JobFlow
 
     attr_reader each: ^(Context) -> untyped
 
-    attr_reader enqueue: untyped
-
-    attr_reader concurrency: Integer?
+    attr_reader enqueue: TaskEnqueue
 
     attr_reader output: Array[OutputDef]
 
@@ -24,22 +22,20 @@ module JobFlow
 
     attr_reader throttle: TaskThrottle
 
-    # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength
-    #
+    # rubocop:disable Metrics/ParameterLists
     # :  (
     #     job_name: String,
     #     name: Symbol,
     #     block: ^(untyped) -> void,
     #     ?each: ^(Context) -> untyped,
-    #     ?enqueue: ^(Context) -> bool | nil,
-    #     ?concurrency: Integer?,
+    #     ?enqueue: true | false | ^(Context) -> bool | Hash[Symbol, untyped],
     #     ?output: Hash[Symbol, String],
     #     ?depends_on: Array[Symbol],
     #     condition: ^(Context) -> bool,
     #     ?task_retry: Integer | Hash[Symbol, untyped],
     #     ?throttle: Integer | Hash[Symbol, untyped]
     #   ) -> void
-    def initialize: (job_name: String, name: Symbol, block: ^(untyped) -> void, condition: ^(Context) -> bool, ?each: ^(Context) -> untyped, ?enqueue: ^(Context) -> bool | nil, ?concurrency: Integer?, ?output: Hash[Symbol, String], ?depends_on: Array[Symbol], ?task_retry: Integer | Hash[Symbol, untyped], ?throttle: Integer | Hash[Symbol, untyped]) -> void
+    def initialize: (job_name: String, name: Symbol, block: ^(untyped) -> void, condition: ^(Context) -> bool, ?each: ^(Context) -> untyped, ?enqueue: true | false | ^(Context) -> bool | Hash[Symbol, untyped], ?output: Hash[Symbol, String], ?depends_on: Array[Symbol], ?task_retry: Integer | Hash[Symbol, untyped], ?throttle: Integer | Hash[Symbol, untyped]) -> void
 
     # :  () -> String
     def throttle_prefix_key: () -> String
