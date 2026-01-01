@@ -101,4 +101,35 @@ RSpec.describe JobFlow::HookRegistry do
       expect(registry.before_hooks_for(:task_d).size).to eq(0)
     end
   end
+
+  describe "#add_error_hook" do
+    subject(:add_hook) { registry.add_error_hook(task_names: [:task_a], block: ->(_ctx, _error, _task) {}) }
+
+    it "adds an error hook to the registry" do
+      expect { add_hook }.to change { registry.error_hooks_for(:task_a).size }.from(0).to(1)
+    end
+  end
+
+  describe "#error_hooks_for" do
+    subject(:error_hooks) { registry.error_hooks_for(:task_a) }
+
+    before do
+      registry.add_error_hook(task_names: [], block: ->(_ctx, _error, _task) { "global" })
+      registry.add_error_hook(task_names: [:task_a], block: ->(_ctx, _error, _task) { "task_a" })
+      registry.add_error_hook(task_names: [:task_b], block: ->(_ctx, _error, _task) { "task_b" })
+      registry.add_before_hook(task_names: [:task_a], block: ->(_ctx) { "before_task_a" })
+    end
+
+    it "returns global and task-specific error hooks" do
+      expect(error_hooks).to contain_exactly(
+        have_attributes(global?: true),
+        have_attributes(task_names: contain_exactly(:task_a))
+      )
+    end
+
+    it "returns hooks in definition order" do
+      results = error_hooks.map { |h| h.block.call(nil, nil, nil) }
+      expect(results).to eq(%w[global task_a])
+    end
+  end
 end
