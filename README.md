@@ -132,6 +132,8 @@ end
 
 Control concurrent access to external APIs with semaphore-based throttling:
 
+Note: Throttling relies on `SolidQueue::Semaphore` leases. If a worker crashes before releasing a lease, it will be recovered after `ttl` expires and the dispatcher concurrency maintenance runs (worst case: `ttl + concurrency_maintenance_interval`). Keep at least one dispatcher running during deploys.
+
 ```ruby
 class APIBatchJob < ApplicationJob
   include JobFlow::DSL
