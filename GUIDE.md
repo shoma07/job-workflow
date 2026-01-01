@@ -277,25 +277,6 @@ end
 
 #### Defining Arguments
 
-##### Simple Definition
-
-```ruby
-class MyWorkflowJob < ApplicationJob
-  include JobFlow::DSL
-  
-  # Field names only
-  argument :user_id, :email, :status
-  
-  task :process do |ctx|
-    ctx.arguments.user_id   # Accessible (read-only)
-    ctx.arguments.email     # Accessible (read-only)
-    ctx.arguments.status    # Accessible (read-only)
-  end
-end
-```
-
-##### With Type Information
-
 Type information is specified as **strings**. This is used for RBS generation and documentation; runtime type checking is not performed.
 
 ```ruby
@@ -677,27 +658,6 @@ task :wrong do |ctx|
   ctx.arguments.result = "value"  # Error!
 end
 ```
-
-#### Concurrent Map Tasks
-
-Currently, outputs from map tasks with `concurrency:` specified are **not automatically collected**. This is a known limitation and will be addressed in a future release.
-
-```ruby
-# This works - outputs are collected
-task :process, each: ->(ctx) { ctx.arguments.items }, output: { result: "String" } do |ctx|
-  { result: process(ctx.each_value) }
-end
-
-# This doesn't collect outputs (yet)
-task :process_parallel,
-  each: ->(ctx) { ctx.arguments.items },
-  concurrency: 5,
-  output: { result: "String" } do |ctx|
-  { result: process(ctx.each_value) }
-end
-```
-
-**Workaround**: For now, if you need outputs from concurrent map tasks, collect results in a shared data store (e.g., database, cache) and retrieve them in a subsequent task.
 
 ---
 
