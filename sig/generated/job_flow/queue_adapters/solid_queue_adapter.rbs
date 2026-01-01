@@ -2,8 +2,6 @@
 
 module JobFlow
   module QueueAdapters
-    # SolidQueue adapter for queue operations.
-    # Provides integration with SolidQueue's semaphore, job status, and scheduling features.
     class SolidQueueAdapter < Abstract
       # :  () -> bool
       def semaphore_available?: () -> bool
@@ -26,7 +24,6 @@ module JobFlow
       # :  () -> void
       def install_scheduling_hook!: () -> void
 
-      # Patch for SolidQueue::Configuration to merge JobFlow schedules
       module SchedulingPatch
         private
 

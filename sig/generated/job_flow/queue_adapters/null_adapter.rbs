@@ -2,8 +2,6 @@
 
 module JobFlow
   module QueueAdapters
-    # Null adapter for testing and fallback.
-    # All operations succeed immediately without any external dependencies.
     # rubocop:disable Naming/PredicateMethod
     class NullAdapter < Abstract
       # :  () -> bool
