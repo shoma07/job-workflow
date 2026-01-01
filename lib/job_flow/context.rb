@@ -2,6 +2,8 @@
 
 module JobFlow
   class Context # rubocop:disable Metrics/ClassLength
+    include Logger::ContextLogging
+
     attr_reader :workflow #: Workflow
     attr_reader :arguments #: Arguments
     attr_reader :current_task #: Task?
@@ -223,7 +225,6 @@ module JobFlow
     #:  () { (Integer) -> void } -> void
     def with_retry
       task = current_task || (raise "with_retry can be called only within iterate_each_value")
-
       task_retry = task.task_retry
       0.upto(task_retry.count) do |retry_count|
         next if retry_count < each_context.retry_count
@@ -233,8 +234,15 @@ module JobFlow
       rescue StandardError => e
         raise e if (retry_count + 1) >= task_retry.count
 
-        sleep(task_retry.delay_for(retry_count + 1))
+        wait_next_retry(task, task_retry, retry_count + 1, e)
       end
+    end
+
+    #:  (Task, TaskRetry, Integer, StandardError) -> void
+    def wait_next_retry(task, task_retry, next_retry_count, error)
+      delay = task_retry.delay_for(next_retry_count)
+      log_task_retry(task, each_context, current_job_id, next_retry_count, delay, error)
+      sleep(delay)
     end
   end
 end

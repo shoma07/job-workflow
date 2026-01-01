@@ -1,0 +1,140 @@
+# Generated from lib/job_flow/logger.rb with RBS::Inline
+
+module JobFlow
+  # Logger provides structured JSON logging for JobFlow workflows.
+  #
+  # @example Basic usage
+  #   ```ruby
+  #   JobFlow.logger = ActiveSupport::Logger.new($stdout)
+  #   JobFlow.logger.formatter = JobFlow::Logger::JsonFormatter.new
+  #   ```
+  #
+  # @example With custom log tags
+  #   ```ruby
+  #   JobFlow.logger.formatter = JobFlow::Logger::JsonFormatter.new(log_tags: [:request_id])
+  #   ```
+  module Logger
+    # JSON formatter for structured logging output.
+    # @rbs inherits ::Logger::Formatter
+    class JsonFormatter < ::Logger::Formatter
+      include ActiveSupport::TaggedLogging::Formatter
+
+      # :  (?log_tags: Array[Symbol]) -> void
+      def initialize: (?log_tags: Array[Symbol]) -> void
+
+      # :  (String, Time, String, String | Hash[untyped, untyped]) -> String
+      def call: (String, Time, String, String | Hash[untyped, untyped]) -> String
+
+      private
+
+      attr_reader log_tags: Array[Symbol]
+
+      # :  (String, Time, String) -> Hash[Symbol, untyped]
+      def build_base_hash: (String, Time, String) -> Hash[Symbol, untyped]
+
+      # :  () -> Hash[Symbol, untyped]
+      def build_tags_hash: () -> Hash[Symbol, untyped]
+
+      # :  (String | Hash[untyped, untyped]) -> Hash[Symbol, untyped]
+      def build_msg_hash: (String | Hash[untyped, untyped]) -> Hash[Symbol, untyped]
+
+      # :  (String) -> Hash[Symbol, untyped]
+      def parse_json_or_message: (String) -> Hash[Symbol, untyped]
+    end
+
+    # Provides logging helper methods for JobFlow components.
+    module Logging
+      # :  () -> ActiveSupport::Logger
+      def logger: () -> ActiveSupport::Logger
+
+      # :  (Hash[Symbol, untyped]) -> void
+      def log_info: (Hash[Symbol, untyped]) -> void
+
+      # :  (Hash[Symbol, untyped]) -> void
+      def log_debug: (Hash[Symbol, untyped]) -> void
+
+      # :  (Hash[Symbol, untyped]) -> void
+      def log_warn: (Hash[Symbol, untyped]) -> void
+
+      # :  (Hash[Symbol, untyped]) -> void
+      def log_error: (Hash[Symbol, untyped]) -> void
+    end
+
+    # Event types for structured logging.
+    module Events
+      WORKFLOW_START: ::String
+
+      WORKFLOW_COMPLETE: ::String
+
+      TASK_START: ::String
+
+      TASK_COMPLETE: ::String
+
+      TASK_SKIP: ::String
+
+      TASK_ENQUEUE: ::String
+
+      TASK_ERROR: ::String
+
+      TASK_RETRY: ::String
+
+      THROTTLE_WAIT: ::String
+
+      THROTTLE_ACQUIRE: ::String
+
+      THROTTLE_RELEASE: ::String
+
+      DEPENDENT_WAIT: ::String
+
+      DEPENDENT_COMPLETE: ::String
+    end
+
+    module ContextLogging
+      include Logging
+
+      # :  (Task, EachContext, String, Integer, Float, StandardError) -> void
+      def log_task_retry: (Task, EachContext, String, Integer, Float, StandardError) -> void
+    end
+
+    module RunnerLogging
+      include Logging
+
+      # :  (DSL) { () -> void } -> void
+      def log_workflow: (DSL) { () -> void } -> void
+
+      # :  (DSL, Task, Context) { () -> void } -> void
+      def log_task: (DSL, Task, Context) { () -> void } -> void
+
+      # :  (DSL, Task) -> void
+      def log_task_skip: (DSL, Task) -> void
+
+      # :  (DSL, Task, Integer) -> void
+      def log_task_enqueue: (DSL, Task, Integer) -> void
+
+      # :  (DSL, Task) { () -> void } -> void
+      def log_dependent: (DSL, Task) { () -> void } -> void
+    end
+
+    module SemaphoreLogging
+      include Logging
+
+      # :  (Semaphore, Float) -> void
+      def log_throttle_wait: (Semaphore, Float) -> void
+
+      # :  (Semaphore) -> void
+      def log_throttle_acquire: (Semaphore) -> void
+
+      # :  (Semaphore) -> void
+      def log_throttle_release: (Semaphore) -> void
+    end
+  end
+
+  # :  () -> ActiveSupport::Logger
+  def self.logger: () -> ActiveSupport::Logger
+
+  # :  (ActiveSupport::Logger) -> void
+  attr_writer logger: untyped
+
+  # :  () -> ActiveSupport::Logger
+  private def self.build_default_logger: () -> ActiveSupport::Logger
+end
