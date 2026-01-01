@@ -1809,5 +1809,95 @@ RSpec.describe JobFlow::Runner do
         expect { run }.to change { ctx.output.flat_task_outputs.size }.from(0).to(3)
       end
     end
+
+    context "when task raises exception with error hooks" do
+      let(:error_log) { [] }
+      let(:job) do
+        log = error_log
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          argument :value, "Integer", default: 0
+
+          on_error { |_ctx, error, task| log << "global:#{error.message}:#{task.task_name}" }
+          on_error(:my_task) { |_ctx, error, task| log << "task:#{error.message}:#{task.task_name}" }
+
+          task :my_task do |_ctx|
+            raise "Task failed"
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments({ value: 1 })
+      end
+
+      it "raises exception after calling error hooks" do
+        expect { run }.to raise_error(RuntimeError, "Task failed")
+      end
+
+      it "calls error hooks in definition order" do
+        run
+      rescue RuntimeError
+        expect(error_log).to eq(["global:Task failed:my_task", "task:Task failed:my_task"])
+      end
+    end
+
+    context "when task raises exception with task-specific error hook only" do
+      let(:error_log) { [] }
+      let(:job) do
+        log = error_log
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          on_error(:other_task) { |_ctx, error, task| log << "other:#{error.message}:#{task.task_name}" }
+          on_error(:my_task) { |_ctx, error, task| log << "task:#{error.message}:#{task.task_name}" }
+
+          task :my_task do |_ctx|
+            raise "Task failed"
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments({})
+      end
+
+      it "calls only matching error hook" do
+        run
+      rescue RuntimeError
+        expect(error_log).to eq(["task:Task failed:my_task"])
+      end
+    end
+
+    context "when task has no matching error hooks" do
+      let(:error_log) { [] }
+      let(:job) do
+        log = error_log
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          on_error(:other_task) { |_ctx, error, task| log << "other:#{error.message}:#{task.task_name}" }
+
+          task :my_task do |_ctx|
+            raise "Task failed"
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments({})
+      end
+
+      it "raises exception without calling any hooks" do
+        expect { run }.to raise_error(RuntimeError, "Task failed")
+      end
+
+      it "does not call non-matching hooks" do
+        run
+      rescue RuntimeError
+        expect(error_log).to be_empty
+      end
+    end
   end
 end

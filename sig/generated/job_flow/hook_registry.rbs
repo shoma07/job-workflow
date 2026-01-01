@@ -14,6 +14,9 @@ module JobFlow
     # :  (task_names: Array[Symbol], block: ^(Context, ?TaskCallable) -> void) -> void
     def add_around_hook: (task_names: Array[Symbol], block: ^(Context, ?TaskCallable) -> void) -> void
 
+    # :  (task_names: Array[Symbol], block: ^(Context, StandardError, Task) -> void) -> void
+    def add_error_hook: (task_names: Array[Symbol], block: ^(Context, StandardError, Task) -> void) -> void
+
     # :  (Symbol) -> Array[Hook]
     def before_hooks_for: (Symbol) -> Array[Hook]
 
@@ -23,6 +26,9 @@ module JobFlow
     # :  (Symbol) -> Array[Hook]
     def around_hooks_for: (Symbol) -> Array[Hook]
 
+    # :  (Symbol) -> Array[ErrorHook]
+    def error_hooks_for: (Symbol) -> Array[ErrorHook]
+
     private
 
     attr_accessor before_hooks: Array[Hook]
@@ -30,5 +36,12 @@ module JobFlow
     attr_accessor after_hooks: Array[Hook]
 
     attr_accessor around_hooks: Array[Hook]
+
+    attr_accessor error_hooks: Array[ErrorHook]
+
+    # :  (Array[Hook], Symbol) -> Array[Hook]
+    # :  (Array[ErrorHook], Symbol) -> Array[ErrorHook]
+    def hooks_for: (Array[Hook], Symbol) -> Array[Hook]
+                 | (Array[ErrorHook], Symbol) -> Array[ErrorHook]
   end
 end

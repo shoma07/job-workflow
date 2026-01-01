@@ -90,8 +90,7 @@ module JobFlow
 
       #:  (Symbol argument_name, String type, ?default: untyped) -> void
       def argument(argument_name, type, default: nil)
-        raise "cannot be defined within a namespace." unless _workflow.namespace.default?
-
+        validate_namespace!
         _workflow.add_argument(ArgumentDef.new(name: argument_name, type:, default:))
       end
 
@@ -149,23 +148,33 @@ module JobFlow
 
       #:  (*Symbol) { (Context) -> void } -> void
       def before(*task_names, &block)
-        raise "cannot be defined within a namespace." unless _workflow.namespace.default?
-
+        validate_namespace!
         _workflow.add_hook(:before, task_names:, block:)
       end
 
       #:  (*Symbol) { (Context) -> void } -> void
       def after(*task_names, &block)
-        raise "cannot be defined within a namespace." unless _workflow.namespace.default?
-
+        validate_namespace!
         _workflow.add_hook(:after, task_names:, block:)
       end
 
       #:  (*Symbol) { (Context, TaskCallable) -> void } -> void
       def around(*task_names, &block)
-        raise "cannot be defined within a namespace." unless _workflow.namespace.default?
-
+        validate_namespace!
         _workflow.add_hook(:around, task_names:, block:)
+      end
+
+      #:  (*Symbol) { (Context, StandardError, Task) -> void } -> void
+      def on_error(*task_names, &block)
+        validate_namespace!
+        _workflow.add_hook(:error, task_names:, block:)
+      end
+
+      private
+
+      #:  () -> void
+      def validate_namespace!
+        raise "cannot be defined within a namespace." unless _workflow.namespace.default?
       end
     end
   end

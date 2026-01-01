@@ -33,16 +33,12 @@ module JobFlow
 
     #:  (Symbol, task_names: Array[Symbol], block: untyped) -> void
     def add_hook(type, task_names:, block:)
-      case type
-      when :before
-        @hook_registry.add_before_hook(task_names:, block:)
-      when :after
-        @hook_registry.add_after_hook(task_names:, block:)
-      when :around
-        @hook_registry.add_around_hook(task_names:, block:)
-      else
-        raise ArgumentError, "Invalid hook type: #{type.inspect}"
-      end
+      return @hook_registry.add_before_hook(task_names:, block:) if type == :before
+      return @hook_registry.add_after_hook(task_names:, block:) if type == :after
+      return @hook_registry.add_around_hook(task_names:, block:) if type == :around
+      return @hook_registry.add_error_hook(task_names:, block:) if type == :error
+
+      raise ArgumentError, "Invalid hook type: #{type.inspect}"
     end
 
     #:  () -> HookRegistry

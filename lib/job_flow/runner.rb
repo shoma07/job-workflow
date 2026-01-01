@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module JobFlow
-  class Runner
+  class Runner # rubocop:disable Metrics/ClassLength
     include Logger::RunnerLogging
 
     attr_reader :context #: Context
@@ -62,15 +62,22 @@ module JobFlow
     end
 
     #:  (Task) -> void
-    def run_task(task) # rubocop:disable Metrics/MethodLength
+    def run_task(task)
       context._with_each_value(task).each do |each_ctx|
-        log_task(job, task, each_ctx) do
-          each_ctx._with_task_throttle do
-            run_hooks(task, each_ctx) do
-              data = task.block.call(each_ctx)
-              each_index = each_ctx._each_context.index
-              add_task_output(ctx: each_ctx, task:, each_index:, data:)
-            end
+        run_each_task(task, each_ctx)
+      rescue StandardError => e
+        run_error_hooks(task, each_ctx, e)
+        raise
+      end
+    end
+
+    #:  (Task, Context) -> void
+    def run_each_task(task, each_ctx)
+      log_task(job, task, each_ctx) do
+        each_ctx._with_task_throttle do
+          run_hooks(task, each_ctx) do
+            data = task.block.call(each_ctx)
+            add_task_output(ctx: each_ctx, task:, each_index: each_ctx._each_context.index, data:)
           end
         end
       end
@@ -92,6 +99,11 @@ module JobFlow
       callable = TaskCallable.new { run_around_hooks(task, ctx, remaining, &) }
       hook.block.call(ctx, callable)
       raise TaskCallable::NotCalledError, task.task_name unless callable.called?
+    end
+
+    #:  (Task, Context, StandardError) -> void
+    def run_error_hooks(task, ctx, error)
+      hooks.error_hooks_for(task.task_name).each { |hook| hook.block.call(ctx, error, task) }
     end
 
     #:  (Task) -> void
