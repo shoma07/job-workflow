@@ -34,7 +34,7 @@ module JobFlow
     def tsort_each_child(task)
       task.depends_on.each do |dep_task_name|
         dep_task = @tasks[dep_task_name]
-        raise ArgumentError, "Task '#{task.name}' depends on missing task '#{dep_task_name}'" if dep_task.nil?
+        raise ArgumentError, "Task '#{task.task_name}' depends on missing task '#{dep_task_name}'" if dep_task.nil?
 
         yield(dep_task)
       end

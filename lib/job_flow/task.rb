@@ -3,7 +3,6 @@
 module JobFlow
   class Task
     attr_reader :job_name #: String
-    attr_reader :name #: Symbol
     attr_reader :namespace #: Namespace
     attr_reader :block #: ^(untyped) -> void
     attr_reader :each #: ^(Context) -> untyped
@@ -64,5 +63,9 @@ module JobFlow
     def throttle_prefix_key
       "#{job_name}:#{task_name}"
     end
+
+    private
+
+    attr_reader :name #: Symbol
   end
 end
