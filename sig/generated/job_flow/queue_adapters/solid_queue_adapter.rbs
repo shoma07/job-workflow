@@ -1,0 +1,35 @@
+# Generated from lib/job_flow/queue_adapters/solid_queue_adapter.rb with RBS::Inline
+
+module JobFlow
+  module QueueAdapters
+    class SolidQueueAdapter < Abstract
+      # :  () -> bool
+      def semaphore_available?: () -> bool
+
+      # :  (Semaphore) -> bool
+      def semaphore_wait: (Semaphore) -> bool
+
+      # :  (Semaphore) -> bool
+      def semaphore_signal: (Semaphore) -> bool
+
+      # :  (Array[String]) -> Hash[String, untyped]
+      def fetch_job_statuses: (Array[String]) -> Hash[String, untyped]
+
+      # :  (untyped) -> Symbol
+      def job_status: (untyped) -> Symbol
+
+      # :  () -> bool
+      def supports_concurrency_limits?: () -> bool
+
+      # :  () -> void
+      def install_scheduling_hook!: () -> void
+
+      module SchedulingPatch
+        private
+
+        # :  () -> Hash[Symbol, Hash[Symbol, untyped]]
+        def recurring_tasks_config: () -> Hash[Symbol, Hash[Symbol, untyped]]
+      end
+    end
+  end
+end

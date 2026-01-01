@@ -322,6 +322,20 @@ Topics covered:
 - Rails >= 7.1.0
 - ActiveJob with queue backend (SolidQueue recommended)
 
+## Architecture
+
+### Queue Adapters
+
+JobFlow uses a queue adapter pattern to decouple from specific queue backend implementations. This allows JobFlow to work with different queue systems while maintaining a consistent interface.
+
+**Built-in Adapters:**
+- `SolidQueueAdapter`: Full integration with SolidQueue (semaphores, job status tracking, scheduled jobs)
+- `NullAdapter`: Fallback adapter for testing and environments without queue backend
+
+The adapter is automatically selected based on the queue backend availability. When SolidQueue is defined, `SolidQueueAdapter` is used; otherwise, `NullAdapter` is used as a fallback.
+
+Custom adapters can be implemented by extending `JobFlow::QueueAdapters::Abstract` and implementing the required interface methods.
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.

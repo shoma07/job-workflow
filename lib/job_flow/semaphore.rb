@@ -14,7 +14,7 @@ module JobFlow
     class << self
       #:  () -> bool
       def available?
-        defined?(SolidQueue::Semaphore) ? true : false
+        QueueAdapter.current.semaphore_available?
       end
     end
 
@@ -41,7 +41,7 @@ module JobFlow
       return true unless self.class.available?
 
       loop do
-        if SolidQueue::Semaphore.wait(self)
+        if QueueAdapter.current.semaphore_wait(self)
           log_throttle_acquire(self)
           return true
         end
@@ -55,7 +55,7 @@ module JobFlow
     def signal
       return true unless self.class.available?
 
-      result = SolidQueue::Semaphore.signal(self)
+      result = QueueAdapter.current.semaphore_signal(self)
       log_throttle_release(self)
       result
     end

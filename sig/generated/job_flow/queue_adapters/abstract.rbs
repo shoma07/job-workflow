@@ -1,0 +1,28 @@
+# Generated from lib/job_flow/queue_adapters/abstract.rb with RBS::Inline
+
+module JobFlow
+  module QueueAdapters
+    class Abstract
+      # :  () -> bool
+      def semaphore_available?: () -> bool
+
+      # :  (Semaphore) -> bool
+      def semaphore_wait: (Semaphore) -> bool
+
+      # :  (Semaphore) -> bool
+      def semaphore_signal: (Semaphore) -> bool
+
+      # :  (Array[String]) -> Hash[String, untyped]
+      def fetch_job_statuses: (Array[String]) -> Hash[String, untyped]
+
+      # :  (untyped) -> Symbol
+      def job_status: (untyped) -> Symbol
+
+      # :  () -> bool
+      def supports_concurrency_limits?: () -> bool
+
+      # :  () -> void
+      def install_scheduling_hook!: () -> void
+    end
+  end
+end

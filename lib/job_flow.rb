@@ -11,6 +11,7 @@ require "active_support/core_ext"
 require "active_job"
 require_relative "job_flow/version"
 require_relative "job_flow/logger"
+require_relative "job_flow/queue_adapter"
 require_relative "job_flow/task_retry"
 require_relative "job_flow/task_throttle"
 require_relative "job_flow/task_enqueue"
@@ -36,14 +37,13 @@ require_relative "job_flow/output_def"
 require_relative "job_flow/task_output"
 require_relative "job_flow/output"
 require_relative "job_flow/auto_scaling"
-require_relative "job_flow/solid_queue_integration"
 
 module JobFlow
   class Error < StandardError; end
 
   ActiveSupport.on_load(:solid_queue) do
-    SolidQueueIntegration.install!
+    QueueAdapter.current.install_scheduling_hook!
   end
 
-  SolidQueueIntegration.install_if_available!
+  QueueAdapter.current.install_scheduling_hook!
 end

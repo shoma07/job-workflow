@@ -160,6 +160,8 @@ RSpec.describe JobFlow::TaskEnqueue do
   describe "#should_limits_concurrency?" do
     subject(:should_limits_concurrency) { task_enqueue.should_limits_concurrency? }
 
+    let(:adapter) { JobFlow::QueueAdapter.current }
+
     context "when condition is false" do
       let(:task_enqueue) { described_class.new(condition: false, concurrency: 3) }
 
@@ -172,18 +174,22 @@ RSpec.describe JobFlow::TaskEnqueue do
       it { is_expected.to be false }
     end
 
-    context "when SolidQueue is not defined" do
+    context "when adapter does not support concurrency limits" do
       let(:task_enqueue) { described_class.new(condition: true, concurrency: 3) }
 
-      before { hide_const("SolidQueue") }
+      before do
+        allow(adapter).to receive(:supports_concurrency_limits?).and_return(false)
+      end
 
       it { is_expected.to be false }
     end
 
-    context "when SolidQueue is defined and all conditions are met" do
+    context "when adapter supports concurrency limits and all conditions are met" do
       let(:task_enqueue) { described_class.new(condition: true, concurrency: 3) }
 
-      before { stub_const("SolidQueue", Module.new) }
+      before do
+        allow(adapter).to receive(:supports_concurrency_limits?).and_return(true)
+      end
 
       it { is_expected.to be true }
     end
@@ -191,7 +197,9 @@ RSpec.describe JobFlow::TaskEnqueue do
     context "when condition is a Proc and all conditions are met" do
       let(:task_enqueue) { described_class.new(condition: ->(_ctx) { true }, concurrency: 3) }
 
-      before { stub_const("SolidQueue", Module.new) }
+      before do
+        allow(adapter).to receive(:supports_concurrency_limits?).and_return(true)
+      end
 
       it { is_expected.to be true }
     end

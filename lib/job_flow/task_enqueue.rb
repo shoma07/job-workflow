@@ -44,7 +44,7 @@ module JobFlow
 
     #:  () -> bool
     def should_limits_concurrency?
-      !!condition && !concurrency.nil? && !!defined?(SolidQueue)
+      !!condition && !concurrency.nil? && QueueAdapter.current.supports_concurrency_limits?
     end
   end
 end
