@@ -152,23 +152,24 @@ RSpec.describe JobFlow::DSL do
 
       it do
         task
-        expect(klass._workflow.tasks[0]).to have_attributes(
-          each: be_instance_of(Proc),
-          concurrency: nil
-        )
+        workflow_task = klass._workflow.tasks[0]
+        expect(workflow_task).to have_attributes(each: be_instance_of(Proc))
+          .and have_attributes(enqueue: have_attributes(concurrency: nil))
       end
     end
 
     context "with each and concurrency options without limits_concurrency" do
       subject(:task) do
-        klass.task :example_task, each: ->(ctx) { ctx.arguments.items }, concurrency: 3 do |ctx|
+        klass.task :example_task, each: ->(ctx) { ctx.arguments.items }, enqueue: { concurrency: 3 } do |ctx|
           ctx.sum = ctx.sum + ctx.each_value
         end
       end
 
       it do
         task
-        expect(klass._workflow.tasks[0]).to have_attributes(each: be_instance_of(Proc), concurrency: 3)
+        workflow_task = klass._workflow.tasks[0]
+        expect(workflow_task).to have_attributes(each: be_instance_of(Proc))
+          .and have_attributes(enqueue: have_attributes(concurrency: 3))
       end
     end
 
@@ -177,14 +178,16 @@ RSpec.describe JobFlow::DSL do
         klass.task(
           :example_task,
           each: ->(ctx) { ctx.arguments.items },
-          enqueue: ->(_ctx) { true },
-          concurrency: 3
+          enqueue: { condition: ->(_ctx) { true }, concurrency: 3 }
         ) do |ctx|
           ctx.sum = ctx.sum + ctx.each_value
         end
       end
 
-      before { allow(klass).to receive(:limits_concurrency).and_return(nil) }
+      before do
+        stub_const("SolidQueue", Module.new)
+        allow(klass).to receive(:limits_concurrency).and_return(nil)
+      end
 
       it do
         task
@@ -595,6 +598,101 @@ RSpec.describe JobFlow::DSL do
       it "applies to any task" do
         add_global_around
         expect(klass._workflow.hooks.around_hooks_for(:any_task).size).to eq(1)
+      end
+    end
+  end
+
+  describe ".from_context" do
+    subject(:from_context) { klass.from_context(context) }
+
+    let(:klass) do
+      Class.new(ActiveJob::Base) do
+        include JobFlow::DSL
+
+        def self.name
+          "TestJob"
+        end
+
+        def self.queue_as
+          "default"
+        end
+
+        argument :arg_one, "Integer", default: 0
+
+        task :task_one, enqueue: { queue: "custom_queue" }, output: { result: "Integer" } do |ctx|
+          { result: ctx.arguments.arg_one }
+        end
+
+        task :task_two, enqueue: true, output: { result: "Integer" } do |ctx|
+          { result: ctx.arguments.arg_one }
+        end
+      end
+    end
+
+    context "without task" do
+      let(:context) do
+        JobFlow::Context.new(
+          workflow: klass._workflow,
+          arguments: JobFlow::Arguments.new(data: { arg_one: 42 }),
+          current_task: nil,
+          each_context: JobFlow::EachContext.new,
+          output: JobFlow::Output.new(task_outputs: []),
+          job_status: JobFlow::JobStatus.new(task_job_statuses: [])
+        )
+      end
+
+      it do
+        expect(from_context).to have_attributes(
+          class: klass,
+          _context: context,
+          queue_name: "default"
+        )
+      end
+    end
+
+    context "with task and no custom queue" do
+      let(:context) do
+        workflow = klass._workflow
+        task = workflow.fetch_task(:task_two)
+        JobFlow::Context.new(
+          workflow:,
+          arguments: JobFlow::Arguments.new(data: { arg_one: 42 }),
+          current_task: task,
+          each_context: JobFlow::EachContext.new,
+          output: JobFlow::Output.new(task_outputs: []),
+          job_status: JobFlow::JobStatus.new(task_job_statuses: [])
+        )
+      end
+
+      it do
+        expect(from_context).to have_attributes(
+          class: klass,
+          _context: context,
+          queue_name: "default"
+        )
+      end
+    end
+
+    context "with task and exist custom queue" do
+      let(:context) do
+        workflow = klass._workflow
+        task = workflow.fetch_task(:task_one)
+        JobFlow::Context.new(
+          workflow:,
+          arguments: JobFlow::Arguments.new(data: { arg_one: 42 }),
+          current_task: task,
+          each_context: JobFlow::EachContext.new,
+          output: JobFlow::Output.new(task_outputs: []),
+          job_status: JobFlow::JobStatus.new(task_job_statuses: [])
+        )
+      end
+
+      it "creates a new job instance from context" do
+        expect(from_context).to have_attributes(
+          class: klass,
+          _context: context,
+          queue_name: "custom_queue"
+        )
       end
     end
   end

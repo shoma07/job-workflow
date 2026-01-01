@@ -13,6 +13,10 @@ module JobFlow
     #
     #   def job_id: () -> String
     #
+    #   def queue_name: () -> String
+    #
+    #   def set: (Hash[Symbol, untyped]) -> self
+    #
     #   def step: (Symbol, ?start: ActiveJob::Continuation::_Succ, ?isolated: bool) -> void
     #           | (Symbol, ?start: ActiveJob::Continuation::_Succ, ?isolated: bool) { (ActiveJob::Continuation::Step) -> void } -> void
 
@@ -65,6 +69,8 @@ module JobFlow
       #
       #   def enqueue: (Hash[untyped, untyped]) -> void
       #
+      #   def queue_as: () -> String
+      #
       #   def limits_concurrency: (
       #     to: Integer,
       #     key: ^(untyped) -> untyped,
@@ -75,8 +81,10 @@ module JobFlow
 
       #:  (Context) -> DSL
       def from_context(context)
+        task = context.current_task
         job = new(context.arguments.to_h)
         job._context = context
+        job.set(queue: task.enqueue.queue) if !task.nil? && !task.enqueue.queue.nil?
         job
       end
 
@@ -90,8 +98,7 @@ module JobFlow
       #:  (
       #     Symbol task_name,
       #     ?each: ^(Context) -> untyped,
-      #     ?enqueue: ^(Context) -> bool | nil,
-      #     ?concurrency: Integer?,
+      #     ?enqueue: true | false | ^(Context) -> bool | Hash[Symbol, untyped],
       #     ?retry: Integer | Hash[Symbol, untyped],
       #     ?output: Hash[Symbol, String],
       #     ?depends_on: Array[Symbol],
@@ -102,7 +109,6 @@ module JobFlow
         task_name,
         each: ->(_ctx) { [EachContext::NULL_VALUE] },
         enqueue: nil,
-        concurrency: nil,
         retry: 0,
         output: {},
         depends_on: [],
@@ -110,22 +116,21 @@ module JobFlow
         throttle: {},
         &block
       )
-        _workflow.add_task(
-          Task.new(
-            job_name: name,
-            name: task_name,
-            block: block,
-            enqueue:,
-            each:,
-            concurrency:,
-            task_retry: binding.local_variable_get(:retry),
-            output:,
-            depends_on:,
-            condition:,
-            throttle:
-          )
+        new_task = Task.new(
+          job_name: name,
+          name: task_name,
+          block: block,
+          enqueue:,
+          each:,
+          task_retry: binding.local_variable_get(:retry),
+          output:,
+          depends_on:,
+          condition:,
+          throttle:
         )
-        if !concurrency.nil? && !enqueue.nil? && respond_to?(:limits_concurrency) # rubocop:disable Style/GuardClause
+        _workflow.add_task(new_task)
+        if new_task.enqueue.should_limits_concurrency? # rubocop:disable Style/GuardClause
+          concurrency = new_task.enqueue.concurrency #: Integer
           limits_concurrency(to: concurrency, key: ->(ctx) { ctx.concurrency_key }) # rubocop:disable Style/SymbolProc
         end
       end

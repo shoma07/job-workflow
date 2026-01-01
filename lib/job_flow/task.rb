@@ -6,23 +6,20 @@ module JobFlow
     attr_reader :name #: Symbol
     attr_reader :block #: ^(untyped) -> void
     attr_reader :each #: ^(Context) -> untyped
-    attr_reader :enqueue #: ->(Context) -> bool | nil
-    attr_reader :concurrency #: Integer?
+    attr_reader :enqueue #: TaskEnqueue
     attr_reader :output #: Array[OutputDef]
     attr_reader :depends_on #: Array[Symbol]
     attr_reader :condition #: ^(Context) -> bool
     attr_reader :task_retry #: TaskRetry
     attr_reader :throttle #: TaskThrottle
 
-    # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength
-    #
+    # rubocop:disable Metrics/ParameterLists
     #:  (
     #     job_name: String,
     #     name: Symbol,
     #     block: ^(untyped) -> void,
     #     ?each: ^(Context) -> untyped,
-    #     ?enqueue: ^(Context) -> bool | nil,
-    #     ?concurrency: Integer?,
+    #     ?enqueue: true | false | ^(Context) -> bool | Hash[Symbol, untyped],
     #     ?output: Hash[Symbol, String],
     #     ?depends_on: Array[Symbol],
     #     condition: ^(Context) -> bool,
@@ -35,7 +32,6 @@ module JobFlow
       block:,
       each: nil,
       enqueue: nil,
-      concurrency: nil,
       output: {},
       depends_on: [],
       condition: ->(_ctx) { true },
@@ -46,15 +42,14 @@ module JobFlow
       @name = name
       @block = block
       @each = each
-      @enqueue = enqueue
-      @concurrency = concurrency
+      @enqueue = TaskEnqueue.from_primitive_value(enqueue)
       @output = output.map { |name, type| OutputDef.new(name:, type:) }
       @depends_on = depends_on
       @condition = condition
       @task_retry = TaskRetry.from_primitive_value(task_retry)
       @throttle = TaskThrottle.from_primitive_value_with_task(value: throttle, task: self)
     end
-    # rubocop:enable Metrics/ParameterLists, Metrics/MethodLength
+    # rubocop:enable Metrics/ParameterLists
 
     #:  () -> String
     def throttle_prefix_key

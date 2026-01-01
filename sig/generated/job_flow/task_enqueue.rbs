@@ -1,0 +1,27 @@
+# Generated from lib/job_flow/task_enqueue.rb with RBS::Inline
+
+module JobFlow
+  class TaskEnqueue
+    attr_reader condition: true | false | ^(Context) -> bool
+
+    attr_reader queue: String?
+
+    attr_reader concurrency: Integer?
+
+    # :  (true | false | ^(Context) -> bool | Hash[Symbol, untyped] | nil) -> TaskEnqueue
+    def self.from_primitive_value: (true | false | ^(Context) -> bool | Hash[Symbol, untyped] | nil) -> TaskEnqueue
+
+    # :  (
+    #      ?condition: true | false | ^(Context) -> bool,
+    #      ?queue: String?,
+    #      ?concurrency: Integer?
+    #    ) -> void
+    def initialize: (?condition: true | false | ^(Context) -> bool, ?queue: String?, ?concurrency: Integer?) -> void
+
+    # :  (Context) -> bool
+    def should_enqueue?: (Context) -> bool
+
+    # :  () -> bool
+    def should_limits_concurrency?: () -> bool
+  end
+end
