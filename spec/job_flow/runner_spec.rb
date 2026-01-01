@@ -32,6 +32,80 @@ RSpec.describe JobFlow::Runner do
 
     let(:runner) { described_class.new(job:, context: ctx) }
 
+    context "when timeout is nil" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          task :fast_task, timeout: nil do |_ctx|
+            nil
+          end
+        end
+
+        klass.new
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments(job.arguments[0] || {})
+      end
+
+      it "does not apply timeout" do
+        expect { run }.not_to raise_error
+      end
+    end
+
+    context "when execution time exceeds timeout" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          task :slow_task, timeout: 0.1 do |_ctx|
+            sleep 1.1
+            nil
+          end
+        end
+
+        klass.new
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments(job.arguments[0] || {})
+      end
+
+      it "raises Timeout::Error" do
+        expect { run }.to raise_error(Timeout::Error)
+      end
+    end
+
+    context "when retry succeeds after a timeout" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          task :flaky_task,
+               timeout: 0.1,
+               retry: { count: 2, strategy: :linear, base_delay: 0 },
+               output: { value: "Integer" } do |ctx|
+            if ctx._each_context.retry_count.zero?
+              sleep 1.1
+              { value: 0 }
+            else
+              sleep 0.01
+              { value: 1 }
+            end
+          end
+        end
+
+        klass.new
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments(job.arguments[0] || {})
+      end
+
+      it "produces output from the successful attempt" do
+        run
+        expect(ctx.output[:flaky_task].first.value).to eq(1)
+      end
+    end
+
     context "with namespace tasks" do
       let(:job) do
         klass = Class.new(ActiveJob::Base) do

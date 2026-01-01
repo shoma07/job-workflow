@@ -95,6 +95,9 @@ module JobFlow
     # :  (Task) { (untyped, Integer) -> void } -> void
     def with_each_index_and_value: (Task) { (untyped, Integer) -> void } -> void
 
+    # :  () { () -> void } -> void
+    def with_task_timeout: () { () -> void } -> void
+
     # :  () { (Integer) -> void } -> void
     def with_retry: () { (Integer) -> void } -> void
   end
