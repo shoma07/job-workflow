@@ -74,13 +74,13 @@ module JobFlow
       statuses = task_job_statuses.fetch(task_name, []).reject(&:finished?).index_by(&:job_id)
       return if statuses.empty?
 
-      solid_jobs = SolidQueue::Job.where(active_job_id: statuses.keys).index_by(&:active_job_id)
+      task_jobs = QueueAdapter.current.fetch_job_statuses(statuses.keys)
 
       statuses.each do |job_id, task_job_status|
-        solid_job = solid_jobs[job_id]
-        next unless solid_job
+        task_job = task_jobs[job_id]
+        next unless task_job
 
-        task_job_status.update_status(TaskJobStatus.status_value_from_job(solid_job))
+        task_job_status.update_status(QueueAdapter.current.job_status(task_job))
         update_task_job_status(task_job_status)
       end
     end

@@ -21,4 +21,9 @@ RSpec.configure do |config|
   config.expect_with :rspec do |c|
     c.syntax = :expect
   end
+
+  # Reset QueueAdapter after each test to ensure isolation
+  config.after do
+    JobFlow::QueueAdapter.reset!
+  end
 end
