@@ -130,4 +130,31 @@ RSpec.describe JobFlow::Workflow do
 
     it { is_expected.to be_a(JobFlow::HookRegistry) }
   end
+
+  describe "#add_schedule" do
+    subject(:add_schedule) { workflow.add_schedule(schedule) }
+
+    let(:workflow) { described_class.new }
+    let(:schedule) { JobFlow::Schedule.new(expression: "every hour", class_name: "TestJob", key: "test_schedule") }
+
+    it { expect { add_schedule }.to change { workflow.build_schedules_hash.size }.from(0).to(1) }
+  end
+
+  describe "#build_schedules_hash" do
+    subject(:schedules_hash) { workflow.build_schedules_hash }
+
+    let(:workflow) { described_class.new }
+
+    context "when no schedules" do
+      it { is_expected.to eq({}) }
+    end
+
+    context "when schedules exist" do
+      before do
+        workflow.add_schedule(JobFlow::Schedule.new(expression: "every hour", class_name: "TestJob", key: "test_key"))
+      end
+
+      it { expect(schedules_hash).to eq(test_key: { class: "TestJob", schedule: "every hour" }) }
+    end
+  end
 end

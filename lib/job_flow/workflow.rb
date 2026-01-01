@@ -10,6 +10,7 @@ module JobFlow
       @argument_defs = {} #: Hash[Symbol, ArgumentDef]
       @hook_registry = HookRegistry.new
       @namespace = Namespace.default #: Namespace
+      @schedules = {} #: Hash[Symbol, Schedule]
     end
 
     #:  (Namespace) { () -> void } -> void
@@ -29,6 +30,11 @@ module JobFlow
     #:  (ArgumentDef) -> void
     def add_argument(argument_def)
       @argument_defs[argument_def.name] = argument_def
+    end
+
+    #:  (Schedule) -> void
+    def add_schedule(schedule)
+      @schedules[schedule.key] = schedule
     end
 
     #:  (Symbol, task_names: Array[Symbol], block: untyped) -> void
@@ -59,6 +65,11 @@ module JobFlow
     #:  () -> Array[ArgumentDef]
     def arguments
       @argument_defs.values
+    end
+
+    #:  () -> Hash[Symbol, Hash[Symbol, untyped]]
+    def build_schedules_hash
+      @schedules.transform_values(&:to_config)
     end
 
     #:  () -> Hash[Symbol, untyped]

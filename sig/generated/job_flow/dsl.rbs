@@ -8,6 +8,8 @@ module JobFlow
 
     extend ClassMethods
 
+    def self._included_classes: () -> Set[singleton(DSL)]
+
     def class: () -> ClassMethods
 
     def job_id: () -> String
@@ -86,6 +88,17 @@ module JobFlow
 
       # :  (*Symbol) { (Context, StandardError, Task) -> void } -> void
       def on_error: (*Symbol) { (Context, StandardError, Task) -> void } -> void
+
+      # rubocop:disable Metrics/ParameterLists
+      # :  (
+      #     String expression,
+      #     ?key: (String | Symbol)?,
+      #     ?queue: String?,
+      #     ?priority: Integer?,
+      #     ?args: Hash[Symbol, untyped],
+      #     ?description: String?
+      #   ) -> void
+      def schedule: (String expression, ?key: (String | Symbol)?, ?queue: String?, ?priority: Integer?, ?args: Hash[Symbol, untyped], ?description: String?) -> void
 
       private
 

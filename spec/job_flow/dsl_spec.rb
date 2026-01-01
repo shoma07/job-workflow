@@ -864,4 +864,119 @@ RSpec.describe JobFlow::DSL do
       end
     end
   end
+
+  describe "self.schedule" do
+    context "with not default namespace" do
+      let(:klass) do
+        Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          def self.name
+            "NamespaceScheduleJob"
+          end
+        end
+      end
+
+      it "raises error when defined within namespace" do
+        expect do
+          klass.namespace :custom_namespace do
+            klass.schedule "every hour"
+          end
+        end.to raise_error("cannot be defined within a namespace.")
+      end
+    end
+
+    context "with single schedule" do
+      let(:klass) do
+        Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          def self.name
+            "SingleScheduleJob"
+          end
+
+          schedule "0 9 * * *"
+        end
+      end
+
+      it "registers schedule with job name as default key" do
+        expect(klass._workflow.build_schedules_hash[:SingleScheduleJob]).to eq(
+          class: "SingleScheduleJob",
+          schedule: "0 9 * * *"
+        )
+      end
+    end
+
+    context "with custom key and options" do
+      let(:klass) do
+        Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          def self.name
+            "CustomScheduleJob"
+          end
+
+          schedule "every hour", key: "custom_key", queue: "reports", priority: 5, description: "Hourly task"
+        end
+      end
+
+      it "registers schedule with custom options" do
+        expect(klass._workflow.build_schedules_hash[:custom_key]).to eq(
+          class: "CustomScheduleJob",
+          schedule: "every hour",
+          queue: "reports",
+          priority: 5,
+          description: "Hourly task"
+        )
+      end
+    end
+
+    context "with multiple schedules" do
+      let(:klass) do
+        Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          def self.name
+            "MultiScheduleJob"
+          end
+
+          schedule "0 9 * * *"
+          schedule "0 18 * * *", key: "multi_schedule_evening", args: { time: "evening" }
+        end
+      end
+
+      it { expect(klass._workflow.build_schedules_hash.size).to eq(2) }
+
+      it "first schedule uses job name as key" do
+        expect(klass._workflow.build_schedules_hash[:MultiScheduleJob]).to eq(
+          class: "MultiScheduleJob",
+          schedule: "0 9 * * *"
+        )
+      end
+
+      it "second schedule uses custom key" do
+        expect(klass._workflow.build_schedules_hash[:multi_schedule_evening]).to eq(
+          class: "MultiScheduleJob",
+          schedule: "0 18 * * *",
+          args: [{ time: "evening" }]
+        )
+      end
+    end
+
+    context "with args option" do
+      let(:klass) do
+        Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          def self.name
+            "ArgsScheduleJob"
+          end
+
+          schedule "every monday at 9am", args: { type: "weekly" }
+        end
+      end
+
+      it { expect(klass._workflow.build_schedules_hash[:ArgsScheduleJob][:args]).to eq([{ type: "weekly" }]) }
+    end
+  end
 end

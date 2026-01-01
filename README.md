@@ -10,6 +10,7 @@ JobFlow is a declarative workflow orchestration engine for Ruby on Rails applica
 - **Task Outputs**: Collect and access structured outputs from tasks
 - **Throttling**: Semaphore-based rate limiting for external APIs
 - **Lifecycle Hooks**: before/after/around/on_error hooks for cross-cutting concerns
+- **Scheduled Jobs**: Define recurring job schedules directly in the job class
 - **Type Safety**: Full RBS type definitions for enhanced reliability
 - **Context Persistence**: Automatic serialization of workflow state
 - **Built-in Resilience**: Retry logic and error handling
@@ -198,6 +199,48 @@ class OrderWorkflowJob < ApplicationJob
   
   task :process_payment, output: { payment_id: "String" } do |ctx|
     { payment_id: PaymentService.charge(ctx.arguments.order_id) }
+  end
+end
+```
+
+### Scheduled Jobs
+
+Define recurring job schedules directly in your job class using the `schedule` DSL. Schedules are automatically registered with SolidQueue's recurring tasks.
+
+```ruby
+class DailyReportJob < ApplicationJob
+  include JobFlow::DSL
+  
+  # Run daily at 9:00 AM
+  schedule "0 9 * * *"
+  
+  task :generate do |ctx|
+    ReportGenerator.generate_daily_report
+  end
+end
+
+# Multiple schedules with options
+class DataSyncJob < ApplicationJob
+  include JobFlow::DSL
+  
+  schedule "0 */4 * * *",
+    key: "data_sync_every_4_hours",
+    queue: "high_priority",
+    args: { source: "primary" },
+    description: "Sync data every 4 hours"
+  
+  schedule "0 0 * * 0",
+    key: "weekly_full_sync",
+    args: { source: "all", full: true }
+  
+  argument :source, "String", default: "default"
+  argument :full, "Boolean", default: false
+  
+  task :sync do |ctx|
+    DataSynchronizer.sync(
+      ctx.arguments.source,
+      full: ctx.arguments.full
+    )
   end
 end
 ```
