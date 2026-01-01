@@ -197,8 +197,7 @@ RSpec.describe JobFlow::Runner do
 
           task :process_items,
                each: ->(ctx) { ctx.arguments.items },
-               enqueue: ->(_ctx) { true },
-               concurrency: 2,
+               enqueue: { condition: ->(_ctx) { true }, concurrency: 2 },
                output: { doubled: "Integer" } do |ctx|
             { doubled: (ctx.each_value * 2) }
           end
@@ -347,8 +346,7 @@ RSpec.describe JobFlow::Runner do
 
           task :process_items,
                each: ->(ctx) { ctx.arguments.items },
-               enqueue: ->(_ctx) { true },
-               concurrency: 2,
+               enqueue: { condition: ->(_ctx) { true }, concurrency: 2 },
                output: { result: "Integer" } do |ctx|
             { result: ctx.each_value * 2 }
           end
@@ -399,13 +397,16 @@ RSpec.describe JobFlow::Runner do
         klass = Class.new(ActiveJob::Base) do
           include JobFlow::DSL
 
+          def self.limits_concurrency(to:, key:, **_options)
+            # no-op for testing
+          end
+
           argument :items, "Array[Integer]", default: []
           argument :result, "Integer", default: 0
 
           task :parallel_process,
                each: ->(ctx) { ctx.arguments.items },
-               enqueue: ->(_ctx) { true },
-               concurrency: 2,
+               enqueue: { condition: ->(_ctx) { true }, concurrency: 2 },
                output: { value: "Integer" } do |ctx|
             { value: ctx.each_value * 10 }
           end
@@ -423,6 +424,7 @@ RSpec.describe JobFlow::Runner do
       let(:poll_count) { 0 }
 
       before do
+        stub_const("SolidQueue", Module.new)
         stub_const("SolidQueue::Job", Class.new)
 
         # Track sub jobs created by perform_all_later
@@ -571,13 +573,16 @@ RSpec.describe JobFlow::Runner do
         klass = Class.new(ActiveJob::Base) do
           include JobFlow::DSL
 
+          def self.limits_concurrency(to:, key:, **_options)
+            # no-op for testing
+          end
+
           argument :items, "Array[Integer]", default: []
           argument :sum, "Integer", default: 0
 
           task :fast_parallel,
                each: ->(ctx) { ctx.arguments.items },
-               enqueue: ->(_ctx) { true },
-               concurrency: 2,
+               enqueue: { condition: ->(_ctx) { true }, concurrency: 2 },
                output: { value: "Integer" } do |ctx|
             { value: ctx.each_value }
           end
@@ -595,6 +600,7 @@ RSpec.describe JobFlow::Runner do
       let(:created_job_ids) { [] }
 
       before do
+        stub_const("SolidQueue", Module.new)
         stub_const("SolidQueue::Job", Class.new)
 
         # Capture job IDs when perform_all_later is called
@@ -672,13 +678,16 @@ RSpec.describe JobFlow::Runner do
         klass = Class.new(ActiveJob::Base) do
           include JobFlow::DSL
 
+          def self.limits_concurrency(to:, key:, **_options)
+            # no-op for testing
+          end
+
           argument :numbers, "Array[Integer]", default: []
           argument :result, "String", default: ""
 
           task :parallel_compute,
                each: ->(ctx) { ctx.arguments.numbers },
-               enqueue: ->(_ctx) { true },
-               concurrency: 2,
+               enqueue: { condition: ->(_ctx) { true }, concurrency: 2 },
                output: { squared: "Integer" } do |ctx|
             { squared: ctx.each_value**2 }
           end
@@ -701,6 +710,7 @@ RSpec.describe JobFlow::Runner do
       let(:created_jobs) { [] }
 
       before do
+        stub_const("SolidQueue", Module.new)
         stub_const("SolidQueue::Job", Class.new)
 
         allow(job.class).to receive(:perform_all_later) do |jobs|
@@ -772,6 +782,10 @@ RSpec.describe JobFlow::Runner do
         klass = Class.new(ActiveJob::Base) do
           include JobFlow::DSL
 
+          def self.limits_concurrency(to:, key:, **_options)
+            # no-op for testing
+          end
+
           argument :items, "Array[Integer]", default: []
           argument :sum, "Integer", default: 0
           argument :skip_parallel, "Boolean", default: false
@@ -782,8 +796,7 @@ RSpec.describe JobFlow::Runner do
 
           task :parallel_work,
                each: ->(ctx) { ctx.arguments.items },
-               enqueue: ->(_ctx) { true },
-               concurrency: 2,
+               enqueue: { condition: ->(_ctx) { true }, concurrency: 2 },
                output: { result: "Integer" },
                condition: ->(ctx) { !ctx.arguments.skip_parallel } do |ctx|
             { result: ctx.each_value * 5 }
@@ -824,6 +837,7 @@ RSpec.describe JobFlow::Runner do
       let(:step_mock) { instance_double(ActiveJob::Continuation::Step) }
 
       before do
+        stub_const("SolidQueue", Module.new)
         stub_const("SolidQueue::Job", Class.new)
 
         # Ensure perform_all_later is not called
@@ -1312,6 +1326,113 @@ RSpec.describe JobFlow::Runner do
       it "executes hook for task_a and task_b but not task_c" do
         run
         expect(execution_log).to eq(%w[before:a_or_b task:a before:a_or_b task:b task:c])
+      end
+    end
+
+    context "when task has enqueue option with queue name" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          argument :items, "Array[Integer]", default: []
+
+          task :process_items,
+               each: ->(ctx) { ctx.arguments.items },
+               enqueue: { queue: :critical },
+               output: { doubled: "Integer" } do |ctx|
+            { doubled: (ctx.each_value * 2) }
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })
+                        ._update_arguments({ items: [1, 2, 3] })
+      end
+
+      before { allow(job.class).to receive(:perform_all_later).and_return(nil) }
+
+      it "sets queue name on sub jobs" do
+        run
+        expect(job.class).to have_received(:perform_all_later) do |sub_jobs|
+          verify_sub_jobs_queue(sub_jobs, "critical", 3)
+        end
+      end
+
+      def verify_sub_jobs_queue(sub_jobs, expected_queue, expected_count)
+        expect(sub_jobs).to be_an(Array)
+        expect(sub_jobs.size).to eq(expected_count)
+        sub_jobs.each { |sub_job| expect(sub_job.queue_name).to eq(expected_queue) }
+      end
+    end
+
+    context "when task has enqueue option with queue name and condition" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          argument :items, "Array[Integer]", default: []
+
+          task :process_items,
+               each: ->(ctx) { ctx.arguments.items },
+               enqueue: { queue: :batch, condition: ->(ctx) { ctx.arguments.items.size > 2 } },
+               output: { doubled: "Integer" } do |ctx|
+            { doubled: (ctx.each_value * 2) }
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })
+                        ._update_arguments({ items: [1, 2, 3] })
+      end
+
+      before { allow(job.class).to receive(:perform_all_later).and_return(nil) }
+
+      it "enqueues with queue name when condition is true" do
+        run
+        expect(job.class).to have_received(:perform_all_later) do |sub_jobs|
+          verify_sub_jobs_queue(sub_jobs, "batch", 3)
+        end
+      end
+
+      def verify_sub_jobs_queue(sub_jobs, expected_queue, expected_count)
+        expect(sub_jobs).to be_an(Array)
+        expect(sub_jobs.size).to eq(expected_count)
+        sub_jobs.each { |sub_job| expect(sub_job.queue_name).to eq(expected_queue) }
+      end
+    end
+
+    context "when task has enqueue option with condition: false" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          argument :items, "Array[Integer]", default: []
+
+          task :process_items,
+               each: ->(ctx) { ctx.arguments.items },
+               enqueue: { condition: false },
+               output: { doubled: "Integer" } do |ctx|
+            { doubled: (ctx.each_value * 2) }
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })
+                        ._update_arguments({ items: [1, 2, 3] })
+      end
+
+      before { allow(job.class).to receive(:perform_all_later).and_return(nil) }
+
+      it "does not enqueue" do
+        run
+        expect(job.class).not_to have_received(:perform_all_later)
+      end
+
+      it "executes task synchronously" do
+        expect { run }.to change { ctx.output.flat_task_outputs.size }.from(0).to(3)
       end
     end
   end

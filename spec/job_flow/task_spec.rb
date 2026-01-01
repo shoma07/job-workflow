@@ -87,7 +87,6 @@ RSpec.describe JobFlow::Task do
           name: :sample_task,
           block: ->(ctx) { ctx.arguments.arg_one },
           each: :arg_two,
-          concurrency: 3,
           output: { result: "Integer", message: "String" },
           depends_on: %i[depend_task],
           condition: ->(ctx) { ctx.arguments.arg_two.size > 2 }
@@ -99,7 +98,6 @@ RSpec.describe JobFlow::Task do
           name: :sample_task,
           block: arguments[:block],
           each: :arg_two,
-          concurrency: 3,
           depends_on: %i[depend_task],
           condition: arguments[:condition]
         )
@@ -201,6 +199,297 @@ RSpec.describe JobFlow::Task do
           jitter: true
         )
       end
+    end
+  end
+
+  describe "#should_enqueue?" do
+    subject(:should_enqueue) { task.enqueue.should_enqueue?(ctx) }
+
+    let(:task) { described_class.new(**arguments) }
+
+    context "when enqueue is true" do
+      let(:arguments) do
+        {
+          job_name: "TestJob",
+          name: :sample_task,
+          block: ->(_ctx) {},
+          enqueue: true
+        }
+      end
+
+      it { is_expected.to be true }
+    end
+
+    context "when enqueue is false" do
+      let(:arguments) do
+        {
+          job_name: "TestJob",
+          name: :sample_task,
+          block: ->(_ctx) {},
+          enqueue: false
+        }
+      end
+
+      it { is_expected.to be false }
+    end
+
+    context "when enqueue is nil" do
+      let(:arguments) do
+        {
+          job_name: "TestJob",
+          name: :sample_task,
+          block: ->(_ctx) {},
+          enqueue: nil
+        }
+      end
+
+      it { is_expected.to be false }
+    end
+
+    context "when enqueue is a Proc returning true" do
+      let(:arguments) do
+        {
+          job_name: "TestJob",
+          name: :sample_task,
+          block: ->(_ctx) {},
+          enqueue: ->(ctx) { ctx.arguments.arg_two.size > 2 }
+        }
+      end
+
+      it { is_expected.to be true }
+    end
+
+    context "when enqueue is a Proc returning false" do
+      let(:arguments) do
+        {
+          job_name: "TestJob",
+          name: :sample_task,
+          block: ->(_ctx) {},
+          enqueue: ->(ctx) { ctx.arguments.arg_two.size < 2 }
+        }
+      end
+
+      it { is_expected.to be false }
+    end
+
+    context "when enqueue is a Hash with condition: true" do
+      let(:arguments) do
+        {
+          job_name: "TestJob",
+          name: :sample_task,
+          block: ->(_ctx) {},
+          enqueue: { condition: true }
+        }
+      end
+
+      it { is_expected.to be true }
+    end
+
+    context "when enqueue is a Hash with condition: false" do
+      let(:arguments) do
+        {
+          job_name: "TestJob",
+          name: :sample_task,
+          block: ->(_ctx) {},
+          enqueue: { condition: false }
+        }
+      end
+
+      it { is_expected.to be false }
+    end
+
+    context "when enqueue is a Hash with condition: Proc returning true" do
+      let(:arguments) do
+        {
+          job_name: "TestJob",
+          name: :sample_task,
+          block: ->(_ctx) {},
+          enqueue: { condition: ->(ctx) { ctx.arguments.arg_two.size > 2 } }
+        }
+      end
+
+      it { is_expected.to be true }
+    end
+
+    context "when enqueue is a Hash with condition: Proc returning false" do
+      let(:arguments) do
+        {
+          job_name: "TestJob",
+          name: :sample_task,
+          block: ->(_ctx) {},
+          enqueue: { condition: ->(ctx) { ctx.arguments.arg_two.size < 2 } }
+        }
+      end
+
+      it { is_expected.to be false }
+    end
+
+    context "when enqueue is a Hash with no condition" do
+      let(:arguments) do
+        {
+          job_name: "TestJob",
+          name: :sample_task,
+          block: ->(_ctx) {},
+          enqueue: { queue: :critical }
+        }
+      end
+
+      it { is_expected.to be true }
+    end
+
+    context "when enqueue is a Hash with queue and condition: true" do
+      let(:arguments) do
+        {
+          job_name: "TestJob",
+          name: :sample_task,
+          block: ->(_ctx) {},
+          enqueue: { queue: :critical, condition: true }
+        }
+      end
+
+      it { is_expected.to be true }
+    end
+
+    context "when enqueue is a Hash with unexpected condition value" do
+      let(:arguments) do
+        {
+          job_name: "TestJob",
+          name: :sample_task,
+          block: ->(_ctx) {},
+          enqueue: { condition: "unexpected" }
+        }
+      end
+
+      it { is_expected.to be true }
+    end
+
+    context "when enqueue is an unexpected type" do
+      let(:arguments) do
+        {
+          job_name: "TestJob",
+          name: :sample_task,
+          block: ->(_ctx) {},
+          enqueue: :invalid_symbol
+        }
+      end
+
+      it { is_expected.to be false }
+    end
+  end
+
+  describe "#enqueue_queue" do
+    subject(:enqueue_queue) { task.enqueue.queue }
+
+    let(:task) { described_class.new(**arguments) }
+
+    context "when enqueue is not a Hash" do
+      let(:arguments) do
+        {
+          job_name: "TestJob",
+          name: :sample_task,
+          block: ->(_ctx) {},
+          enqueue: true
+        }
+      end
+
+      it { is_expected.to be_nil }
+    end
+
+    context "when enqueue is a Hash without queue" do
+      let(:arguments) do
+        {
+          job_name: "TestJob",
+          name: :sample_task,
+          block: ->(_ctx) {},
+          enqueue: { condition: true }
+        }
+      end
+
+      it { is_expected.to be_nil }
+    end
+
+    context "when enqueue is a Hash with queue" do
+      let(:arguments) do
+        {
+          job_name: "TestJob",
+          name: :sample_task,
+          block: ->(_ctx) {},
+          enqueue: { queue: :critical }
+        }
+      end
+
+      it { is_expected.to eq(:critical) }
+    end
+
+    context "when enqueue is a Hash with queue and condition" do
+      let(:arguments) do
+        {
+          job_name: "TestJob",
+          name: :sample_task,
+          block: ->(_ctx) {},
+          enqueue: { queue: :batch, condition: ->(ctx) { ctx.arguments.arg_two.any? } }
+        }
+      end
+
+      it { is_expected.to eq(:batch) }
+    end
+  end
+
+  describe "#enqueue_concurrency" do
+    subject(:enqueue_concurrency) { task.enqueue.concurrency }
+
+    let(:task) { described_class.new(**arguments) }
+
+    context "when enqueue is not a Hash" do
+      let(:arguments) do
+        {
+          job_name: "TestJob",
+          name: :sample_task,
+          block: ->(_ctx) {},
+          enqueue: true
+        }
+      end
+
+      it { is_expected.to be_nil }
+    end
+
+    context "when enqueue is a Hash without concurrency" do
+      let(:arguments) do
+        {
+          job_name: "TestJob",
+          name: :sample_task,
+          block: ->(_ctx) {},
+          enqueue: { queue: :critical }
+        }
+      end
+
+      it { is_expected.to be_nil }
+    end
+
+    context "when enqueue is a Hash with concurrency" do
+      let(:arguments) do
+        {
+          job_name: "TestJob",
+          name: :sample_task,
+          block: ->(_ctx) {},
+          enqueue: { concurrency: 10 }
+        }
+      end
+
+      it { is_expected.to eq(10) }
+    end
+
+    context "when enqueue is a Hash with queue, condition, and concurrency" do
+      let(:arguments) do
+        {
+          job_name: "TestJob",
+          name: :sample_task,
+          block: ->(_ctx) {},
+          enqueue: { queue: :batch, condition: true, concurrency: 5 }
+        }
+      end
+
+      it { is_expected.to eq(5) }
     end
   end
 

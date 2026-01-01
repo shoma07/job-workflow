@@ -104,10 +104,19 @@ class BatchProcessingJob < ApplicationJob
   
   argument :items, "Array[Integer]", default: []
   
-  # Process each item in parallel
+  # Simplest form: enable parallel execution
   task :process_items, 
     each: ->(ctx) { ctx.arguments.items },
-    concurrency: 5,
+    enqueue: true,
+    output: { result: "Integer" } do |ctx|
+    item = ctx.each_value
+    { result: expensive_operation(item) }
+  end
+  
+  # With concurrency limit
+  task :process_items_limited, 
+    each: ->(ctx) { ctx.arguments.items },
+    enqueue: { concurrency: 5 },
     output: { result: "Integer" } do |ctx|
     item = ctx.each_value
     { result: expensive_operation(item) }

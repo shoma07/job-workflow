@@ -22,8 +22,7 @@ Welcome to the comprehensive guide for JobFlow. This document provides informati
 ### Advanced
 
 7. [Namespaces](#namespaces)
-8. [Saga Pattern](#saga-pattern)
-9. [Throttling](#throttling)
+8. [Throttling](#throttling)
 
 ### Practical
 
@@ -760,18 +759,31 @@ end
 
 ##### Asynchronous Execution with Concurrency
 
-To execute map task iterations in separate sub-jobs with concurrency control, use the `enqueue:` option combined with `concurrency:`:
+To execute map task iterations in separate sub-jobs with concurrency control, use the `enqueue:` option with a Hash containing `condition:` and `concurrency:`:
 
 ```ruby
-# Process up to 10 items concurrently in sub-jobs
+# Simplest form: enable parallel execution with default settings
 task :process_items,
      each: ->(ctx) { ctx.arguments.items },
-     enqueue: ->(_ctx) { true },           # Enable sub-job enqueueing
-     concurrency: 10 do |ctx|
+     enqueue: true do |ctx|
   process_item(ctx.each_value)
 end
 
-# When enqueue is true:
+# Process up to 10 items concurrently in sub-jobs
+task :process_items,
+     each: ->(ctx) { ctx.arguments.items },
+     enqueue: { condition: ->(_ctx) { true }, concurrency: 10 } do |ctx|
+  process_item(ctx.each_value)
+end
+
+# Simplified syntax when condition is implicitly true
+task :process_items,
+     each: ->(ctx) { ctx.arguments.items },
+     enqueue: { concurrency: 10 } do |ctx|
+  process_item(ctx.each_value)
+end
+
+# When enqueue is enabled:
 # - Each iteration is executed in a separate sub-job
 # - Sub-jobs are created via perform_all_later
 # - Concurrency limit controls how many sub-jobs run in parallel
@@ -788,12 +800,18 @@ The `enqueue:` option determines how map task iterations are executed:
   - Good for CPU-bound operations
   - No network overhead
 
-- **`enqueue: ->(_ctx) { true }`**: Each iteration is enqueued as a separate sub-job
+- **`enqueue: true`**: Each iteration is enqueued as a separate sub-job with default settings
+  - Simplest way to enable parallel execution
+  - No concurrency limit (executes as fast as workers allow)
+  - Good for I/O-bound operations with many workers
+
+- **`enqueue: { condition: ->(_ctx) { true }, concurrency: 10 }`**: Each iteration is enqueued as a separate sub-job
   - Enables true parallel execution across multiple workers
   - Better for I/O-bound operations (API calls, database queries)
-  - Can accept dynamic condition: `enqueue: ->(ctx) { ctx.arguments.use_concurrency? }`
+  - Can accept dynamic condition: `enqueue: { condition: ->(ctx) { ctx.arguments.use_concurrency? } }`
+  - Supports `queue:` option for custom queue: `enqueue: { queue: "critical", concurrency: 5 }`
 
-**Note**: `enqueue:` works with both regular tasks and map tasks. For map tasks, it enables asynchronous sub-job execution. For regular tasks, it allows conditional enqueueing as a separate job.
+**Note**: `enqueue:` works with both regular tasks and map tasks. For map tasks, it enables asynchronous sub-job execution. For regular tasks, it allows conditional enqueueing as a separate job. Legacy syntax (`enqueue: ->(_ctx) { true }` as a Proc) is still supported for backward compatibility.
 
 ### Fork-Join Pattern
 
@@ -1353,105 +1371,6 @@ Tasks in namespaces are identified as `:namespace:task_name` at runtime:
 
 ---
 
-## Saga Pattern
-
-The Saga pattern is a design pattern for managing distributed transactions. JobFlow allows you to define compensation actions to build rollback-capable workflows.
-
-### What is the Saga Pattern?
-
-Unlike single database transactions, processing spanning multiple external services or microservices cannot use a single ACID transaction. The Saga pattern defines compensation actions for each step to implement rollback on error.
-
-#### Basic Concept
-
-```
-Happy path: Step1 → Step2 → Step3 → Complete
-
-On error:
-Step1 → Step2 → Step3 (fails)
-         ↓
-Step2 compensation ← Step1 compensation (reverse order)
-```
-
-### Basic Usage
-
-#### Defining Compensation Actions
-
-```ruby
-class BookingWorkflowJob < ApplicationJob
-  include JobFlow::DSL
-  include JobFlow::Saga
-  
-  argument :user_id, "Integer"
-  argument :dates, "Hash"
-  argument :total_amount, "Float"
-  
-  # Hotel reservation
-  task :reserve_hotel, output: { hotel_booking_id: "Integer" } do |ctx|
-    user_id = ctx.arguments.user_id
-    dates = ctx.arguments.dates
-    {
-      hotel_booking_id: HotelService.reserve(
-        user_id: user_id,
-        dates: dates
-      )
-    }
-  end
-  
-  # Hotel reservation compensation (cancellation)
-  compensate :reserve_hotel do |ctx|
-    hotel_booking_id = ctx.output.reserve_hotel&.hotel_booking_id
-    if hotel_booking_id
-      HotelService.cancel(hotel_booking_id)
-      Rails.logger.info("Hotel booking #{hotel_booking_id} cancelled")
-    end
-  end
-  
-  # Flight reservation
-  task :reserve_flight, depends_on: [:reserve_hotel], output: { flight_booking_id: "Integer" } do |ctx|
-    user_id = ctx.arguments.user_id
-    dates = ctx.arguments.dates
-    {
-      flight_booking_id: FlightService.reserve(
-        user_id: user_id,
-        dates: dates
-      )
-    }
-  end
-  
-  # Flight reservation compensation (cancellation)
-  compensate :reserve_flight do |ctx|
-    flight_booking_id = ctx.output.reserve_flight&.flight_booking_id
-    if flight_booking_id
-      FlightService.cancel(flight_booking_id)
-      Rails.logger.info("Flight booking #{flight_booking_id} cancelled")
-    end
-  end
-  
-  # Payment processing
-  task :charge_payment, depends_on: [:reserve_flight], output: { payment_id: "String" } do |ctx|
-    user_id = ctx.arguments.user_id
-    total_amount = ctx.arguments.total_amount
-    {
-      payment_id: PaymentService.charge(
-        user_id: user_id,
-        amount: total_amount
-      )
-    }
-  end
-  
-  # Payment compensation (refund)
-  compensate :charge_payment do |ctx|
-    payment_id = ctx.output.charge_payment&.payment_id
-    if payment_id
-      PaymentService.refund(payment_id)
-      Rails.logger.info("Payment #{payment_id} refunded")
-    end
-  end
-end
-```
-
----
-
 ## Throttling
 
 JobFlow provides semaphore-based throttling to handle external API rate limits and protect shared resources. Throttling works across multiple jobs and workers, ensuring system-wide rate limiting.
@@ -1870,8 +1789,14 @@ task(name, **options, &block)
 - `options` (Hash): Task options
   - `depends_on` (Symbol | Array<Symbol>): Dependent tasks
   - `each` (Proc): Proc that returns an enumerable for map task execution
-  - `enqueue` (Proc): Optional proc that returns boolean. When true, task iterations are enqueued as sub-jobs instead of executing synchronously (default: nil)
-  - `concurrency` (Integer): Concurrency limit for parallel processing (default: unlimited). Only effective when `enqueue:` is true
+  - `enqueue` (Hash | Proc | Boolean): Controls whether task iterations are enqueued as sub-jobs
+    - Hash format (recommended): `{ condition: Proc, queue: String, concurrency: Integer }`
+      - `condition` (Proc | Boolean): Determines if task should be enqueued (default: true if Hash is not empty)
+      - `queue` (String): Custom queue name for the task (optional)
+      - `concurrency` (Integer): Concurrency limit for parallel processing (default: unlimited)
+    - Proc format (legacy): Proc that returns boolean
+    - Boolean format: true/false for simple cases
+    - Default: nil (synchronous execution)
   - `retry` (Integer | Hash): Retry configuration. Integer for simple retry count, Hash for advanced settings
     - `count` (Integer): Maximum retry attempts (default: 3 when Hash)
     - `strategy` (Symbol): `:linear` or `:exponential` (default: `:exponential`)
@@ -2085,6 +2010,35 @@ task :task2 do |ctx|
   use(shared)
 end
 ```
+
+---
+
+## Future Considerations
+
+The following features are under consideration for future releases:
+
+### Saga Pattern
+
+Built-in support for the Saga pattern (distributed transaction compensation) is not currently planned. For workflows requiring compensation logic, we recommend:
+
+1. **Using Lifecycle Hooks**: Implement cleanup/rollback logic in `after` or `around` hooks
+2. **Application-layer management**: Handle compensation in your service layer where domain logic resides
+3. **Idempotent task design**: Design tasks to be safely retryable
+
+```ruby
+# Example: Using around hook for compensation
+around :charge_payment do |ctx, task|
+  begin
+    task.call
+  rescue PaymentError => e
+    # Compensation logic
+    rollback_previous_reservations(ctx)
+    raise
+  end
+end
+```
+
+If there is significant demand for native Saga support, it may be reconsidered in future versions.
 
 ---
 

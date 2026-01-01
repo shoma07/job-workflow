@@ -45,7 +45,7 @@ module JobFlow
 
         job.step(task.name) do |step|
           wait_for_dependent_tasks(task, step)
-          task.enqueue&.call(context) ? enqueue_task(task) : run_task(task)
+          task.enqueue.should_enqueue?(context) ? enqueue_task(task) : run_task(task)
         end
       end
     end
