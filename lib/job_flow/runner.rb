@@ -2,6 +2,8 @@
 
 module JobFlow
   class Runner
+    include Logger::RunnerLogging
+
     attr_reader :context #: Context
 
     #:  (job: DSL, context: Context) -> void
@@ -40,24 +42,35 @@ module JobFlow
 
     #:  () -> void
     def run_workflow
-      tasks.each do |task|
-        next unless task.condition.call(context)
+      log_workflow(job) do
+        tasks.each do |task|
+          next if skip_task?(task)
 
-        job.step(task.task_name) do |step|
-          wait_for_dependent_tasks(task, step)
-          task.enqueue.should_enqueue?(context) ? enqueue_task(task) : run_task(task)
+          job.step(task.task_name) do |step|
+            wait_for_dependent_tasks(task, step)
+            task.enqueue.should_enqueue?(context) ? enqueue_task(task) : run_task(task)
+          end
         end
       end
     end
 
+    #:  (Task) -> bool
+    def skip_task?(task)
+      result = !task.condition.call(context)
+      log_task_skip(job, task)
+      result
+    end
+
     #:  (Task) -> void
-    def run_task(task)
+    def run_task(task) # rubocop:disable Metrics/MethodLength
       context._with_each_value(task).each do |each_ctx|
-        each_ctx._with_task_throttle do
-          run_hooks(task, each_ctx) do
-            data = task.block.call(each_ctx)
-            each_index = each_ctx._each_context.index
-            add_task_output(ctx: each_ctx, task:, each_index:, data:)
+        log_task(job, task, each_ctx) do
+          each_ctx._with_task_throttle do
+            run_hooks(task, each_ctx) do
+              data = task.block.call(each_ctx)
+              each_index = each_ctx._each_context.index
+              add_task_output(ctx: each_ctx, task:, each_index:, data:)
+            end
           end
         end
       end
@@ -82,10 +95,11 @@ module JobFlow
     end
 
     #:  (Task) -> void
-    def enqueue_task(task)
+    def enqueue_task(task) # rubocop:disable Metrics/AbcSize
       sub_jobs = context._with_each_value(task).map { |each_ctx| job.class.from_context(each_ctx.dup) }
       job.class.perform_all_later(sub_jobs)
       context.job_status.update_task_job_statuses_from_jobs(task_name: task.task_name, jobs: sub_jobs)
+      log_task_enqueue(job, task, sub_jobs.size)
     end
 
     #:  (ctx: Context, task: Task, each_index: Integer, data: untyped) -> void
@@ -107,14 +121,16 @@ module JobFlow
 
     #:  (Task, ActiveJob::Continuation::Step) -> void
     def wait_for_map_task_completion(task, step)
-      loop do
-        # Checkpoint for resumable execution
-        step.checkpoint!
+      log_dependent(job, task) do
+        loop do
+          # Checkpoint for resumable execution
+          step.checkpoint!
 
-        context.job_status.update_task_job_statuses_from_db(task.task_name)
-        break if context.job_status.needs_waiting?(task.task_name)
+          context.job_status.update_task_job_statuses_from_db(task.task_name)
+          break if context.job_status.needs_waiting?(task.task_name)
 
-        sleep 5
+          sleep 5
+        end
       end
 
       update_task_outputs(task)
