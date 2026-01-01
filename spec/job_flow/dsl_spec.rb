@@ -735,6 +735,41 @@ RSpec.describe JobFlow::DSL do
     end
   end
 
+  describe "self.on_error" do
+    subject(:add_on_error) { klass.on_error(:task_a) { |_ctx, _error, _task| nil } }
+
+    let(:klass) do
+      Class.new(ActiveJob::Base) do
+        include JobFlow::DSL
+      end
+    end
+
+    context "with not default namespace" do
+      it do
+        expect do
+          klass.namespace :custom_namespace do
+            add_on_error
+          end
+        end.to raise_error("cannot be defined within a namespace.")
+      end
+    end
+
+    context "with task names" do
+      it "adds an error hook to workflow" do
+        expect { add_on_error }.to change { klass._workflow.hooks.error_hooks_for(:task_a).size }.from(0).to(1)
+      end
+    end
+
+    context "when no task names specified (global hook)" do
+      subject(:add_global_on_error) { klass.on_error { |_ctx, _error, _task| nil } }
+
+      it "applies to any task" do
+        add_global_on_error
+        expect(klass._workflow.hooks.error_hooks_for(:any_task).size).to eq(1)
+      end
+    end
+  end
+
   describe ".from_context" do
     subject(:from_context) { klass.from_context(context) }
 

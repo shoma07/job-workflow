@@ -83,6 +83,14 @@ module JobFlow
 
       # :  (*Symbol) { (Context, TaskCallable) -> void } -> void
       def around: (*Symbol) { (Context, TaskCallable) -> void } -> void
+
+      # :  (*Symbol) { (Context, StandardError, Task) -> void } -> void
+      def on_error: (*Symbol) { (Context, StandardError, Task) -> void } -> void
+
+      private
+
+      # :  () -> void
+      def validate_namespace!: () -> void
     end
   end
 end

@@ -9,7 +9,7 @@ JobFlow is a declarative workflow orchestration engine for Ruby on Rails applica
 - **Parallel Processing**: Efficient parallel execution with map tasks
 - **Task Outputs**: Collect and access structured outputs from tasks
 - **Throttling**: Semaphore-based rate limiting for external APIs
-- **Lifecycle Hooks**: before/after/around hooks for cross-cutting concerns
+- **Lifecycle Hooks**: before/after/around/on_error hooks for cross-cutting concerns
 - **Type Safety**: Full RBS type definitions for enhanced reliability
 - **Context Persistence**: Automatic serialization of workflow state
 - **Built-in Resilience**: Retry logic and error handling
@@ -163,7 +163,7 @@ end
 
 ### Lifecycle Hooks
 
-Insert cross-cutting concerns with before, after, and around hooks:
+Insert cross-cutting concerns with before, after, around, and on_error hooks:
 
 ```ruby
 class OrderWorkflowJob < ApplicationJob
@@ -186,6 +186,14 @@ class OrderWorkflowJob < ApplicationJob
     start_time = Time.current
     task.call  # Must call task.call to execute the task
     Metrics.timing("payment.duration", Time.current - start_time)
+  end
+  
+  # Error notification hook for task failures
+  on_error do |ctx, exception, task|
+    ErrorTracker.capture(exception, metadata: {
+      workflow: self.class.name,
+      task: task.task_name
+    })
   end
   
   task :process_payment, output: { payment_id: "String" } do |ctx|

@@ -104,6 +104,15 @@ RSpec.describe JobFlow::Workflow do
       end
     end
 
+    context "when type is :error" do
+      let(:type) { :error }
+      let(:block) { ->(_ctx, _error, _task) {} }
+
+      it "adds an error hook to the registry" do
+        expect { add_hook }.to change { workflow.hooks.error_hooks_for(:task_a).size }.from(0).to(1)
+      end
+    end
+
     context "when type is invalid" do
       let(:type) { :invalid }
       let(:block) { ->(_ctx) {} }

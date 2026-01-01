@@ -963,7 +963,7 @@ end
 
 ## Lifecycle Hooks
 
-JobFlow provides lifecycle hooks to insert processing before and after task execution. Use `before`, `after`, and `around` hooks to implement cross-cutting concerns such as logging, validation, metrics collection, and notifications.
+JobFlow provides lifecycle hooks to insert processing before and after task execution. Use `before`, `after`, `around`, and `on_error` hooks to implement cross-cutting concerns such as logging, validation, metrics collection, error notification, and external monitoring integration.
 
 ### Hook Scope
 
@@ -1205,6 +1205,127 @@ around :my_task do |ctx, task|
 end
 ```
 
+#### on_error Hook
+
+Execute processing when a task raises an exception. This hook is ideal for error notification, external monitoring integration, and error tracking.
+
+**Important:** `on_error` hooks do not suppress exceptions - they are for notification purposes only. After all hooks execute, the exception is re-raised.
+
+```ruby
+class ErrorNotificationWorkflowJob < ApplicationJob
+  include JobFlow::DSL
+  
+  argument :user_id, "Integer"
+  
+  # Global error hook - called for any task error
+  on_error do |ctx, exception, task|
+    ErrorNotificationService.notify(
+      exception: exception,
+      context: {
+        workflow: self.class.name,
+        task: task.task_name,
+        arguments: ctx.arguments.to_h
+      }
+    )
+  end
+  
+  # Task-specific error hook
+  on_error :critical_payment do |ctx, exception, task|
+    # Critical tasks get special handling
+    CriticalErrorHandler.handle(
+      task: task.task_name,
+      exception: exception,
+      severity: :high
+    )
+  end
+  
+  task :fetch_user, output: { user: "Hash" } do |ctx|
+    user = User.find(ctx.arguments.user_id)
+    { user: user.attributes }
+  end
+  
+  task :critical_payment, output: { payment_id: "String" } do |ctx|
+    # If this fails, both global and task-specific hooks run
+    payment = PaymentGateway.charge(ctx.arguments.user_id)
+    { payment_id: payment.id }
+  end
+end
+```
+
+##### on_error Hook Parameters
+
+The `on_error` hook receives three parameters:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `ctx` | `Context` | The workflow context at the time of failure |
+| `exception` | `StandardError` | The exception that was raised |
+| `task` | `Task` | The task object that failed |
+
+##### Hook Execution Order
+
+When a task fails, error hooks execute in definition order (global first, then task-specific):
+
+```ruby
+class MultipleErrorHooksJob < ApplicationJob
+  include JobFlow::DSL
+  
+  on_error do |ctx, error, task|
+    puts "1. Global error handler"
+  end
+  
+  on_error :my_task do |ctx, error, task|
+    puts "2. Task-specific error handler"
+  end
+  
+  task :my_task do |ctx|
+    raise "Something went wrong"
+  end
+end
+
+# When :my_task fails, output:
+# 1. Global error handler
+# 2. Task-specific error handler
+# => Then RuntimeError is re-raised
+```
+
+##### Practical Use Cases
+
+**Error Tracking Service:**
+```ruby
+on_error do |ctx, exception, task|
+  ErrorTracker.capture(exception, metadata: {
+    workflow: self.class.name,
+    task: task.task_name,
+    job_id: ctx.current_job_id
+  })
+end
+```
+
+**Real-time Alert Notification:**
+```ruby
+on_error :critical_task do |ctx, exception, task|
+  AlertService.notify(
+    severity: :critical,
+    message: "Task #{task.task_name} failed: #{exception.message}",
+    metadata: { workflow: self.class.name }
+  )
+end
+```
+
+**Structured Error Logging:**
+```ruby
+on_error do |ctx, exception, task|
+  Rails.logger.error({
+    event: "task_failure",
+    task: task.task_name,
+    error_class: exception.class.name,
+    error_message: exception.message,
+    backtrace: exception.backtrace&.first(10)
+  }.to_json)
+end
+```
+
 ### Error Handling
 
 | Hook Type | Behavior on Exception |
@@ -1212,6 +1333,7 @@ end
 | `before` | Task is skipped, exception is re-raised |
 | `after` | Exception is re-raised (task result is preserved) |
 | `around` | Exception is re-raised |
+| `on_error` | Executes on task failure, then exception is re-raised |
 
 ```ruby
 class ErrorHandlingJob < ApplicationJob
@@ -1923,8 +2045,8 @@ config.cache_store = :solid_cache_store, {
   namespace: "myapp_production",
   error_handler: ->(method:, returning:, exception:) {
     Rails.logger.error "[SolidCache] Error in #{method}: #{exception.message}"
-    # Send metrics
-    Sentry.capture_exception(exception)
+    # Send to your error tracking service
+    ErrorTracker.capture(exception)
   }
 }
 ```
