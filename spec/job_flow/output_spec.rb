@@ -28,10 +28,15 @@ RSpec.describe JobFlow::Output do
         }
       end
 
-      it "creates an Output with given task outputs" do
-        expect(output).to have_attributes(
-          task_one: contain_exactly(have_attributes(class: JobFlow::TaskOutput, result: 10)),
-          task_two: contain_exactly(have_attributes(class: JobFlow::TaskOutput, result: 20))
+      it "stores task_one outputs" do
+        expect(output[:task_one]).to contain_exactly(
+          have_attributes(class: JobFlow::TaskOutput, result: 10)
+        )
+      end
+
+      it "stores task_two outputs" do
+        expect(output[:task_two]).to contain_exactly(
+          have_attributes(class: JobFlow::TaskOutput, result: 20)
         )
       end
     end
@@ -141,9 +146,7 @@ RSpec.describe JobFlow::Output do
 
       it "adds the task output" do
         add
-        expect(output).to have_attributes(
-          regular_task: contain_exactly(have_attributes(result: 42))
-        )
+        expect(output[:regular_task]).to contain_exactly(have_attributes(result: 42))
       end
     end
 
@@ -160,11 +163,7 @@ RSpec.describe JobFlow::Output do
 
       it "adds the task output to array at index 0" do
         add
-        expect(output).to have_attributes(
-          each_task: contain_exactly(
-            have_attributes(result: 10)
-          )
-        )
+        expect(output[:each_task]).to contain_exactly(have_attributes(result: 10))
       end
     end
 
@@ -191,146 +190,57 @@ RSpec.describe JobFlow::Output do
 
       it "adds all task outputs to array" do
         add
-        expect(output.each_task).to contain_exactly(
+        expect(output[:each_task]).to contain_exactly(
           have_attributes(result: 10), have_attributes(result: 20), have_attributes(result: 30)
         )
       end
     end
   end
 
-  describe "#method_missing" do
-    subject(:access_task) { output.public_send(task_name) }
+  describe "#[]" do
+    subject(:bracket_access) { output[task_name] }
 
-    let(:output) { described_class.new }
-
-    context "when accessing a regular task" do
-      let(:task_name) { :regular_task }
-
-      before do
-        output.add_task_output(
-          JobFlow::TaskOutput.new(
-            task_name: :regular_task,
-            each_index: 0,
-            data: { result: 100 }
-          )
-        )
-      end
-
-      it "returns an array with the TaskOutput" do
-        expect(access_task).to contain_exactly(have_attributes(class: JobFlow::TaskOutput, result: 100))
-      end
-    end
-
-    context "when accessing an each task" do
-      let(:task_name) { :each_task }
-
-      before do
-        output.add_task_output(
-          JobFlow::TaskOutput.new(
-            task_name: :each_task,
-            each_index: 0,
-            data: { result: 10 }
-          )
-        )
-        output.add_task_output(
-          JobFlow::TaskOutput.new(
-            task_name: :each_task,
-            each_index: 1,
-            data: { result: 20 }
-          )
-        )
-      end
-
-      it "returns an array of TaskOutputs" do
-        expect(access_task).to contain_exactly(
-          have_attributes(result: 10),
-          have_attributes(result: 20)
-        )
-      end
-    end
-
-    context "when accessing non-existent task" do
-      let(:task_name) { :non_existent }
-
-      it "raises NoMethodError" do
-        expect { access_task }.to raise_error(NoMethodError)
-      end
-    end
-
-    context "when calling with arguments" do
-      before do
-        output.add_task_output(
-          JobFlow::TaskOutput.new(
-            task_name: :regular_task,
-            each_index: 0,
-            data: { result: 100 }
-          )
-        )
-      end
-
-      it "raises NoMethodError" do
-        expect { output.regular_task(123) }.to raise_error(NoMethodError)
-      end
-    end
-
-    context "when calling with keyword arguments" do
-      before do
-        output.add_task_output(
-          JobFlow::TaskOutput.new(
-            task_name: :regular_task,
-            each_index: 0,
-            data: { result: 100 }
-          )
-        )
-      end
-
-      it "raises NoMethodError" do
-        expect { output.regular_task(key: "value") }.to raise_error(NoMethodError)
-      end
-    end
-
-    context "when calling with a block" do
-      before do
-        output.add_task_output(
-          JobFlow::TaskOutput.new(
-            task_name: :regular_task,
-            each_index: 0,
-            data: { result: 100 }
-          )
-        )
-      end
-
-      it "raises NoMethodError" do
-        expect { output.regular_task { "block" } }.to raise_error(NoMethodError)
-      end
-    end
-  end
-
-  describe "#respond_to_missing?" do
-    subject(:respond_to?) { output.respond_to?(method_name) }
-
-    let(:output) { described_class.new }
-
-    before do
-      output.add_task_output(
-        JobFlow::TaskOutput.new(
-          task_name: :existing_task,
-          each_index: 0,
-          data: { result: 100 }
-        )
+    let(:output) do
+      described_class.new(
+        task_outputs: [
+          JobFlow::TaskOutput.new(task_name: :single_task, each_index: 0, data: { value: 1 }),
+          JobFlow::TaskOutput.new(task_name: :multi_task, each_index: 0, data: { value: 10 }),
+          JobFlow::TaskOutput.new(task_name: :multi_task, each_index: 1, data: { value: 20 }),
+          JobFlow::TaskOutput.new(task_name: :"ns:task_one", each_index: 0, data: { value: 99 })
+        ]
       )
     end
 
-    context "when method name matches task name" do
-      let(:method_name) { :existing_task }
+    context "when task_name exists" do
+      let(:task_name) { :single_task }
 
-      it { is_expected.to be true }
+      it "returns an array" do
+        expect(bracket_access).to contain_exactly(have_attributes(value: 1))
+      end
     end
 
-    context "when method name does not match task name" do
-      let(:method_name) { :non_existent }
+    context "when task_name does not exist" do
+      let(:task_name) { :missing_task }
 
-      it { is_expected.to be false }
+      it "returns an empty array" do
+        expect(bracket_access).to be_empty
+      end
+    end
+
+    context "when task_name is namespaced" do
+      let(:task_name) { :"ns:task_one" }
+
+      it "returns the namespaced task outputs" do
+        expect(bracket_access).to contain_exactly(have_attributes(value: 99))
+      end
+    end
+
+    context "when task_name is a String" do
+      let(:task_name) { "multi_task" }
+
+      it "accepts String and returns an array" do
+        expect(bracket_access.map(&:value)).to eq([10, 20])
+      end
     end
   end
 
@@ -348,19 +258,18 @@ RSpec.describe JobFlow::Output do
     end
 
     it "allows accessing regular tasks" do
-      expect(output).to have_attributes(
-        setup: contain_exactly(have_attributes(status: "ready")),
-        cleanup: contain_exactly(have_attributes(status: "done"))
-      )
+      expect(output[:setup]).to contain_exactly(have_attributes(status: "ready"))
+    end
+
+    it "allows accessing another regular task" do
+      expect(output[:cleanup]).to contain_exactly(have_attributes(status: "done"))
     end
 
     it "allows accessing each tasks as array" do
-      expect(output).to have_attributes(
-        process: contain_exactly(
-          have_attributes(result: 10),
-          have_attributes(result: 20),
-          have_attributes(result: 30)
-        )
+      expect(output[:process]).to contain_exactly(
+        have_attributes(result: 10),
+        have_attributes(result: 20),
+        have_attributes(result: 30)
       )
     end
   end
@@ -371,7 +280,14 @@ RSpec.describe JobFlow::Output do
     let(:output) { described_class.new }
     let(:workflow) do
       wf = JobFlow::Workflow.new
-      wf.add_task(JobFlow::Task.new(job_name: "TestJob", name: :sample_task, block: ->(_ctx) {}))
+      wf.add_task(
+        JobFlow::Task.new(
+          job_name: "TestJob",
+          name: :sample_task,
+          namespace: JobFlow::Namespace.default,
+          block: ->(_ctx) {}
+        )
+      )
       wf
     end
     let(:all_jobs) do
@@ -459,7 +375,14 @@ RSpec.describe JobFlow::Output do
     let(:output) { described_class.new }
     let(:workflow) do
       wf = JobFlow::Workflow.new
-      wf.add_task(JobFlow::Task.new(job_name: "TestJob", name: :db_task, block: ->(_ctx) {}))
+      wf.add_task(
+        JobFlow::Task.new(
+          job_name: "TestJob",
+          name: :db_task,
+          namespace: JobFlow::Namespace.default,
+          block: ->(_ctx) {}
+        )
+      )
       wf
     end
     let(:job_ids) { %w[job1 job2] }

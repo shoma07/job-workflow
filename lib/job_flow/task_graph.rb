@@ -12,7 +12,7 @@ module JobFlow
 
     #:  (Task) -> void
     def add(task)
-      @tasks[task.name] = task
+      @tasks[task.task_name] = task
     end
 
     #:  (Symbol?) -> Task?

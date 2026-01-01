@@ -57,6 +57,9 @@ module JobFlow
       # :  (Symbol argument_name, String type, ?default: untyped) -> void
       def argument: (Symbol argument_name, String type, ?default: untyped) -> void
 
+      # :  (Symbol) { () -> void } -> void
+      def namespace: (Symbol) { () -> void } -> void
+
       # rubocop:disable Metrics/ParameterLists
       #
       # :  (

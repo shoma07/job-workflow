@@ -9,6 +9,7 @@ RSpec.describe JobFlow::TaskGraph do
       JobFlow::Task.new(
         job_name: "TestJob",
         name: :sample_task,
+        namespace: JobFlow::Namespace.default,
         block: ->(ctx) { ctx },
         depends_on: []
       )
@@ -29,6 +30,7 @@ RSpec.describe JobFlow::TaskGraph do
       JobFlow::Task.new(
         job_name: "TestJob",
         name: :sample_task,
+        namespace: JobFlow::Namespace.default,
         block: ->(ctx) { ctx },
         depends_on: []
       )
@@ -64,6 +66,7 @@ RSpec.describe JobFlow::TaskGraph do
           JobFlow::Task.new(
             job_name: "TestJob",
             name: :sample_task,
+            namespace: JobFlow::Namespace.default,
             block: ->(ctx) { ctx },
             depends_on: %i[missing_task]
           )
@@ -83,18 +86,21 @@ RSpec.describe JobFlow::TaskGraph do
           JobFlow::Task.new(
             job_name: "TestJob",
             name: :task_a,
+            namespace: JobFlow::Namespace.default,
             block: ->(ctx) { ctx },
             depends_on: []
           ),
           JobFlow::Task.new(
             job_name: "TestJob",
             name: :task_c,
+            namespace: JobFlow::Namespace.default,
             block: ->(ctx) { ctx },
             depends_on: %i[task_b]
           ),
           JobFlow::Task.new(
             job_name: "TestJob",
             name: :task_b,
+            namespace: JobFlow::Namespace.default,
             block: ->(ctx) { ctx },
             depends_on: %i[task_a]
           )

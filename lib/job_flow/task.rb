@@ -4,6 +4,7 @@ module JobFlow
   class Task
     attr_reader :job_name #: String
     attr_reader :name #: Symbol
+    attr_reader :namespace #: Namespace
     attr_reader :block #: ^(untyped) -> void
     attr_reader :each #: ^(Context) -> untyped
     attr_reader :enqueue #: TaskEnqueue
@@ -13,10 +14,11 @@ module JobFlow
     attr_reader :task_retry #: TaskRetry
     attr_reader :throttle #: TaskThrottle
 
-    # rubocop:disable Metrics/ParameterLists
+    # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength
     #:  (
     #     job_name: String,
     #     name: Symbol,
+    #     namespace: Namespace,
     #     block: ^(untyped) -> void,
     #     ?each: ^(Context) -> untyped,
     #     ?enqueue: true | false | ^(Context) -> bool | Hash[Symbol, untyped],
@@ -29,6 +31,7 @@ module JobFlow
     def initialize(
       job_name:,
       name:,
+      namespace:,
       block:,
       each: nil,
       enqueue: nil,
@@ -40,6 +43,7 @@ module JobFlow
     )
       @job_name = job_name
       @name = name
+      @namespace = namespace #: Namespace
       @block = block
       @each = each
       @enqueue = TaskEnqueue.from_primitive_value(enqueue)
@@ -49,11 +53,16 @@ module JobFlow
       @task_retry = TaskRetry.from_primitive_value(task_retry)
       @throttle = TaskThrottle.from_primitive_value_with_task(value: throttle, task: self)
     end
-    # rubocop:enable Metrics/ParameterLists
+    # rubocop:enable Metrics/ParameterLists, Metrics/MethodLength
+
+    #:  () -> Symbol
+    def task_name
+      [namespace.full_name.to_s, name.to_s].reject(&:empty?).join(":").to_sym
+    end
 
     #:  () -> String
     def throttle_prefix_key
-      "#{job_name}:#{name}"
+      "#{job_name}:#{task_name}"
     end
   end
 end

@@ -39,6 +39,11 @@ module JobFlow
       task_outputs.fetch(fixed_type_task_name, [])[each_index]
     end
 
+    #:  (Symbol | String) -> Array[TaskOutput?]
+    def [](task_name)
+      task_outputs.fetch(task_name.to_sym, [])
+    end
+
     #:  (TaskOutput) -> void
     def add_task_output(task_output)
       task_outputs[task_output.task_name] ||= []
@@ -67,21 +72,6 @@ module JobFlow
     #:  () -> Array[TaskOutput]
     def flat_task_outputs
       task_outputs.values.flatten.compact
-    end
-
-    #:  ...
-    def method_missing(name, *args, **kwargs, &block)
-      return super unless args.empty?
-      return super unless kwargs.empty?
-      return super unless block.nil?
-      return super unless task_outputs.key?(name.to_sym)
-
-      task_outputs[name.to_sym]
-    end
-
-    #:  (Symbol, bool) -> bool
-    def respond_to_missing?(sym, include_private)
-      task_outputs.key?(sym) || super
     end
 
     private

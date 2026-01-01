@@ -17,6 +17,9 @@ module JobFlow
     # :  (task_name: Symbol?, each_index: Integer) -> TaskOutput?
     def fetch: (task_name: Symbol?, each_index: Integer) -> TaskOutput?
 
+    # :  (Symbol | String) -> Array[TaskOutput?]
+    def []: (Symbol | String) -> Array[TaskOutput?]
+
     # :  (TaskOutput) -> void
     def add_task_output: (TaskOutput) -> void
 
@@ -28,12 +31,6 @@ module JobFlow
 
     # :  () -> Array[TaskOutput]
     def flat_task_outputs: () -> Array[TaskOutput]
-
-    # :  ...
-    def method_missing: ...
-
-    # :  (Symbol, bool) -> bool
-    def respond_to_missing?: (Symbol, bool) -> bool
 
     private
 

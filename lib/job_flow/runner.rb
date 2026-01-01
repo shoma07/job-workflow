@@ -85,7 +85,7 @@ module JobFlow
     def enqueue_task(task)
       sub_jobs = context._with_each_value(task).map { |each_ctx| job.class.from_context(each_ctx.dup) }
       job.class.perform_all_later(sub_jobs)
-      context.job_status.update_task_job_statuses_from_jobs(task_name: task.name, jobs: sub_jobs)
+      context.job_status.update_task_job_statuses_from_jobs(task_name: task.task_name, jobs: sub_jobs)
     end
 
     #:  (ctx: Context, task: Task, each_index: Integer, data: untyped) -> void
@@ -99,7 +99,7 @@ module JobFlow
     def wait_for_dependent_tasks(task, step)
       task.depends_on.each do |dependent_task_name|
         dependent_task = workflow.fetch_task(dependent_task_name)
-        next if dependent_task.nil? || context.job_status.needs_waiting?(dependent_task.name)
+        next if dependent_task.nil? || context.job_status.needs_waiting?(dependent_task.task_name)
 
         wait_for_map_task_completion(dependent_task, step)
       end
@@ -111,8 +111,8 @@ module JobFlow
         # Checkpoint for resumable execution
         step.checkpoint!
 
-        context.job_status.update_task_job_statuses_from_db(task.name)
-        break if context.job_status.needs_waiting?(task.name)
+        context.job_status.update_task_job_statuses_from_db(task.task_name)
+        break if context.job_status.needs_waiting?(task.task_name)
 
         sleep 5
       end
@@ -122,7 +122,7 @@ module JobFlow
 
     #:  (Task) -> void
     def update_task_outputs(task)
-      finished_job_ids = context.job_status.finished_job_ids(task_name: task.name)
+      finished_job_ids = context.job_status.finished_job_ids(task_name: task.task_name)
       context.output.update_task_outputs_from_db(finished_job_ids, context.workflow)
     end
   end

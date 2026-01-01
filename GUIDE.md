@@ -110,7 +110,7 @@ end
 
 # Access outputs from previous tasks
 task :use_result, depends_on: [:process] do |ctx|
-  result = ctx.output.process.first.result
+  result = ctx.output[:process].first.result
   puts result
 end
 ```
@@ -148,13 +148,13 @@ class DataPipelineJob < ApplicationJob
   
   # Task 2: Data transformation (depends on extract)
   task :transform, depends_on: [:extract], output: { transformed_data: "Hash" } do |ctx|
-    raw_data = ctx.output.extract.first.raw_data
+    raw_data = ctx.output[:extract].first.raw_data
     { transformed_data: JSON.parse(raw_data) }
   end
   
   # Task 3: Data loading (depends on transform)
   task :load, depends_on: [:transform] do |ctx|
-    transformed_data = ctx.output.transform.first.transformed_data
+    transformed_data = ctx.output[:transform].first.transformed_data
     DataModel.create!(transformed_data)
   end
 end
@@ -214,7 +214,7 @@ end
 
 # Access the output in another task
 task :next_task, depends_on: [:simple_task] do |ctx|
-  result = ctx.output.simple_task.first.result
+  result = ctx.output[:simple_task].first.result
   puts result  # => "completed"
 end
 ```
@@ -229,7 +229,7 @@ task :fetch_data, output: { data: "Hash" } do |ctx|
 end
 
 task :process_data, depends_on: [:fetch_data], output: { result: "String" } do |ctx|
-  data = ctx.output.fetch_data.first.data
+  data = ctx.output[:fetch_data].first.data
   { result: process(data) }
 end
 ```
@@ -246,8 +246,8 @@ task :task_b, output: { b: "Integer" } do |ctx|
 end
 
 task :task_c, depends_on: [:task_a, :task_b], output: { result: "Integer" } do |ctx|
-  a = ctx.output.task_a.first.a
-  b = ctx.output.task_b.first.b
+  a = ctx.output[:task_a].first.a
+  b = ctx.output[:task_b].first.b
   { result: a + b }  # => 3
 end
 ```
@@ -343,7 +343,7 @@ task :fetch, output: { result: "String" } do |ctx|
 end
 
 task :process, depends_on: [:fetch] do |ctx|
-  result = ctx.output.fetch.first.result
+  result = ctx.output[:fetch].first.result
   process_data(result)
 end
 
@@ -465,8 +465,8 @@ class DataProcessingJob < ApplicationJob
   
   # Access the output from another task
   task :report, depends_on: [:calculate] do |ctx|
-    puts "Result: #{ctx.output.calculate.first.result}"
-    puts "Message: #{ctx.output.calculate.first.message}"
+    puts "Result: #{ctx.output[:calculate].first.result}"
+    puts "Message: #{ctx.output[:calculate].first.message}"
   end
 end
 ```
@@ -494,12 +494,12 @@ class BatchCalculationJob < ApplicationJob
   
   # Access all outputs from the map task
   task :summarize, depends_on: [:double_numbers] do |ctx|
-    ctx.output.double_numbers.each do |output|
+    ctx.output[:double_numbers].each do |output|
       puts "Original: #{output.original}, Doubled: #{output.doubled}"
     end
     
     # Calculate total
-    total = ctx.output.double_numbers.sum(&:doubled)
+    total = ctx.output[:double_numbers].sum(&:doubled)
     puts "Total: #{total}"
   end
 end
@@ -517,7 +517,7 @@ BatchCalculationJob.perform_now(numbers: [1, 2, 3, 4, 5])
 
 ### Accessing Task Outputs
 
-Task outputs are accessible through `ctx.output` using the task name as a method. The output object provides dynamic accessor methods for each defined output field.
+Task outputs are accessible through `ctx.output` using `[]` with the task name. It always returns an Array of TaskOutput-like objects.
 
 #### Regular Task Output
 
@@ -532,8 +532,8 @@ end
 
 task :process, depends_on: [:fetch_data] do |ctx|
   # Access output fields directly
-  puts "Received #{ctx.output.fetch_data.first.count} items"
-  ctx.output.fetch_data.first.items.each do |item|
+  puts "Received #{ctx.output[:fetch_data].first.count} items"
+  ctx.output[:fetch_data].first.items.each do |item|
     process_item(item)
   end
 end
@@ -554,7 +554,7 @@ end
 
 task :verify, depends_on: [:process_items] do |ctx|
   # outputs is an array of TaskOutput objects
-  outputs = ctx.output.process_items
+  outputs = ctx.output[:process_items]
   
   successful = outputs.count { |o| o.status == "success" }
   puts "Processed #{outputs.size} items, #{successful} successful"
@@ -581,8 +581,8 @@ task :example, output: { required: "String", optional: "Integer" } do |ctx|
 end
 
 task :check_output, depends_on: [:example] do |ctx|
-  puts ctx.output.example.first.required  # => "value"
-  puts ctx.output.example.first.optional  # => nil
+  puts ctx.output[:example].first.required  # => "value"
+  puts ctx.output[:example].first.optional  # => nil
 end
 ```
 
@@ -636,7 +636,7 @@ class WellDesignedJob < ApplicationJob
   task :fetch_permissions,
     depends_on: [:fetch_user],
     output: { permissions: "Array[String]" } do |ctx|
-    role = ctx.output.fetch_user.first.role
+    role = ctx.output[:fetch_user].first.role
     {
       permissions: PermissionService.get_permissions(role)
     }
@@ -646,8 +646,8 @@ class WellDesignedJob < ApplicationJob
   task :generate_report,
     depends_on: [:fetch_user, :fetch_permissions],
     output: { final_report: "Hash" } do |ctx|
-    user = ctx.output.fetch_user.first
-    perms = ctx.output.fetch_permissions.first
+    user = ctx.output[:fetch_user].first
+    perms = ctx.output[:fetch_permissions].first
     
     {
       final_report: {
@@ -735,7 +735,7 @@ class BatchProcessingJob < ApplicationJob
   
   # Aggregate results
   task :aggregate_results, depends_on: [:process_users] do |ctx|
-    results = ctx.output.process_users
+    results = ctx.output[:process_users]
     puts "Processed #{results.size} users"
     # => [{ user_id: 1, status: :ok }, { user_id: 2, status: :ok }, ...]
   end
@@ -1108,7 +1108,7 @@ class NotificationWorkflowJob < ApplicationJob
   # Send notification in after hook
   after :perform_action do |ctx|
     user_id = ctx.arguments.user_id
-    action_result = ctx.output.perform_action.first.action_result
+    action_result = ctx.output[:perform_action].first.action_result
     
     UserMailer.action_completed(
       user_id,
@@ -1316,14 +1316,14 @@ class ECommerceOrderJob < ApplicationJob
       PaymentValidator.validate(order)
     end
     
-    task :charge, depends_on: [:validate], output: { payment_result: "Hash" } do |ctx|
+    task :charge, depends_on: [:"payment:validate"], output: { payment_result: "Hash" } do |ctx|
       order = ctx.arguments.order
       { payment_result: PaymentProcessor.charge(order) }
     end
     
-    task :send_receipt, depends_on: [:charge] do |ctx|
+    task :send_receipt, depends_on: [:"payment:charge"] do |ctx|
       order = ctx.arguments.order
-      payment_result = ctx.output.payment__charge.first.payment_result
+      payment_result = ctx.output[:"payment:charge"].first.payment_result
       ReceiptMailer.send(order, payment_result)
     end
   end
@@ -1335,7 +1335,7 @@ class ECommerceOrderJob < ApplicationJob
       InventoryService.check(order.items)
     end
     
-    task :reserve, depends_on: [:check_availability], output: { reserved: "Boolean" } do |ctx|
+    task :reserve, depends_on: [:"inventory:check_availability"], output: { reserved: "Boolean" } do |ctx|
       order = ctx.arguments.order
       { reserved: InventoryService.reserve(order.items) }
     end
@@ -1348,7 +1348,7 @@ class ECommerceOrderJob < ApplicationJob
       { shipping_cost: ShippingCalculator.calculate(order) }
     end
     
-    task :create_label, depends_on: [:calculate_cost], output: { shipping_label: "String" } do |ctx|
+    task :create_label, depends_on: [:"shipping:calculate_cost"], output: { shipping_label: "String" } do |ctx|
       order = ctx.arguments.order
       { shipping_label: ShippingService.create_label(order) }
     end
@@ -1704,7 +1704,7 @@ RSpec.describe UserRegistrationJob do
       }.to change(User, :count).by(1)
       
       # Verify output
-      output = ctx.output.create_user
+      output = ctx.output[:create_user].first
       expect(output.user).to be_a(User)
       expect(output.user.email).to eq('user@example.com')
     end
@@ -1824,7 +1824,7 @@ task :with_dependencies,
      depends_on: [:simple],
      retry: 3,
      output: { final: "String" } do |ctx|
-  result = ctx.output.simple.result
+  result = ctx.output[:simple].first.result
   { final: process(result) }
 end
 
@@ -1871,7 +1871,7 @@ end
 
 task :summarize, depends_on: [:process_items] do |ctx|
   # Access outputs as an array
-  outputs = ctx.output.process_items
+  outputs = ctx.output[:process_items]
   puts "Processed #{outputs.size} items"
   
   outputs.each do |output|
@@ -1955,13 +1955,13 @@ class WellDesignedWorkflowJob < ApplicationJob
   task :transform_data, depends_on: [:fetch_dependencies], output: { transformed: "Hash" } do |ctx|
     # Only transform
     data = ctx.arguments.data
-    dependencies = ctx.output.fetch_dependencies.dependencies
+    dependencies = ctx.output[:fetch_dependencies].first.dependencies
     { transformed: transform(data, dependencies) }
   end
   
   task :save_result, depends_on: [:transform_data] do |ctx|
     # Only save
-    transformed = ctx.output.transform_data.transformed
+    transformed = ctx.output[:transform_data].first.transformed
     save_to_database(transformed)
   end
 end
@@ -1995,7 +1995,7 @@ task :prepare_data, output: { prepared: "Hash" } do |ctx|
 end
 
 task :process_data, depends_on: [:prepare_data], output: { result: "String" } do |ctx|
-  prepared = ctx.output.prepare_data.prepared
+  prepared = ctx.output[:prepare_data].first.prepared
   { result: process(prepared) }
 end
 
@@ -2006,7 +2006,7 @@ end
 
 task :task2 do |ctx|
   # No guarantee task1 executes first - this may fail!
-  shared = ctx.output.task1.shared  # May be nil
+  shared = ctx.output[:task1].first&.shared
   use(shared)
 end
 ```
