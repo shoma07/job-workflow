@@ -6,9 +6,13 @@ module JobFlow
 
     include ActiveJob::Continuable
 
+    mattr_accessor :_included_classes, default: Set.new
+
     # @rbs! extend ClassMethods
 
     # @rbs!
+    #   def self._included_classes: () -> Set[singleton(DSL)]
+    #
     #   def class: () -> ClassMethods
     #
     #   def job_id: () -> String
@@ -21,6 +25,8 @@ module JobFlow
     #           | (Symbol, ?start: ActiveJob::Continuation::_Succ, ?isolated: bool) { (ActiveJob::Continuation::Step) -> void } -> void
 
     included do
+      DSL._included_classes << self
+
       class_attribute :_workflow, default: Workflow.new
     end
 
@@ -169,6 +175,31 @@ module JobFlow
         validate_namespace!
         _workflow.add_hook(:error, task_names:, block:)
       end
+
+      # rubocop:disable Metrics/ParameterLists
+      #:  (
+      #     String expression,
+      #     ?key: (String | Symbol)?,
+      #     ?queue: String?,
+      #     ?priority: Integer?,
+      #     ?args: Hash[Symbol, untyped],
+      #     ?description: String?
+      #   ) -> void
+      def schedule(expression, key: nil, queue: nil, priority: nil, args: {}, description: nil)
+        validate_namespace!
+        _workflow.add_schedule(
+          Schedule.new(
+            expression:,
+            class_name: name,
+            key:,
+            queue:,
+            priority:,
+            args:,
+            description:
+          )
+        )
+      end
+      # rubocop:enable Metrics/ParameterLists
 
       private
 

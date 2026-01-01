@@ -16,6 +16,9 @@ module JobFlow
     # :  (ArgumentDef) -> void
     def add_argument: (ArgumentDef) -> void
 
+    # :  (Schedule) -> void
+    def add_schedule: (Schedule) -> void
+
     # :  (Symbol, task_names: Array[Symbol], block: untyped) -> void
     def add_hook: (Symbol, task_names: Array[Symbol], block: untyped) -> void
 
@@ -30,6 +33,9 @@ module JobFlow
 
     # :  () -> Array[ArgumentDef]
     def arguments: () -> Array[ArgumentDef]
+
+    # :  () -> Hash[Symbol, Hash[Symbol, untyped]]
+    def build_schedules_hash: () -> Hash[Symbol, Hash[Symbol, untyped]]
 
     # :  () -> Hash[Symbol, untyped]
     def build_arguments_hash: () -> Hash[Symbol, untyped]

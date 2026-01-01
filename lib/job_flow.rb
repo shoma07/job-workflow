@@ -22,6 +22,7 @@ require_relative "job_flow/hook_registry"
 require_relative "job_flow/task_callable"
 require_relative "job_flow/task"
 require_relative "job_flow/task_graph"
+require_relative "job_flow/schedule"
 require_relative "job_flow/dsl"
 require_relative "job_flow/runner"
 require_relative "job_flow/workflow"
@@ -35,7 +36,14 @@ require_relative "job_flow/output_def"
 require_relative "job_flow/task_output"
 require_relative "job_flow/output"
 require_relative "job_flow/auto_scaling"
+require_relative "job_flow/solid_queue_integration"
 
 module JobFlow
   class Error < StandardError; end
+
+  ActiveSupport.on_load(:solid_queue) do
+    SolidQueueIntegration.install!
+  end
+
+  SolidQueueIntegration.install_if_available!
 end

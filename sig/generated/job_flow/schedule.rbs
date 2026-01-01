@@ -1,0 +1,34 @@
+# Generated from lib/job_flow/schedule.rb with RBS::Inline
+
+module JobFlow
+  class Schedule
+    attr_reader key: Symbol
+
+    attr_reader class_name: String
+
+    attr_reader expression: String
+
+    attr_reader queue: String?
+
+    attr_reader priority: Integer?
+
+    attr_reader args: Hash[Symbol, untyped]
+
+    attr_reader description: String?
+
+    # rubocop:disable Metrics/ParameterLists
+    # :  (
+    #     expression: String,
+    #     class_name: String,
+    #     ?key: (String | Symbol)?,
+    #     ?queue: String?,
+    #     ?priority: Integer?,
+    #     ?args: Hash[Symbol, untyped],
+    #     ?description: String?
+    #   ) -> void
+    def initialize: (expression: String, class_name: String, ?key: (String | Symbol)?, ?queue: String?, ?priority: Integer?, ?args: Hash[Symbol, untyped], ?description: String?) -> void
+
+    # :  () -> Hash[Symbol, untyped]
+    def to_config: () -> Hash[Symbol, untyped]
+  end
+end
