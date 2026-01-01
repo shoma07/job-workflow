@@ -45,7 +45,7 @@ RSpec.describe JobFlow::Task do
 
       it do
         expect(task).to have_attributes(
-          name: arguments[:name],
+          task_name: arguments[:name],
           namespace: have_attributes(name: :"", parent: nil),
           block: arguments[:block],
           each: nil,
@@ -74,7 +74,7 @@ RSpec.describe JobFlow::Task do
 
       it do
         expect(task).to have_attributes(
-          name: arguments[:name],
+          task_name: arguments[:name],
           namespace: have_attributes(name: :"", parent: nil),
           block: arguments[:block],
           each: nil,
@@ -100,7 +100,7 @@ RSpec.describe JobFlow::Task do
 
       it do
         expect(task).to have_attributes(
-          name: :sample_task,
+          task_name: :sample_task,
           namespace: have_attributes(name: :"", parent: nil),
           block: arguments[:block],
           each: :arg_two,

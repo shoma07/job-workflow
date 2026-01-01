@@ -43,7 +43,7 @@ module JobFlow
       tasks.each do |task|
         next unless task.condition.call(context)
 
-        job.step(task.name) do |step|
+        job.step(task.task_name) do |step|
           wait_for_dependent_tasks(task, step)
           task.enqueue.should_enqueue?(context) ? enqueue_task(task) : run_task(task)
         end
@@ -65,9 +65,9 @@ module JobFlow
 
     #:  (Task, Context) { () -> void } -> void
     def run_hooks(task, ctx, &)
-      hooks.before_hooks_for(task.name).each { |hook| hook.block.call(ctx) }
-      run_around_hooks(task, ctx, hooks.around_hooks_for(task.name), &)
-      hooks.after_hooks_for(task.name).each { |hook| hook.block.call(ctx) }
+      hooks.before_hooks_for(task.task_name).each { |hook| hook.block.call(ctx) }
+      run_around_hooks(task, ctx, hooks.around_hooks_for(task.task_name), &)
+      hooks.after_hooks_for(task.task_name).each { |hook| hook.block.call(ctx) }
     end
 
     #:  (Task, Context, Array[Hook]) { () -> void } -> void
@@ -78,7 +78,7 @@ module JobFlow
       remaining = around_hooks[1..] || []
       callable = TaskCallable.new { run_around_hooks(task, ctx, remaining, &) }
       hook.block.call(ctx, callable)
-      raise TaskCallable::NotCalledError, task.name unless callable.called?
+      raise TaskCallable::NotCalledError, task.task_name unless callable.called?
     end
 
     #:  (Task) -> void

@@ -4,8 +4,6 @@ module JobFlow
   class Task
     attr_reader job_name: String
 
-    attr_reader name: Symbol
-
     attr_reader namespace: Namespace
 
     attr_reader block: ^(untyped) -> void
@@ -45,5 +43,9 @@ module JobFlow
 
     # :  () -> String
     def throttle_prefix_key: () -> String
+
+    private
+
+    attr_reader name: Symbol
   end
 end
