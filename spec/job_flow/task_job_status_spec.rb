@@ -158,45 +158,4 @@ RSpec.describe JobFlow::TaskJobStatus do
       end
     end
   end
-
-  describe ".status_value_from_job" do
-    subject(:status_value_from_job) { described_class.status_value_from_job(job) }
-
-    let(:job) do
-      klass = Class.new(ActiveJob::Base) do
-        include JobFlow::DSL
-      end
-      klass.new
-    end
-
-    before do
-      methods.each do |method, return_value|
-        allow(job).to receive(method).and_return(return_value)
-      end
-    end
-
-    context "when job is failed" do
-      let(:methods) { { failed?: true, finished?: true, claimed?: false } }
-
-      it { is_expected.to eq(:failed) }
-    end
-
-    context "when job is finished but not failed" do
-      let(:methods) { { failed?: false, finished?: true, claimed?: false } }
-
-      it { is_expected.to eq(:succeeded) }
-    end
-
-    context "when job is claimed but not finished" do
-      let(:methods) { { failed?: false, finished?: false, claimed?: true } }
-
-      it { is_expected.to eq(:running) }
-    end
-
-    context "when job is neither failed, finished, nor claimed" do
-      let(:methods) { { failed?: false, finished?: false, claimed?: false } }
-
-      it { is_expected.to eq(:pending) }
-    end
-  end
 end

@@ -27,15 +27,6 @@ module JobFlow
           status: hash["status"].to_sym
         )
       end
-
-      #:  (SolidQueue::Job) -> Symbol
-      def status_value_from_job(job)
-        return :failed if job.failed?
-        return :succeeded if job.finished?
-        return :running if job.claimed?
-
-        :pending
-      end
     end
 
     #:  (

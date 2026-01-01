@@ -13,12 +13,18 @@ RSpec.describe JobFlow::Semaphore do
   end
 
   describe ".available?" do
-    context "when SolidQueue::Semaphore is not defined" do
+    context "when adapter reports semaphore unavailable" do
+      before do
+        allow(JobFlow::QueueAdapter.current).to receive(:semaphore_available?).and_return(false)
+      end
+
       it { expect(described_class.available?).to be(false) }
     end
 
-    context "when SolidQueue::Semaphore is defined" do
-      before { stub_const("SolidQueue::Semaphore", Class.new) }
+    context "when adapter reports semaphore available" do
+      before do
+        allow(JobFlow::QueueAdapter.current).to receive(:semaphore_available?).and_return(true)
+      end
 
       it { expect(described_class.available?).to be(true) }
     end
@@ -60,37 +66,41 @@ RSpec.describe JobFlow::Semaphore do
   describe "#wait" do
     subject(:wait) { semaphore.wait }
 
-    context "when SolidQueue is not available" do
+    let(:adapter) { JobFlow::QueueAdapter.current }
+
+    context "when adapter is not available" do
+      before do
+        allow(adapter).to receive(:semaphore_available?).and_return(false)
+      end
+
       it { expect(semaphore.wait).to be(true) }
     end
 
-    context "when SolidQueue is available and semaphore acquired on first attempt" do
+    context "when adapter is available and semaphore acquired on first attempt" do
       before do
-        stub_const("SolidQueue::Semaphore", Class.new)
-        allow(SolidQueue::Semaphore).to receive(:wait).with(semaphore).and_return(true)
-      end
-
-      it do
-        expect(wait).to be(true)
-      end
-
-      it do
-        wait
-        expect(SolidQueue::Semaphore).to have_received(:wait).once
-      end
-    end
-
-    context "when SolidQueue is available and semaphore acquired after retries" do
-      before do
-        stub_const("SolidQueue::Semaphore", Class.new)
-        allow(SolidQueue::Semaphore).to receive(:wait).with(semaphore).and_return(false, false, true)
+        allow(adapter).to receive(:semaphore_available?).and_return(true)
+        allow(adapter).to receive(:semaphore_wait).with(semaphore).and_return(true)
       end
 
       it { expect(wait).to be(true) }
 
       it do
         wait
-        expect(SolidQueue::Semaphore).to have_received(:wait).exactly(3).times
+        expect(adapter).to have_received(:semaphore_wait).once
+      end
+    end
+
+    context "when adapter is available and semaphore acquired after retries" do
+      before do
+        allow(adapter).to receive(:semaphore_available?).and_return(true)
+        allow(adapter).to receive(:semaphore_wait).with(semaphore).and_return(false, false, true)
+      end
+
+      it { expect(wait).to be(true) }
+
+      it do
+        wait
+        expect(adapter).to have_received(:semaphore_wait).exactly(3).times
       end
     end
   end
@@ -98,53 +108,63 @@ RSpec.describe JobFlow::Semaphore do
   describe "#signal" do
     subject(:signal) { semaphore.signal }
 
-    context "when SolidQueue is not available" do
+    let(:adapter) { JobFlow::QueueAdapter.current }
+
+    context "when adapter is not available" do
+      before do
+        allow(adapter).to receive(:semaphore_available?).and_return(false)
+      end
+
       it { expect(semaphore.signal).to be(true) }
     end
 
-    context "when SolidQueue is available and signal succeeds" do
+    context "when adapter is available and signal succeeds" do
       before do
-        stub_const("SolidQueue::Semaphore", Class.new)
-        allow(SolidQueue::Semaphore).to receive(:signal).with(semaphore).and_return(true)
+        allow(adapter).to receive(:semaphore_available?).and_return(true)
+        allow(adapter).to receive(:semaphore_signal).with(semaphore).and_return(true)
       end
 
       it { expect(signal).to be(true) }
 
       it do
         signal
-        expect(SolidQueue::Semaphore).to have_received(:signal).with(semaphore)
+        expect(adapter).to have_received(:semaphore_signal).with(semaphore)
       end
     end
 
-    context "when SolidQueue is available and signal fails" do
+    context "when adapter is available and signal fails" do
       before do
-        stub_const("SolidQueue::Semaphore", Class.new)
-        allow(SolidQueue::Semaphore).to receive(:signal).with(semaphore).and_return(false)
+        allow(adapter).to receive(:semaphore_available?).and_return(true)
+        allow(adapter).to receive(:semaphore_signal).with(semaphore).and_return(false)
       end
 
       it { expect(signal).to be(false) }
 
       it do
         signal
-        expect(SolidQueue::Semaphore).to have_received(:signal).with(semaphore)
+        expect(adapter).to have_received(:semaphore_signal).with(semaphore)
       end
     end
   end
 
   describe "#with" do
-    context "when SolidQueue is not available" do
+    let(:adapter) { JobFlow::QueueAdapter.current }
+
+    context "when adapter is not available" do
+      before do
+        allow(adapter).to receive(:semaphore_available?).and_return(false)
+      end
+
       it { expect { |b| semaphore.with(&b) }.to yield_control }
 
       it { expect(semaphore.with { "result" }).to eq("result") }
     end
 
-    context "when SolidQueue is available" do
-      let(:execution_order) { [] }
-
+    context "when adapter is available" do
       before do
-        stub_const("SolidQueue::Semaphore", Class.new)
-        allow(SolidQueue::Semaphore).to receive(:wait).with(semaphore).and_return(true)
-        allow(SolidQueue::Semaphore).to receive(:signal).with(semaphore).and_return(true)
+        allow(adapter).to receive(:semaphore_available?).and_return(true)
+        allow(adapter).to receive(:semaphore_wait).with(semaphore).and_return(true)
+        allow(adapter).to receive(:semaphore_signal).with(semaphore).and_return(true)
       end
 
       it { expect { |b| semaphore.with(&b) }.to yield_control }
@@ -153,27 +173,23 @@ RSpec.describe JobFlow::Semaphore do
 
       it do
         semaphore.with { "result" }
-        expect(SolidQueue::Semaphore).to have_received(:wait).with(semaphore)
+        expect(adapter).to have_received(:semaphore_wait).with(semaphore)
       end
 
       it do
         semaphore.with { "result" }
-        expect(SolidQueue::Semaphore).to have_received(:signal).with(semaphore)
+        expect(adapter).to have_received(:semaphore_signal).with(semaphore)
       end
     end
 
-    context "when SolidQueue is available and block raises" do
-      let(:signal_called) { [] }
-
+    context "when adapter is available and block raises" do
       before do
-        stub_const("SolidQueue::Semaphore", Class.new)
-        allow(SolidQueue::Semaphore).to receive(:wait).with(semaphore).and_return(true)
-        allow(SolidQueue::Semaphore).to receive(:signal).with(semaphore).and_return(true)
+        allow(adapter).to receive(:semaphore_available?).and_return(true)
+        allow(adapter).to receive(:semaphore_wait).with(semaphore).and_return(true)
+        allow(adapter).to receive(:semaphore_signal).with(semaphore).and_return(true)
       end
 
-      it do
-        expect { semaphore.with { raise StandardError } }.to raise_error(StandardError)
-      end
+      it { expect { semaphore.with { raise StandardError } }.to raise_error(StandardError) }
 
       it do
         begin
@@ -181,7 +197,7 @@ RSpec.describe JobFlow::Semaphore do
         rescue StandardError
           # expected
         end
-        expect(SolidQueue::Semaphore).to have_received(:signal).with(semaphore)
+        expect(adapter).to have_received(:semaphore_signal).with(semaphore)
       end
     end
   end

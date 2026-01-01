@@ -16,9 +16,6 @@ module JobFlow
     # :  (Hash[String, untyped]) -> TaskJobStatus
     def self.deserialize: (Hash[String, untyped]) -> TaskJobStatus
 
-    # :  (SolidQueue::Job) -> Symbol
-    def self.status_value_from_job: (SolidQueue::Job) -> Symbol
-
     # :  (
     #       task_name: Symbol,
     #       job_id: String,

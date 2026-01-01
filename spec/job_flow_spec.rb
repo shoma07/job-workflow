@@ -13,6 +13,9 @@ RSpec.describe JobFlow do
       ActiveSupport.run_load_hooks(:solid_queue)
     end
 
-    it { expect(mock_configuration.ancestors).to include(JobFlow::SolidQueueIntegration::ConfigurationPatch) }
+    it do
+      expect(mock_configuration.ancestors)
+        .to include(JobFlow::QueueAdapters::SolidQueueAdapter::SchedulingPatch)
+    end
   end
 end
