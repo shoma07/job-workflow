@@ -180,12 +180,14 @@ module JobFlow
     end
 
     #:  (Task, Enumerator::Yielder) -> void
-    def with_each_context(task, yielder)
+    def with_each_context(task, yielder) # rubocop:disable Metrics/MethodLength
       with_each_index_and_value(task) do |value, index|
         self.current_task = task
         with_retry do |retry_count|
-          self.each_context = EachContext.new(parent_job_id: current_job_id, index:, value:, retry_count:)
-          yielder << self
+          with_task_timeout do
+            self.each_context = EachContext.new(parent_job_id: current_job_id, index:, value:, retry_count:)
+            yielder << self
+          end
         end
       ensure
         clear_each_context
@@ -206,6 +208,16 @@ module JobFlow
 
         yield value, index
       end
+    end
+
+    #:  () { () -> void } -> void
+    def with_task_timeout
+      task = current_task || (raise "with_task_timeout can be called only within with_each_context")
+
+      timeout = task.timeout
+      return yield if timeout.nil?
+
+      Timeout.timeout(timeout) { yield } # rubocop:disable Style/ExplicitBlockArgument
     end
 
     #:  () { (Integer) -> void } -> void

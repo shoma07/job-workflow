@@ -1803,7 +1803,10 @@ task(name, **options, &block)
     - `strategy` (Symbol): `:linear` or `:exponential` (default: `:exponential`)
     - `base_delay` (Integer): Base delay in seconds (default: 1)
     - `jitter` (bool): Add randomness to delays (default: false)
-  - `timeout` (ActiveSupport::Duration): Timeout duration (planned feature)
+  - `timeout` (Numeric | nil): Execution timeout in seconds for **one attempt** (default: nil)
+    - You can pass Integer or Float seconds
+    - Timeout does **not** include retry time across attempts
+    - `nil` disables timeout
   - `condition` (Proc): Execute only if returns true (default: `->(_ctx) { true }`)
   - `throttle` (Hash): Throttling settings
   - `output` (Hash): Task output definition
