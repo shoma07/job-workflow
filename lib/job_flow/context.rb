@@ -64,7 +64,7 @@ module JobFlow
     #:  () -> Hash[String, untyped]
     def serialize
       {
-        "current_task_name" => current_task&.name,
+        "current_task_name" => current_task&.task_name,
         "each_context" => _each_context.serialize,
         "task_outputs" => output.flat_task_outputs.map(&:serialize),
         "task_job_statuses" => job_status.flat_task_job_statuses.map(&:serialize)
@@ -92,7 +92,7 @@ module JobFlow
       task = current_task
       return if task.nil?
 
-      [each_context.parent_job_id, task.name].compact.join("/")
+      [each_context.parent_job_id, task.task_name].compact.join("/")
     end
 
     #:  (Task) -> Enumerator[Context]
@@ -145,7 +145,7 @@ module JobFlow
       raise "each_task_output can be called only _with_task block" if task.nil?
       raise "each_task_output can be called only _with_each_value block" unless each_context.enabled?
 
-      task_name = task.name
+      task_name = task.task_name
       each_index = each_context.index
       output.fetch(task_name:, each_index:)
     end

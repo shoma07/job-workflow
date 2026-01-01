@@ -6,6 +6,8 @@ module JobFlow
 
     attr_reader name: Symbol
 
+    attr_reader namespace: Namespace
+
     attr_reader block: ^(untyped) -> void
 
     attr_reader each: ^(Context) -> untyped
@@ -22,10 +24,11 @@ module JobFlow
 
     attr_reader throttle: TaskThrottle
 
-    # rubocop:disable Metrics/ParameterLists
+    # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength
     # :  (
     #     job_name: String,
     #     name: Symbol,
+    #     namespace: Namespace,
     #     block: ^(untyped) -> void,
     #     ?each: ^(Context) -> untyped,
     #     ?enqueue: true | false | ^(Context) -> bool | Hash[Symbol, untyped],
@@ -35,7 +38,10 @@ module JobFlow
     #     ?task_retry: Integer | Hash[Symbol, untyped],
     #     ?throttle: Integer | Hash[Symbol, untyped]
     #   ) -> void
-    def initialize: (job_name: String, name: Symbol, block: ^(untyped) -> void, condition: ^(Context) -> bool, ?each: ^(Context) -> untyped, ?enqueue: true | false | ^(Context) -> bool | Hash[Symbol, untyped], ?output: Hash[Symbol, String], ?depends_on: Array[Symbol], ?task_retry: Integer | Hash[Symbol, untyped], ?throttle: Integer | Hash[Symbol, untyped]) -> void
+    def initialize: (job_name: String, name: Symbol, namespace: Namespace, block: ^(untyped) -> void, condition: ^(Context) -> bool, ?each: ^(Context) -> untyped, ?enqueue: true | false | ^(Context) -> bool | Hash[Symbol, untyped], ?output: Hash[Symbol, String], ?depends_on: Array[Symbol], ?task_retry: Integer | Hash[Symbol, untyped], ?throttle: Integer | Hash[Symbol, untyped]) -> void
+
+    # :  () -> Symbol
+    def task_name: () -> Symbol
 
     # :  () -> String
     def throttle_prefix_key: () -> String

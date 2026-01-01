@@ -11,7 +11,7 @@ module JobFlow
       def from_task(task:, data:, each_index:)
         normalized_data = task.output.to_h { |output_def| [output_def.name, nil] }
         normalized_data.merge!(data.slice(*normalized_data.keys))
-        new(task_name: task.name, each_index:, data: normalized_data)
+        new(task_name: task.task_name, each_index:, data: normalized_data)
       end
 
       #:  (Hash[String, untyped]) -> TaskOutput

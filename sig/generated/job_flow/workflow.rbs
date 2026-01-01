@@ -2,8 +2,13 @@
 
 module JobFlow
   class Workflow
+    attr_reader namespace: Namespace
+
     # :  () -> void
     def initialize: () -> void
+
+    # :  (Namespace) { () -> void } -> void
+    def add_namespace: (Namespace) { () -> void } -> void
 
     # :  (Task) -> void
     def add_task: (Task) -> void
