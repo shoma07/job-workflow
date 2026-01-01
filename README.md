@@ -46,12 +46,12 @@ class DataPipelineJob < ApplicationJob
   end
   
   task :transform, depends_on: [:extract], output: { processed_data: "Hash" } do |ctx|
-    raw_data = ctx.output.extract.first.raw_data
+    raw_data = ctx.output[:extract].first.raw_data
     { processed_data: JSON.parse(raw_data) }
   end
   
   task :load, depends_on: [:transform] do |ctx|
-    processed_data = ctx.output.transform.first.processed_data
+    processed_data = ctx.output[:transform].first.processed_data
     DataModel.create!(processed_data)
   end
 end
@@ -84,10 +84,10 @@ class AnalyticsJob < ApplicationJob
   
   # Access collected outputs
   task :generate_report, depends_on: [:fetch_users] do |ctx|
-    active_users = ctx.output.fetch_users.count(&:active)
+    active_users = ctx.output[:fetch_users].count(&:active)
     puts "Found #{active_users} active users"
     
-    ctx.output.fetch_users.each do |user_data|
+    ctx.output[:fetch_users].each do |user_data|
       puts "User: #{user_data.name} (#{user_data.email})"
     end
   end
@@ -123,7 +123,7 @@ class BatchProcessingJob < ApplicationJob
   end
   
   task :summarize, depends_on: [:process_items] do |ctx|
-    puts "Processed #{ctx.output.process_items.size} items"
+    puts "Processed #{ctx.output[:process_items].size} items"
   end
 end
 ```
@@ -216,7 +216,7 @@ task :fetch_data, output: { result: "String" } do |ctx|
 end
 
 task :process, depends_on: [:fetch_data] do |ctx|
-  result = ctx.output.fetch_data.first.result  # Access output from previous task
+  result = ctx.output[:fetch_data].first.result  # Access output from previous task
   process_data(result)
 end
 ```
@@ -243,9 +243,10 @@ end
 
 Tasks can define structured outputs that are automatically collected and made available to dependent tasks:
 
-- All tasks: Outputs are returned as arrays, accessible via `ctx.output.task_name`
-- Regular tasks: Single-element array, access with `ctx.output.task_name.first`
-- Map tasks: Array of outputs, one per iteration, access with `ctx.output.task_name.each` or array methods
+- All tasks: Outputs are returned as arrays, accessible via `ctx.output[:task_name]`
+- Regular tasks: Single-element array, access with `ctx.output[:task_name].first`
+- Map tasks: Array of outputs, one per iteration, access with `ctx.output[:task_name].each` or array methods
+- Namespaced tasks: Access with `ctx.output[:"namespace:task_name"]`
 
 ## Documentation
 

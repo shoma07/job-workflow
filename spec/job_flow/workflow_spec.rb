@@ -15,6 +15,7 @@ RSpec.describe JobFlow::Workflow do
       JobFlow::Task.new(
         job_name: "TestJob",
         name: :sample_task,
+        namespace: JobFlow::Namespace.default,
         block: ->(ctx) { ctx[:key] }
       )
     end
@@ -27,8 +28,9 @@ RSpec.describe JobFlow::Workflow do
 
     let(:workflow) do
       workflow = described_class.new
-      workflow.add_task(JobFlow::Task.new(job_name: "TestJob", name: :task1, block: ->(ctx) { ctx[:a] }))
-      workflow.add_task(JobFlow::Task.new(job_name: "TestJob", name: :task2, block: ->(ctx) { ctx[:b] }))
+      namespace = JobFlow::Namespace.default
+      workflow.add_task(JobFlow::Task.new(job_name: "TestJob", name: :task1, namespace:, block: ->(ctx) { ctx[:a] }))
+      workflow.add_task(JobFlow::Task.new(job_name: "TestJob", name: :task2, namespace:, block: ->(ctx) { ctx[:b] }))
       workflow
     end
 
@@ -48,7 +50,14 @@ RSpec.describe JobFlow::Workflow do
       workflow.add_task(task)
       workflow
     end
-    let(:task) { JobFlow::Task.new(job_name: "TestJob", name: :task1, block: ->(ctx) { ctx[:a] }) }
+    let(:task) do
+      JobFlow::Task.new(
+        job_name: "TestJob",
+        name: :task1,
+        namespace: JobFlow::Namespace.default,
+        block: ->(ctx) { ctx[:a] }
+      )
+    end
 
     context "when task exists" do
       let(:task_name) { :task1 }

@@ -77,8 +77,11 @@ RSpec.describe JobFlow::Context do
         job = Class.new(ActiveJob::Base) { include JobFlow::DSL }.new
         init._current_job = job
         task = JobFlow::Task.new(
-          job_name: "TestJob", name: :ctx_two,
-          each: ->(_ctx) { [0, 1, 2, 3] }, block: ->(_ctx) {}
+          job_name: "TestJob",
+          name: :ctx_two,
+          namespace: JobFlow::Namespace.default,
+          each: ->(_ctx) { [0, 1, 2, 3] },
+          block: ->(_ctx) {}
         )
         indices = init._with_each_value(task).map { |ctx| ctx._each_context.index }
         expect(indices).to eq([1, 2, 3])
@@ -102,8 +105,12 @@ RSpec.describe JobFlow::Context do
 
       let(:task_with_retry) do
         JobFlow::Task.new(
-          job_name: "TestJob", name: :retry_task,
-          each: ->(_ctx) { [:a] }, block: ->(_ctx) {}, task_retry: 3
+          job_name: "TestJob",
+          name: :retry_task,
+          namespace: JobFlow::Namespace.default,
+          each: ->(_ctx) { [:a] },
+          block: ->(_ctx) {},
+          task_retry: 3
         )
       end
 
@@ -134,12 +141,10 @@ RSpec.describe JobFlow::Context do
         )
       end
 
-      it "creates a context with task outputs" do
-        expect(init).to have_attributes(
-          output: have_attributes(
-            task_one: contain_exactly(have_attributes(result: 100)),
-            task_two: contain_exactly(have_attributes(result: 200))
-          )
+      it do
+        expect(init.output.flat_task_outputs).to contain_exactly(
+          have_attributes(task_name: :task_one, each_index: 0, data: { result: 100 }),
+          have_attributes(task_name: :task_two, each_index: 0, data: { result: 200 })
         )
       end
     end
@@ -214,11 +219,14 @@ RSpec.describe JobFlow::Context do
       expect(from_hash).to have_attributes(
         arguments: have_attributes(arg_one: nil, arg_two: 1),
         _each_context: have_attributes(parent_job_id: "parent-id", index: 0, value: 10),
-        output: have_attributes(
-          task_a: contain_exactly(have_attributes(result: 100)),
-          task_b: contain_exactly(have_attributes(value: 200))
-        ),
         job_status: be_a(JobFlow::JobStatus)
+      )
+    end
+
+    it do
+      expect(from_hash.output.flat_task_outputs).to contain_exactly(
+        have_attributes(task_name: :task_a, each_index: 0, data: { result: 100 }),
+        have_attributes(task_name: :task_b, each_index: 0, data: { value: 200 })
       )
     end
   end
@@ -251,11 +259,14 @@ RSpec.describe JobFlow::Context do
         expect(deserialized).to have_attributes(
           arguments: have_attributes(arg_one: nil, arg_two: 1),
           _each_context: have_attributes(parent_job_id: "parent-id", index: 0, value: 10),
-          output: have_attributes(
-            task_a: contain_exactly(have_attributes(result: 100)),
-            task_b: contain_exactly(have_attributes(value: 200))
-          ),
           job_status: be_a(JobFlow::JobStatus)
+        )
+      end
+
+      it do
+        expect(deserialized.output.flat_task_outputs).to contain_exactly(
+          have_attributes(task_name: :task_a, each_index: 0, data: { result: 100 }),
+          have_attributes(task_name: :task_b, each_index: 0, data: { value: 200 })
         )
       end
     end
@@ -325,6 +336,27 @@ RSpec.describe JobFlow::Context do
           ]
         }
       )
+    end
+
+    context "when task_outputs contain a namespaced task_name" do
+      let(:ctx) do
+        described_class.new(
+          workflow:,
+          arguments: JobFlow::Arguments.new(data: { arg_one: "test", arg_two: 42 }),
+          each_context: JobFlow::EachContext.new,
+          output: JobFlow::Output.new(
+            task_outputs: [
+              JobFlow::TaskOutput.new(task_name: :"ns:task_one", each_index: 0, data: { result: 100 })
+            ]
+          ),
+          job_status: JobFlow::JobStatus.new
+        )
+      end
+
+      it "preserves the namespace separator" do
+        task_names = serialized.fetch("task_outputs", []).map { |h| h.fetch("task_name") }
+        expect(task_names).to contain_exactly("ns:task_one")
+      end
     end
   end
 
@@ -399,8 +431,11 @@ RSpec.describe JobFlow::Context do
     context "when called inside _with_each_value" do
       let(:task) do
         JobFlow::Task.new(
-          job_name: "TestJob", name: :process_items,
-          each: ->(ctx) { ctx.arguments.items }, block: ->(_ctx) {}
+          job_name: "TestJob",
+          name: :process_items,
+          namespace: JobFlow::Namespace.default,
+          each: ->(ctx) { ctx.arguments.items },
+          block: ->(_ctx) {}
         )
       end
 
@@ -420,7 +455,14 @@ RSpec.describe JobFlow::Context do
   describe "#concurrency_key" do
     subject(:concurrency_key) { ctx.concurrency_key }
 
-    let(:task) { JobFlow::Task.new(job_name: "TestJob", name: :task_name, block: ->(_ctx) {}) }
+    let(:task) do
+      JobFlow::Task.new(
+        job_name: "TestJob",
+        name: :task_name,
+        namespace: JobFlow::Namespace.default,
+        block: ->(_ctx) {}
+      )
+    end
 
     context "when enabled and current_task is set" do
       let(:ctx) do
@@ -525,7 +567,7 @@ RSpec.describe JobFlow::Context do
 
       it "adds the task output to the output" do
         add_task_output
-        expect(ctx.output.sample_task).to contain_exactly(
+        expect(ctx.output[:sample_task]).to contain_exactly(
           have_attributes(
             result: 42,
             message: "success"
@@ -558,7 +600,7 @@ RSpec.describe JobFlow::Context do
       before { task_outputs.each { |task_output| ctx._add_task_output(task_output) } }
 
       it "adds all task outputs as an array" do
-        expect(ctx.output.map_task).to contain_exactly(
+        expect(ctx.output[:map_task]).to contain_exactly(
           have_attributes(result: 10),
           have_attributes(result: 20),
           have_attributes(result: 30)
@@ -582,8 +624,11 @@ RSpec.describe JobFlow::Context do
     end
     let(:task) do
       JobFlow::Task.new(
-        job_name: "TestJob", name: :process_items,
-        each: ->(ctx) { ctx.arguments.items }, block: ->(_ctx) {}
+        job_name: "TestJob",
+        name: :process_items,
+        namespace: JobFlow::Namespace.default,
+        each: ->(ctx) { ctx.arguments.items },
+        block: ->(_ctx) {}
       )
     end
 
@@ -629,8 +674,11 @@ RSpec.describe JobFlow::Context do
     end
     let(:task) do
       JobFlow::Task.new(
-        job_name: "TestJob", name: :process_items,
-        each: ->(ctx) { ctx.arguments.items }, block: ->(_ctx) {}
+        job_name: "TestJob",
+        name: :process_items,
+        namespace: JobFlow::Namespace.default,
+        each: ->(ctx) { ctx.arguments.items },
+        block: ->(_ctx) {}
       )
     end
 
@@ -684,7 +732,15 @@ RSpec.describe JobFlow::Context do
     end
 
     context "when called with current_task but outside _with_each_value" do
-      let(:task) { JobFlow::Task.new(job_name: "TestJob", name: :task_name, block: ->(_ctx) {}) }
+      let(:task) do
+        JobFlow::Task.new(
+          job_name: "TestJob",
+          name: :task_name,
+          namespace: JobFlow::Namespace.default,
+          block: ->(_ctx) {}
+        )
+      end
+
       let(:ctx) do
         described_class.new(
           workflow:,
@@ -712,7 +768,14 @@ RSpec.describe JobFlow::Context do
     end
 
     context "when called inside _with_each_value but no matching output" do
-      let(:task) { JobFlow::Task.new(job_name: "TestJob", name: :task_name, block: ->(_ctx) {}) }
+      let(:task) do
+        JobFlow::Task.new(
+          job_name: "TestJob",
+          name: :task_name,
+          namespace: JobFlow::Namespace.default,
+          block: ->(_ctx) {}
+        )
+      end
       let(:ctx) do
         described_class.new(
           workflow:,
@@ -739,7 +802,14 @@ RSpec.describe JobFlow::Context do
     end
 
     context "when called inside _with_each_value with matching output" do
-      let(:task) { JobFlow::Task.new(job_name: "TestJob", name: :task_name, block: ->(_ctx) {}) }
+      let(:task) do
+        JobFlow::Task.new(
+          job_name: "TestJob",
+          name: :task_name,
+          namespace: JobFlow::Namespace.default,
+          block: ->(_ctx) {}
+        )
+      end
       let(:ctx) do
         described_class.new(
           workflow:,
@@ -778,14 +848,20 @@ RSpec.describe JobFlow::Context do
     end
     let(:items_task) do
       JobFlow::Task.new(
-        job_name: "TestJob", name: :process_items,
-        each: ->(ctx) { ctx.arguments.items }, block: ->(_ctx) {}
+        job_name: "TestJob",
+        name: :process_items,
+        namespace: JobFlow::Namespace.default,
+        each: ->(ctx) { ctx.arguments.items },
+        block: ->(_ctx) {}
       )
     end
     let(:nested_task) do
       JobFlow::Task.new(
-        job_name: "TestJob", name: :process_nested,
-        each: ->(ctx) { ctx.arguments.nested }, block: ->(_ctx) {}
+        job_name: "TestJob",
+        name: :process_nested,
+        namespace: JobFlow::Namespace.default,
+        each: ->(ctx) { ctx.arguments.nested },
+        block: ->(_ctx) {}
       )
     end
 
@@ -830,8 +906,11 @@ RSpec.describe JobFlow::Context do
 
       let(:task_without_throttle) do
         JobFlow::Task.new(
-          job_name: "TestJob", name: :no_throttle_task,
-          each: ->(_ctx) { [1] }, block: ->(_ctx) {}
+          job_name: "TestJob",
+          name: :no_throttle_task,
+          namespace: JobFlow::Namespace.default,
+          each: ->(_ctx) { [1] },
+          block: ->(_ctx) {}
         )
       end
 
@@ -847,8 +926,11 @@ RSpec.describe JobFlow::Context do
 
       let(:task_with_throttle) do
         JobFlow::Task.new(
-          job_name: "TestJob", name: :throttled_task,
-          each: ->(_ctx) { [1] }, block: ->(_ctx) {},
+          job_name: "TestJob",
+          name: :throttled_task,
+          namespace: JobFlow::Namespace.default,
+          each: ->(_ctx) { [1] },
+          block: ->(_ctx) {},
           throttle: 5
         )
       end
@@ -862,8 +944,11 @@ RSpec.describe JobFlow::Context do
 
     let(:task) do
       JobFlow::Task.new(
-        job_name: "TestJob", name: :throttle_test_task,
-        each: ->(_ctx) { [1] }, block: ->(_ctx) {}
+        job_name: "TestJob",
+        name: :throttle_test_task,
+        namespace: JobFlow::Namespace.default,
+        each: ->(_ctx) { [1] },
+        block: ->(_ctx) {}
       )
     end
 

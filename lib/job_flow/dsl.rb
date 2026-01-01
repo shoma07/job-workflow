@@ -90,7 +90,14 @@ module JobFlow
 
       #:  (Symbol argument_name, String type, ?default: untyped) -> void
       def argument(argument_name, type, default: nil)
+        raise "cannot be defined within a namespace." unless _workflow.namespace.default?
+
         _workflow.add_argument(ArgumentDef.new(name: argument_name, type:, default:))
+      end
+
+      #:  (Symbol) { () -> void } -> void
+      def namespace(namespace_name, &)
+        _workflow.add_namespace(Namespace.new(name: namespace_name), &)
       end
 
       # rubocop:disable Metrics/ParameterLists
@@ -119,6 +126,7 @@ module JobFlow
         new_task = Task.new(
           job_name: name,
           name: task_name,
+          namespace: _workflow.namespace,
           block: block,
           enqueue:,
           each:,
@@ -138,16 +146,22 @@ module JobFlow
 
       #:  (*Symbol) { (Context) -> void } -> void
       def before(*task_names, &block)
+        raise "cannot be defined within a namespace." unless _workflow.namespace.default?
+
         _workflow.add_hook(:before, task_names:, block:)
       end
 
       #:  (*Symbol) { (Context) -> void } -> void
       def after(*task_names, &block)
+        raise "cannot be defined within a namespace." unless _workflow.namespace.default?
+
         _workflow.add_hook(:after, task_names:, block:)
       end
 
       #:  (*Symbol) { (Context, TaskCallable) -> void } -> void
       def around(*task_names, &block)
+        raise "cannot be defined within a namespace." unless _workflow.namespace.default?
+
         _workflow.add_hook(:around, task_names:, block:)
       end
     end

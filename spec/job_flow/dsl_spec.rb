@@ -15,7 +15,7 @@ RSpec.describe JobFlow::DSL do
         end
 
         task :task_two, output: { value: "Integer" }, depends_on: %i[task_one] do |ctx|
-          { value: ctx.output.task_one.first.value + 2 }
+          { value: ctx.output[:task_one].first.value + 2 }
         end
       end
     end
@@ -24,7 +24,7 @@ RSpec.describe JobFlow::DSL do
 
     it "modifies context through tasks" do
       perform
-      expect(job._context.output.task_two.first.value).to eq(3)
+      expect(job._context.output[:task_two].first.value).to eq(3)
     end
   end
 
@@ -91,6 +91,32 @@ RSpec.describe JobFlow::DSL do
     end
   end
 
+  describe "self.argument" do
+    let(:klass) do
+      Class.new(ActiveJob::Base) do
+        include JobFlow::DSL
+      end
+    end
+
+    context "with not default namespace" do
+      it do
+        expect do
+          klass.namespace :custom_namespace do
+            klass.argument :example_argument, "Integer", default: 10
+          end
+        end.to raise_error("cannot be defined within a namespace.")
+      end
+    end
+
+    context "with default namespace" do
+      it do
+        expect { klass.argument(:example_argument, "Integer", default: 10) }.to(
+          change { klass._workflow.arguments.size }.from(0).to(1)
+        )
+      end
+    end
+  end
+
   describe "self.task" do
     let(:klass) do
       Class.new(ActiveJob::Base) do
@@ -137,7 +163,7 @@ RSpec.describe JobFlow::DSL do
           { value: ctx.each_value * 2 }
         end
         klass.task :task_two, output: { value: "Integer" }, depends_on: %i[task_one] do |ctx|
-          { value: ctx.output.task_one.sum(&:value) }
+          { value: ctx.output[:task_one].sum(&:value) }
         end
       end
 
@@ -147,7 +173,7 @@ RSpec.describe JobFlow::DSL do
         task
         job = klass.new
         job.perform({})
-        expect(job._context.output.task_two.first.value).to eq(12)
+        expect(job._context.output[:task_two].first.value).to eq(12)
       end
 
       it do
@@ -250,6 +276,54 @@ RSpec.describe JobFlow::DSL do
     end
   end
 
+  describe "self.namespace" do
+    let(:klass) do
+      Class.new(ActiveJob::Base) do
+        include JobFlow::DSL
+      end
+    end
+
+    context "when defining tasks within a namespace" do
+      subject(:define_workflow) do
+        klass.namespace :processing do
+          klass.task :step1 do |_ctx|
+            nil
+          end
+
+          klass.task :step2, depends_on: [:"processing:step1"] do |_ctx|
+            nil
+          end
+        end
+      end
+
+      it "prefixes task_name with namespace" do
+        define_workflow
+
+        task_names = klass._workflow.tasks.map(&:task_name)
+        expect(task_names).to contain_exactly(:"processing:step1", :"processing:step2")
+      end
+    end
+
+    context "when defining nested namespaces" do
+      subject(:define_workflow) do
+        klass.namespace :outer do
+          klass.namespace :inner do
+            klass.task :nested_task do |_ctx|
+              nil
+            end
+          end
+        end
+      end
+
+      it "builds nested task_name" do
+        define_workflow
+
+        task_names = klass._workflow.tasks.map(&:task_name)
+        expect(task_names).to contain_exactly(:"outer:inner:nested_task")
+      end
+    end
+  end
+
   describe "#_context" do
     subject(:_context) { job._context }
 
@@ -280,9 +354,12 @@ RSpec.describe JobFlow::DSL do
       it do
         expect(_context).to have_attributes(
           class: JobFlow::Context,
-          arguments: have_attributes(value: 42),
-          output: have_attributes(increment: contain_exactly(have_attributes(value: 52)))
+          arguments: have_attributes(value: 42)
         )
+      end
+
+      it do
+        expect(_context.output[:increment]).to contain_exactly(have_attributes(value: 52))
       end
     end
   end
@@ -420,7 +497,7 @@ RSpec.describe JobFlow::DSL do
         end
 
         task :task_three, output: { value: "Integer" }, depends_on: %i[task_two] do |ctx|
-          { value: ctx.output.task_two.sum(&:value) }
+          { value: ctx.output[:task_two].sum(&:value) }
         end
 
         def self.name
@@ -441,17 +518,29 @@ RSpec.describe JobFlow::DSL do
     end
 
     context "when executing all steps on first run" do
-      it do
-        job = job_class.new
+      let(:job) { job_class.new }
+
+      before do
         job.perform({ value: 0, items: [10, 20] })
-        expect(job._context).to have_attributes(
-          arguments: have_attributes(value: 0, items: [10, 20]),
-          output: have_attributes(
-            task_one: contain_exactly(have_attributes(value: 1)),
-            task_two: contain_exactly(have_attributes(value: 10), have_attributes(value: 20)),
-            task_three: contain_exactly(have_attributes(value: 30))
-          )
+      end
+
+      it do
+        expect(job._context.arguments).to have_attributes(value: 0, items: [10, 20])
+      end
+
+      it do
+        expect(job._context.output[:task_one]).to contain_exactly(have_attributes(value: 1))
+      end
+
+      it do
+        expect(job._context.output[:task_two]).to contain_exactly(
+          have_attributes(value: 10),
+          have_attributes(value: 20)
         )
+      end
+
+      it do
+        expect(job._context.output[:task_three]).to contain_exactly(have_attributes(value: 30))
       end
     end
 
@@ -479,36 +568,44 @@ RSpec.describe JobFlow::DSL do
     end
 
     context "when tracking progress within each iteration" do
-      it do
-        job = job_class.new
+      let(:job) { job_class.new }
+
+      before do
         job.perform({ value: 0, items: [1, 2, 3, 4, 5] })
-        expect(job).to have_attributes(
-          serialize: include("continuation" => { "completed" => %w[task_one task_two task_three] }),
-          _context: have_attributes(
-            arguments: have_attributes(value: 0, items: [1, 2, 3, 4, 5]),
-            output: have_attributes(task_three: contain_exactly(have_attributes(value: 15)))
-          )
+      end
+
+      it do
+        expect(job.serialize).to include(
+          "continuation" => { "completed" => %w[task_one task_two task_three] }
         )
+      end
+
+      it do
+        expect(job._context.output[:task_three]).to contain_exactly(have_attributes(value: 15))
       end
     end
 
     context "when resuming within each iteration" do
-      it do
-        job_one = job_class.new
+      let(:job_one) { job_class.new }
+      let(:job_two) { job_class.new }
+
+      before do
         job_one.perform({ value: 0, items: [10, 20, 30] })
-        job_two = job_class.new
         job_two.deserialize(job_one.serialize)
-        expect([job_one, job_two]).to have_attributes(
-          first: have_attributes(
-            serialize: include("continuation" => { "completed" => %w[task_one task_two task_three] })
-          ),
-          last: have_attributes(
-            _context: have_attributes(
-              arguments: have_attributes(value: 0, items: []),
-              output: have_attributes(task_three: contain_exactly(have_attributes(value: 60)))
-            )
-          )
+      end
+
+      it do
+        expect(job_one.serialize).to include(
+          "continuation" => { "completed" => %w[task_one task_two task_three] }
         )
+      end
+
+      it do
+        expect(job_two._context.arguments).to have_attributes(value: 0, items: [])
+      end
+
+      it do
+        expect(job_two._context.output[:task_three]).to contain_exactly(have_attributes(value: 60))
       end
     end
 
@@ -528,7 +625,7 @@ RSpec.describe JobFlow::DSL do
     end
   end
 
-  describe ".before" do
+  describe "self.before" do
     subject(:add_before) { klass.before(:task_a, :task_b) { |_ctx| "before" } }
 
     let(:klass) do
@@ -537,13 +634,25 @@ RSpec.describe JobFlow::DSL do
       end
     end
 
-    it "adds a before hook to workflow" do
-      expect { add_before }.to change { klass._workflow.hooks.before_hooks_for(:task_a).size }.from(0).to(1)
+    context "with not default namespace" do
+      it do
+        expect do
+          klass.namespace :custom_namespace do
+            add_before
+          end
+        end.to raise_error("cannot be defined within a namespace.")
+      end
     end
 
-    it "applies to multiple tasks" do
-      add_before
-      expect(klass._workflow.hooks.before_hooks_for(:task_b).size).to eq(1)
+    context "with task names" do
+      it "adds a before hook to workflow" do
+        expect { add_before }.to change { klass._workflow.hooks.before_hooks_for(:task_a).size }.from(0).to(1)
+      end
+
+      it "applies to multiple tasks" do
+        add_before
+        expect(klass._workflow.hooks.before_hooks_for(:task_b).size).to eq(1)
+      end
     end
 
     context "when no task names specified (global hook)" do
@@ -556,7 +665,7 @@ RSpec.describe JobFlow::DSL do
     end
   end
 
-  describe ".after" do
+  describe "self.after" do
     subject(:add_after) { klass.after(:task_a) { |_ctx| "after" } }
 
     let(:klass) do
@@ -565,8 +674,20 @@ RSpec.describe JobFlow::DSL do
       end
     end
 
-    it "adds an after hook to workflow" do
-      expect { add_after }.to change { klass._workflow.hooks.after_hooks_for(:task_a).size }.from(0).to(1)
+    context "with not default namespace" do
+      it do
+        expect do
+          klass.namespace :custom_namespace do
+            add_after
+          end
+        end.to raise_error("cannot be defined within a namespace.")
+      end
+    end
+
+    context "with task names" do
+      it "adds an after hook to workflow" do
+        expect { add_after }.to change { klass._workflow.hooks.after_hooks_for(:task_a).size }.from(0).to(1)
+      end
     end
 
     context "when no task names specified (global hook)" do
@@ -579,7 +700,7 @@ RSpec.describe JobFlow::DSL do
     end
   end
 
-  describe ".around" do
+  describe "self.around" do
     subject(:add_around) { klass.around(:task_a) { |_ctx, task| task.call } }
 
     let(:klass) do
@@ -588,8 +709,20 @@ RSpec.describe JobFlow::DSL do
       end
     end
 
-    it "adds an around hook to workflow" do
-      expect { add_around }.to change { klass._workflow.hooks.around_hooks_for(:task_a).size }.from(0).to(1)
+    context "with not default namespace" do
+      it do
+        expect do
+          klass.namespace :custom_namespace do
+            add_around
+          end
+        end.to raise_error("cannot be defined within a namespace.")
+      end
+    end
+
+    context "with task names" do
+      it "adds an around hook to workflow" do
+        expect { add_around }.to change { klass._workflow.hooks.around_hooks_for(:task_a).size }.from(0).to(1)
+      end
     end
 
     context "when no task names specified (global hook)" do

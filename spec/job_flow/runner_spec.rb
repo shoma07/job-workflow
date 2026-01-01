@@ -32,6 +32,302 @@ RSpec.describe JobFlow::Runner do
 
     let(:runner) { described_class.new(job:, context: ctx) }
 
+    context "with namespace tasks" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          argument :value, "Integer", default: 0
+
+          namespace :processing do
+            task :step1, output: { result: "Integer" } do |ctx|
+              { result: ctx.arguments.value + 1 }
+            end
+
+            task :step2, depends_on: [:"processing:step1"], output: { result: "Integer" } do |ctx|
+              previous_result = ctx.output[:"processing:step1"].first.result
+              { result: previous_result * 2 }
+            end
+          end
+
+          task :final, depends_on: [:"processing:step2"], output: { result: "Integer" } do |ctx|
+            previous_result = ctx.output[:"processing:step2"].first.result
+            { result: previous_result + 10 }
+          end
+        end
+
+        klass.new(value: 5)
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments(job.arguments[0])
+      end
+
+      before { run }
+
+      it "collects step1 output" do
+        expect(ctx.output[:"processing:step1"].first.result).to eq(6)
+      end
+
+      it "collects step2 output" do
+        expect(ctx.output[:"processing:step2"].first.result).to eq(12)
+      end
+
+      it "collects final output" do
+        expect(ctx.output[:final].first.result).to eq(22)
+      end
+    end
+
+    context "when current_task is executed within a namespace" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          argument :value, "Integer", default: 0
+
+          namespace :check do
+            task :verify_current_task,
+                 output: {
+                   current_task_task_name: "Symbol",
+                   current_task_name: "Symbol",
+                   current_task_namespace: "Symbol"
+                 } do |ctx|
+              current_task = ctx.current_task
+
+              {
+                current_task_task_name: current_task&.task_name,
+                current_task_name: current_task&.name,
+                current_task_namespace: current_task&.namespace&.name
+              }
+            end
+          end
+        end
+
+        klass.new(value: 0)
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments(job.arguments[0])
+      end
+
+      before { run }
+
+      it "provides correct current_task" do
+        task_output = ctx.output[:"check:verify_current_task"].first
+        expect(task_output).to have_attributes(
+          current_task_task_name: :"check:verify_current_task",
+          current_task_name: :verify_current_task,
+          current_task_namespace: :check
+        )
+      end
+    end
+
+    context "with namespace map tasks" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          argument :items, "Array[Integer]", default: []
+
+          namespace :map_processing do
+            task :process_each,
+                 each: ->(ctx) { ctx.arguments.items },
+                 output: { doubled: "Integer" } do |ctx|
+              { doubled: ctx.each_value * 2 }
+            end
+          end
+
+          task :sum_results, depends_on: [:"map_processing:process_each"], output: { total: "Integer" } do |ctx|
+            results = ctx.output[:"map_processing:process_each"]
+            { total: results.sum(&:doubled) }
+          end
+        end
+
+        klass.new(items: [1, 2, 3, 4, 5])
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments(job.arguments[0])
+      end
+
+      before { run }
+
+      it "executes namespace map tasks" do
+        namespace_results = ctx.output[:"map_processing:process_each"]
+        expect(namespace_results.map(&:doubled)).to eq([2, 4, 6, 8, 10])
+      end
+
+      it "collects sum_results output" do
+        expect(ctx.output[:sum_results].first.total).to eq(30)
+      end
+    end
+
+    context "with nested namespaces" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          argument :value, "Integer", default: 0
+
+          namespace :outer do
+            namespace :inner do
+              task :nested_task, output: { result: "Integer" } do |ctx|
+                { result: ctx.arguments.value + 100 }
+              end
+            end
+
+            task :outer_task, depends_on: [:"outer:inner:nested_task"], output: { result: "Integer" } do |ctx|
+              previous = ctx.output[:"outer:inner:nested_task"].first.result
+              { result: previous + 50 }
+            end
+          end
+
+          task :root_task, depends_on: [:"outer:outer_task"], output: { result: "Integer" } do |ctx|
+            previous = ctx.output[:"outer:outer_task"].first.result
+            { result: previous + 10 }
+          end
+        end
+
+        klass.new(value: 1)
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments(job.arguments[0])
+      end
+
+      before { run }
+
+      it "collects nested_task output" do
+        expect(ctx.output[:"outer:inner:nested_task"].first.result).to eq(101)
+      end
+
+      it "collects outer_task output" do
+        expect(ctx.output[:"outer:outer_task"].first.result).to eq(151)
+      end
+
+      it "collects root_task output" do
+        expect(ctx.output[:root_task].first.result).to eq(161)
+      end
+    end
+
+    context "when namespace each task enqueues sub-jobs" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          def self.limits_concurrency(to:, key:); end
+
+          argument :items, "Array[Integer]", default: []
+
+          namespace :parallel do
+            task :concurrent_process,
+                 each: ->(ctx) { ctx.arguments.items },
+                 enqueue: { condition: ->(ctx) { ctx._each_context.parent_job_id.nil? }, concurrency: 2 },
+                 output: { result: "Integer" } do |ctx|
+              { result: ctx.each_value * 3 }
+            end
+          end
+        end
+
+        klass.new(items: [1, 2, 3])
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments(job.arguments[0])
+      end
+
+      it "calls perform_all_later" do
+        allow(job.class).to receive(:perform_all_later).and_return(nil)
+
+        run
+
+        expect(job.class).to have_received(:perform_all_later)
+      end
+
+      it "records job status with namespace task name" do
+        allow(job.class).to receive(:perform_all_later).and_return(nil)
+
+        run
+
+        status_tasks = ctx.job_status.flat_task_job_statuses.map(&:task_name).uniq
+        expect(status_tasks).to contain_exactly(:"parallel:concurrent_process")
+      end
+    end
+
+    context "when namespace task raises" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          argument :should_fail, "Boolean", default: false
+
+          namespace :error_test do
+            task :failing_task do |ctx|
+              raise StandardError, "Intentional failure" if ctx.arguments.should_fail
+            end
+          end
+        end
+
+        klass.new(should_fail: true)
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments(job.arguments[0])
+      end
+
+      it "propagates error" do
+        expect { run }.to raise_error(StandardError, "Intentional failure")
+      end
+    end
+
+    context "when namespace task uses throttle" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          argument :items, "Array[Integer]", default: []
+
+          namespace :throttled do
+            task :throttled_task,
+                 each: ->(ctx) { ctx.arguments.items },
+                 throttle: 3,
+                 output: { result: "Integer" } do |ctx|
+              { result: ctx.each_value * 2 }
+            end
+          end
+        end
+
+        klass.new(items: [1, 2, 3])
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ workflow: job.class._workflow })._update_arguments(job.arguments[0])
+      end
+
+      let(:semaphore) do
+        Class.new do
+          attr_reader :with_calls
+
+          def initialize
+            @with_calls = 0
+          end
+
+          def with
+            @with_calls += 1
+            yield
+          end
+        end.new
+      end
+
+      before do
+        allow(JobFlow::Semaphore).to receive(:new).and_return(semaphore)
+      end
+
+      it "wraps execution with semaphore" do
+        run
+
+        expect(semaphore.with_calls).to eq(3)
+      end
+
+      it "uses namespace in throttle key" do
+        task = job.class._workflow.fetch_task(:"throttled:throttled_task")
+        expect(task.throttle_prefix_key).to include("throttled:throttled_task")
+      end
+    end
+
     context "when current_task is set (sub-job execution)" do
       let(:job) do
         klass = Class.new(ActiveJob::Base) do
@@ -75,14 +371,14 @@ RSpec.describe JobFlow::Runner do
           end
 
           task :task_two, output: { value: "Integer" }, depends_on: %i[task_one] do |ctx|
-            { value: ctx.output.task_one.first.value + 2 }
+            { value: ctx.output[:task_one].first.value + 2 }
           end
 
           task :task_ignore,
                output: { value: "Integer" },
                condition: ->(_ctx) { false },
                depends_on: %i[task_two] do |ctx|
-            { value: ctx.output.task_two.first.value + 100 }
+            { value: ctx.output[:task_two].first.value + 100 }
           end
         end
         klass.new
@@ -93,7 +389,7 @@ RSpec.describe JobFlow::Runner do
 
       it do
         run
-        expect(ctx.output.task_two.first.value).to eq(3)
+        expect(ctx.output[:task_two].first.value).to eq(3)
       end
     end
 
@@ -109,7 +405,7 @@ RSpec.describe JobFlow::Runner do
           end
 
           task :aggregate_sum, output: { value: "Integer" }, depends_on: %i[process_items] do |ctx|
-            { value: ctx.output.process_items.sum(&:value) }
+            { value: ctx.output[:process_items].sum(&:value) }
           end
         end
         klass.new
@@ -120,7 +416,7 @@ RSpec.describe JobFlow::Runner do
 
       it do
         run
-        expect(ctx.output.aggregate_sum.first.value).to eq(6)
+        expect(ctx.output[:aggregate_sum].first.value).to eq(6)
       end
     end
 
@@ -139,11 +435,11 @@ RSpec.describe JobFlow::Runner do
                output: { value: "Integer" },
                each: ->(ctx) { ctx.arguments.items },
                depends_on: %i[setup] do |ctx|
-            { value: ctx.each_value * ctx.output.setup.first.value }
+            { value: ctx.each_value * ctx.output[:setup].first.value }
           end
 
           task :finalize, output: { value: "Integer" }, depends_on: %i[process_items] do |ctx|
-            { value: ctx.output.process_items.sum(&:value) }
+            { value: ctx.output[:process_items].sum(&:value) }
           end
         end
         klass.new
@@ -154,7 +450,7 @@ RSpec.describe JobFlow::Runner do
 
       it do
         run
-        expect(ctx.output.finalize.first.value).to eq(90)
+        expect(ctx.output[:finalize].first.value).to eq(90)
       end
     end
 
@@ -183,7 +479,7 @@ RSpec.describe JobFlow::Runner do
 
       it "does not execute the each task" do
         run
-        expect(ctx.output.respond_to?(:process_items)).to be(false)
+        expect(ctx.output[:process_items]).to be_empty
       end
     end
 
@@ -227,7 +523,13 @@ RSpec.describe JobFlow::Runner do
           argument :items, "Array[Integer]", default: []
 
           task :process_items, output: { result: "Integer" }, each: ->(ctx) { ctx.arguments.items } do |ctx|
-            nested_task = JobFlow::Task.new(job_name: "TestJob", name: :nested, each: ->(_) { [1, 2] }, block: ->(_) {})
+            nested_task = JobFlow::Task.new(
+              job_name: "TestJob",
+              name: :nested,
+              namespace: JobFlow::Namespace.default,
+              each: ->(_) { [1, 2] },
+              block: ->(_) {}
+            )
             ctx._with_each_value(nested_task).to_a
             { result: ctx.each_value * 2 }
           end
@@ -263,7 +565,7 @@ RSpec.describe JobFlow::Runner do
 
       it "collects output from the task" do
         run
-        expect(ctx.output.calculate).to contain_exactly(have_attributes(result: 126, message: "done"))
+        expect(ctx.output[:calculate]).to contain_exactly(have_attributes(result: 126, message: "done"))
       end
     end
 
@@ -287,7 +589,7 @@ RSpec.describe JobFlow::Runner do
 
       it "collects output from each iteration" do
         run
-        expect(ctx.output.process_items).to contain_exactly(
+        expect(ctx.output[:process_items]).to contain_exactly(
           have_attributes(doubled: 20), have_attributes(doubled: 40), have_attributes(doubled: 60)
         )
       end
@@ -312,7 +614,7 @@ RSpec.describe JobFlow::Runner do
 
       it "does not collect output" do
         run
-        expect(ctx.output.respond_to?(:no_output)).to be(false)
+        expect(ctx.output[:no_output]).to be_empty
       end
     end
 
@@ -333,7 +635,7 @@ RSpec.describe JobFlow::Runner do
 
       it "wraps value in Hash with :value key" do
         run
-        expect(ctx.output.simple_value.first.value).to eq(42)
+        expect(ctx.output[:simple_value].first.value).to eq(42)
       end
     end
 
@@ -361,7 +663,7 @@ RSpec.describe JobFlow::Runner do
 
       it "does not collect output (future enhancement)" do
         run
-        expect(ctx.output.respond_to?(:process_items)).to be(false)
+        expect(ctx.output[:process_items]).to be_empty
       end
     end
 
@@ -377,7 +679,7 @@ RSpec.describe JobFlow::Runner do
           end
 
           task :second_task, depends_on: [:first_task], output: { step2: "Integer" } do |ctx|
-            { step2: 10 + ctx.output.first_task.first.step1 }
+            { step2: 10 + ctx.output[:first_task].first.step1 }
           end
         end
         klass.new
@@ -388,7 +690,7 @@ RSpec.describe JobFlow::Runner do
 
       it "has access to dependency outputs" do
         run
-        expect(ctx.output.second_task.first.step2).to eq(20)
+        expect(ctx.output[:second_task].first.step2).to eq(20)
       end
     end
 
@@ -412,7 +714,7 @@ RSpec.describe JobFlow::Runner do
           end
 
           task :summarize, depends_on: [:parallel_process], output: { result: "Integer" } do |ctx|
-            { result: ctx.output.parallel_process.sum(&:value) }
+            { result: ctx.output[:parallel_process].sum(&:value) }
           end
         end
         klass.new
@@ -499,7 +801,7 @@ RSpec.describe JobFlow::Runner do
 
       it "waits for concurrent task completion and collects outputs" do
         run
-        expect(ctx.output.summarize.first.result).to eq(30)
+        expect(ctx.output[:summarize].first.result).to eq(30)
       end
 
       it "polls DB until all jobs are finished" do
@@ -526,7 +828,7 @@ RSpec.describe JobFlow::Runner do
           end
 
           task :sum_task, depends_on: [:sequential_process], output: { total: "Integer" } do |ctx|
-            { total: ctx.output.sequential_process.sum(&:doubled) }
+            { total: ctx.output[:sequential_process].sum(&:doubled) }
           end
         end
         klass.new
@@ -537,7 +839,7 @@ RSpec.describe JobFlow::Runner do
 
       it "does not wait for sequential map tasks" do
         run
-        expect(ctx.output.sum_task.first.total).to eq(30)
+        expect(ctx.output[:sum_task].first.total).to eq(30)
       end
     end
 
@@ -553,7 +855,7 @@ RSpec.describe JobFlow::Runner do
           end
 
           task :dependent_task, depends_on: [:regular_task], output: { value: "Integer" } do |ctx|
-            { value: 5 + ctx.output.regular_task.first.num }
+            { value: 5 + ctx.output[:regular_task].first.num }
           end
         end
         klass.new
@@ -564,7 +866,7 @@ RSpec.describe JobFlow::Runner do
 
       it "does not wait for regular tasks" do
         run
-        expect(ctx.output.dependent_task.first.value).to eq(10)
+        expect(ctx.output[:dependent_task].first.value).to eq(10)
       end
     end
 
@@ -588,7 +890,7 @@ RSpec.describe JobFlow::Runner do
           end
 
           task :consume_result, depends_on: [:fast_parallel], output: { sum: "Integer" } do |ctx|
-            { sum: ctx.output.fast_parallel.sum(&:value) }
+            { sum: ctx.output[:fast_parallel].sum(&:value) }
           end
         end
         klass.new
@@ -664,12 +966,12 @@ RSpec.describe JobFlow::Runner do
 
       it "skips waiting when jobs are already finished" do
         run
-        expect(ctx.output.consume_result.first.sum).to eq(30)
+        expect(ctx.output[:consume_result].first.sum).to eq(30)
       end
 
       it "updates outputs from finished jobs" do
         run
-        expect(ctx.output.fast_parallel.size).to eq(2)
+        expect(ctx.output[:fast_parallel].size).to eq(2)
       end
     end
 
@@ -697,7 +999,7 @@ RSpec.describe JobFlow::Runner do
           end
 
           task :final_task, depends_on: [:parallel_compute], output: { result: "String" } do |ctx|
-            total = ctx.output.parallel_compute.sum(&:squared)
+            total = ctx.output[:parallel_compute].sum(&:squared)
             { result: "total: #{total}" }
           end
         end
@@ -773,7 +1075,7 @@ RSpec.describe JobFlow::Runner do
 
       it "skips waiting for already finished parallel task" do
         run
-        expect(ctx.output.final_task.first.result).to eq("total: 13")
+        expect(ctx.output[:final_task].first.result).to eq("total: 13")
       end
     end
 
@@ -803,7 +1105,7 @@ RSpec.describe JobFlow::Runner do
           end
 
           task :post_task, depends_on: [:parallel_work], output: { sum: "Integer" } do |ctx|
-            { sum: ctx.output.parallel_work.sum(&:result) }
+            { sum: ctx.output[:parallel_work].sum(&:result) }
           end
         end
         klass.new
@@ -852,7 +1154,7 @@ RSpec.describe JobFlow::Runner do
 
       it "skips waiting when dependent parallel task is already finished" do
         run
-        expect(ctx.output.post_task.first.sum).to eq(15)
+        expect(ctx.output[:post_task].first.sum).to eq(15)
       end
     end
 
@@ -886,7 +1188,7 @@ RSpec.describe JobFlow::Runner do
 
       it "returns result without retry when task succeeds on first attempt" do
         run
-        expect(ctx.output.retryable_task.first.result).to eq(11)
+        expect(ctx.output[:retryable_task].first.result).to eq(11)
       end
 
       it "does not call sleep when task succeeds on first attempt" do
@@ -925,7 +1227,7 @@ RSpec.describe JobFlow::Runner do
 
       it "retries and returns the result" do
         run
-        expect(ctx.output.retryable_task.first.result).to eq(11)
+        expect(ctx.output[:retryable_task].first.result).to eq(11)
       end
 
       it "calls sleep once with calculated delay" do
@@ -964,7 +1266,7 @@ RSpec.describe JobFlow::Runner do
 
       it "retries twice and returns the result" do
         run
-        expect(ctx.output.retryable_task.first.result).to eq(11)
+        expect(ctx.output[:retryable_task].first.result).to eq(11)
       end
 
       it "calls sleep twice" do
@@ -1039,7 +1341,7 @@ RSpec.describe JobFlow::Runner do
 
       it do
         run
-        expect(ctx.output.throttled_task.map(&:value)).to eq([2, 4, 6])
+        expect(ctx.output[:throttled_task].map(&:value)).to eq([2, 4, 6])
       end
     end
 
