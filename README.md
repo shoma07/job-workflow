@@ -13,6 +13,7 @@ JobFlow is a declarative workflow orchestration engine for Ruby on Rails applica
 - **Type Safety**: Full RBS type definitions for enhanced reliability
 - **Context Persistence**: Automatic serialization of workflow state
 - **Built-in Resilience**: Retry logic and error handling
+- **Auto Scaling (AWS ECS)**: Optional helper to scale an ECS service based on SolidQueue latency (see the Auto Scaling section in GUIDE.md)
 
 ## Installation
 

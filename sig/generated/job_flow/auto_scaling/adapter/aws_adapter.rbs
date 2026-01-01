@@ -1,0 +1,32 @@
+# Generated from lib/job_flow/auto_scaling/adapter/aws_adapter.rb with RBS::Inline
+
+module JobFlow
+  module AutoScaling
+    module Adapter
+      class AwsAdapter
+        # :  (?ecs_client: Aws::ECS::Client?) -> void
+        def initialize: (?ecs_client: Aws::ECS::Client?) -> void
+
+        # :  (Integer) -> Integer?
+        def update_desired_count: (Integer) -> Integer?
+
+        private
+
+        attr_reader ecs_client: Aws::ECS::Client
+
+        attr_reader cluster: String
+
+        attr_reader task_arn: String
+
+        # :  () -> String
+        def describe_service_name: () -> String
+
+        # :  () -> Aws::ECS::Types::Service
+        def describe_service: () -> Aws::ECS::Types::Service
+
+        # :  (service: Aws::ECS::Types::Service, desired_count: Integer) -> Aws::ECS::Types::UpdateServiceResponse
+        def update_service: (service: Aws::ECS::Types::Service, desired_count: Integer) -> Aws::ECS::Types::UpdateServiceResponse
+      end
+    end
+  end
+end

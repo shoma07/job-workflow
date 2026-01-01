@@ -1637,6 +1637,45 @@ production:
       polling_interval: 1
 ```
 
+### Auto Scaling (AWS ECS)
+
+JobFlow provides a simple autoscaling helper that updates an AWS ECS service `desired_count` based on a SolidQueue queue latency.
+
+#### Prerequisites
+
+- Currently supports **AWS ECS only** via `JobFlow::AutoScaling::Adapter::AwsAdapter`.
+- The autoscaling job must run **inside an ECS task** (uses ECS metadata via `ECS_CONTAINER_METADATA_URI_V4`).
+- Latency is read from `SolidQueue::Queue#latency` (seconds).
+- Scheduling (how often you evaluate scaling) is **out of scope**: enqueue this job periodically from your app/ops tooling.
+
+#### Usage
+
+Create a job for autoscaling and configure it via `include JobFlow::AutoScaling`.
+
+```ruby
+class MyAutoScalingJob < ApplicationJob
+  include JobFlow::AutoScaling
+
+  # Target SolidQueue queue name
+  target_queue_name "default"
+
+  # desired_count range
+  min_count 2
+  max_count 10
+
+  # Scale step (e.g. 2 => 2,4,6...)
+  step_count 2
+
+  # Max latency (seconds). Scaling reaches max_count around this value.
+  max_latency 1800
+end
+```
+
+#### Scaling model
+
+- Queue latency is bucketed into $0..max_latency$ and scaled from `min_count` to `max_count` by `step_count`.
+- If `SolidQueue::Queue` is not available, autoscaling raises `JobFlow::Error`.
+
 ### SolidCache Configuration
 
 #### Basic Configuration
