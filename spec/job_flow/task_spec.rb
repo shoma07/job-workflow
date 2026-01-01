@@ -50,7 +50,8 @@ RSpec.describe JobFlow::Task do
           block: arguments[:block],
           each: nil,
           depends_on: [],
-          condition: ->(_ctx) { true }
+          condition: ->(_ctx) { true },
+          timeout: nil
         )
       end
 
@@ -210,6 +211,20 @@ RSpec.describe JobFlow::Task do
           jitter: true
         )
       end
+    end
+
+    context "when timeout is Numeric" do
+      let(:arguments) do
+        {
+          job_name: "TestJob",
+          name: :sample_task,
+          namespace: JobFlow::Namespace.default,
+          block: ->(_ctx) {},
+          timeout: 0.5
+        }
+      end
+
+      it { expect(task).to have_attributes(timeout: 0.5) }
     end
   end
 
