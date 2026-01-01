@@ -2,6 +2,8 @@
 
 module JobFlow
   class Semaphore
+    include Logger::SemaphoreLogging
+
     DEFAULT_POLLING_INTERVAL = 3.0 #: Float
     private_constant :DEFAULT_POLLING_INTERVAL
 
@@ -39,8 +41,12 @@ module JobFlow
       return true unless self.class.available?
 
       loop do
-        return true if SolidQueue::Semaphore.wait(self)
+        if SolidQueue::Semaphore.wait(self)
+          log_throttle_acquire(self)
+          return true
+        end
 
+        log_throttle_wait(self, polling_interval)
         sleep(polling_interval)
       end
     end
@@ -49,7 +55,9 @@ module JobFlow
     def signal
       return true unless self.class.available?
 
-      SolidQueue::Semaphore.signal(self)
+      result = SolidQueue::Semaphore.signal(self)
+      log_throttle_release(self)
+      result
     end
 
     #:  [T] () { () -> T } -> T

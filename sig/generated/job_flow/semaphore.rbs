@@ -2,6 +2,8 @@
 
 module JobFlow
   class Semaphore
+    include Logger::SemaphoreLogging
+
     DEFAULT_POLLING_INTERVAL: Float
 
     attr_reader concurrency_key: String

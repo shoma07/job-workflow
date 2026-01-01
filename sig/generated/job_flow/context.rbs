@@ -2,7 +2,8 @@
 
 module JobFlow
   class Context
-    # rubocop:disable Metrics/ClassLength
+    include Logger::ContextLogging
+
     attr_reader workflow: Workflow
 
     attr_reader arguments: Arguments
@@ -100,5 +101,8 @@ module JobFlow
 
     # :  () { (Integer) -> void } -> void
     def with_retry: () { (Integer) -> void } -> void
+
+    # :  (Task, TaskRetry, Integer, StandardError) -> void
+    def wait_next_retry: (Task, TaskRetry, Integer, StandardError) -> void
   end
 end
