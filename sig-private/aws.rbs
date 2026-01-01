@@ -1,0 +1,32 @@
+module Aws
+  module ECS
+    class Client
+      def describe_services: (Hash[untyped, untyped]) -> Types::DescribeServicesResponse
+      def describe_tasks: (Hash[untyped, untyped]) -> Types::DescribeTasksResponse
+      def update_service: (Hash[untyped, untyped]) -> Types::UpdateServiceResponse
+    end
+
+    module Types
+      class Task
+        def group: () -> String
+      end
+
+      class Service
+        def cluster_arn: () -> String
+        def service_name: () -> String
+        def desired_count: () -> Integer
+      end
+
+      class DescribeTasksResponse
+        def tasks: () -> Array[Task]
+      end
+
+      class DescribeServicesResponse
+        def services: () -> Array[Service]
+      end
+
+      class UpdateServiceResponse
+      end
+    end
+  end
+end

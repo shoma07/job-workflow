@@ -1,0 +1,29 @@
+# Generated from lib/job_flow/auto_scaling/executor.rb with RBS::Inline
+
+module JobFlow
+  module AutoScaling
+    class Executor
+      # :  (Configuration) -> void
+      def initialize: (Configuration) -> void
+
+      # :  () -> Integer?
+      def update_desired_count: () -> Integer?
+
+      private
+
+      attr_reader config: Configuration
+
+      # :  () -> Adapter::_InstanceMethods
+      def adapter: () -> Adapter::_InstanceMethods
+
+      # :  () -> Integer?
+      def queue_latency: () -> Integer?
+
+      # :  () -> Integer
+      def desired_count_by_latency: () -> Integer
+
+      # :  () -> Array[Integer]
+      def desired_count_list: () -> Array[Integer]
+    end
+  end
+end

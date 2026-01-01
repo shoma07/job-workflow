@@ -1,11 +1,14 @@
 # frozen_string_literal: true
 
+require "json"
+require "timeout"
+require "tsort"
+require "uri"
+require "net/http"
 require "active_support"
 require "active_support/concern"
 require "active_support/core_ext"
 require "active_job"
-require "timeout"
-require "tsort"
 require_relative "job_flow/version"
 require_relative "job_flow/task_retry"
 require_relative "job_flow/task_throttle"
@@ -29,6 +32,7 @@ require_relative "job_flow/context"
 require_relative "job_flow/output_def"
 require_relative "job_flow/task_output"
 require_relative "job_flow/output"
+require_relative "job_flow/auto_scaling"
 
 module JobFlow
   class Error < StandardError; end
