@@ -1452,6 +1452,7 @@ end
 2. If lease cannot be acquired, wait (automatic polling with 3-second intervals)
 3. Execute task
 4. Release lease after completion (guaranteed by ensure block)
+5. If a worker crashes before releasing, the lease is recovered after `ttl` expires and the SolidQueue dispatcher concurrency maintenance runs (worst case: `ttl + concurrency_maintenance_interval`)
 
 ```ruby
 argument :data, "Hash"
@@ -1835,7 +1836,7 @@ task :conditional,
 end
 
 task :throttled,
-     throttle: { key: "api", limit: 10, lease_ttl: 60 },
+     throttle: { key: "api", limit: 10, ttl: 60 },
      output: { response: "Hash" } do |ctx|
   data = ctx.arguments.data
   { response: ExternalAPI.call(data) }
