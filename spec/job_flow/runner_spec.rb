@@ -95,7 +95,6 @@ RSpec.describe JobFlow::Runner do
 
               {
                 current_task_task_name: current_task&.task_name,
-                current_task_name: current_task&.name,
                 current_task_namespace: current_task&.namespace&.name
               }
             end
@@ -114,7 +113,6 @@ RSpec.describe JobFlow::Runner do
         task_output = ctx.output[:"check:verify_current_task"].first
         expect(task_output).to have_attributes(
           current_task_task_name: :"check:verify_current_task",
-          current_task_name: :verify_current_task,
           current_task_namespace: :check
         )
       end
