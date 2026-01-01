@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-# This file is intentionally left minimal.
-# AutoScaling behavior is covered in dedicated specs under spec/job_flow/auto_scaling/.
 RSpec.describe JobFlow::AutoScaling do
   describe "configuration" do
     subject(:queue_names) { [job_class_a._config.queue_name, job_class_b._config.queue_name] }
