@@ -45,10 +45,18 @@ module JobFlow
       # :  (String) -> bool
       def clear_queue: (String) -> bool
 
+      # :  (String) -> Hash[String, untyped]?
+      def find_job: (String) -> Hash[String, untyped]?
+
       # @note Test helpers
       #
       # :  (String, untyped) -> void
       def enqueue_test_job: (String, untyped) -> void
+
+      # @note Test helpers - stores job data for find_job
+      #
+      # :  (String, Hash[String, untyped]) -> void
+      def store_job: (String, Hash[String, untyped]) -> void
 
       # @note Test helpers
       #
