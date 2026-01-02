@@ -1,14 +1,15 @@
 # frozen_string_literal: true
 
-RSpec.describe JobFlow::EachContext do
+RSpec.describe JobFlow::TaskContext do
   describe "#initialize" do
-    subject(:each_context) { described_class.new(**arguments) }
+    subject(:task_context) { described_class.new(**arguments) }
 
     context "with default values" do
       let(:arguments) { {} }
 
-      it "creates EachContext with default values" do
-        expect(each_context).to have_attributes(
+      it "creates TaskContext with default values" do
+        expect(task_context).to have_attributes(
+          task: nil,
           parent_job_id: nil,
           index: 0,
           value: nil,
@@ -20,6 +21,12 @@ RSpec.describe JobFlow::EachContext do
     context "with all arguments" do
       let(:arguments) do
         {
+          task: JobFlow::Task.new(
+            job_name: "ExampleJob",
+            name: :example,
+            namespace: JobFlow::Namespace.default,
+            block: ->(_ctx) { true }
+          ),
           parent_job_id: "parent-123",
           index: 5,
           value: { key: "value" },
@@ -27,8 +34,9 @@ RSpec.describe JobFlow::EachContext do
         }
       end
 
-      it "creates EachContext with specified values" do
-        expect(each_context).to have_attributes(
+      it "creates TaskContext with specified values" do
+        expect(task_context).to have_attributes(
+          task: have_attributes(task_name: :example),
           parent_job_id: "parent-123",
           index: 5,
           value: { key: "value" },
@@ -39,26 +47,32 @@ RSpec.describe JobFlow::EachContext do
   end
 
   describe "#enabled?" do
-    subject(:enabled?) { each_context.enabled? }
+    subject(:enabled?) { task_context.enabled? }
 
     context "when parent_job_id is nil" do
-      let(:each_context) { described_class.new }
+      let(:task_context) { described_class.new }
 
       it { is_expected.to be false }
     end
 
     context "when parent_job_id is set" do
-      let(:each_context) { described_class.new(parent_job_id: "parent-123") }
+      let(:task_context) { described_class.new(parent_job_id: "parent-123") }
 
       it { is_expected.to be true }
     end
   end
 
   describe "#serialize" do
-    subject(:serialized) { each_context.serialize }
+    subject(:serialized) { task_context.serialize }
 
-    let(:each_context) do
+    let(:task_context) do
       described_class.new(
+        task: JobFlow::Task.new(
+          job_name: "ExampleJob",
+          name: :example,
+          namespace: JobFlow::Namespace.default,
+          block: ->(_ctx) { true }
+        ),
         parent_job_id: "parent-123",
         index: 3,
         value: "test_value",
@@ -68,6 +82,7 @@ RSpec.describe JobFlow::EachContext do
 
     it "serializes to hash with string keys" do
       expect(serialized).to eq(
+        "task_name" => :example,
         "parent_job_id" => "parent-123",
         "index" => 3,
         "value" => "test_value",
@@ -89,7 +104,7 @@ RSpec.describe JobFlow::EachContext do
         }
       end
 
-      it "creates EachContext from hash" do
+      it "creates TaskContext from hash" do
         expect(deserialized).to have_attributes(
           parent_job_id: "parent-456",
           index: 7,

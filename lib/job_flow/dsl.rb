@@ -89,7 +89,7 @@ module JobFlow
 
       #:  (Context) -> DSL
       def from_context(context)
-        task = context.current_task
+        task = context._task_context.task
         job = new(context.arguments.to_h)
         job._context = context
         job.set(queue: task.enqueue.queue) if !task.nil? && !task.enqueue.queue.nil?
@@ -122,7 +122,7 @@ module JobFlow
       #   ) { (untyped) -> void } -> void
       def task(
         task_name,
-        each: ->(_ctx) { [EachContext::NULL_VALUE] },
+        each: ->(_ctx) { [TaskContext::NULL_VALUE] },
         enqueue: nil,
         retry: 0,
         output: {},

@@ -54,7 +54,7 @@ module JobFlow
 
     #:  () -> Symbol?
     def current_task_name
-      context.current_task&.task_name
+      context._task_context.task&.task_name
     end
 
     #:  () -> Arguments

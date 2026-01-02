@@ -13,7 +13,7 @@ RSpec.describe JobFlow::Runner do
     let(:ctx) do
       JobFlow::Context.from_hash(
         workflow: job.class._workflow,
-        each_context: {},
+        task_context: {},
         task_outputs: [],
         task_job_statuses: []
       )
@@ -84,7 +84,7 @@ RSpec.describe JobFlow::Runner do
                timeout: 0.1,
                retry: { count: 2, strategy: :linear, base_delay: 0 },
                output: { value: "Integer" } do |ctx|
-            if ctx._each_context.retry_count.zero?
+            if ctx._task_context.retry_count.zero?
               sleep 1.1
               { value: 0 }
             else
@@ -151,7 +151,7 @@ RSpec.describe JobFlow::Runner do
       end
     end
 
-    context "when current_task is executed within a namespace" do
+    context "when task is executed within a namespace" do
       let(:job) do
         klass = Class.new(ActiveJob::Base) do
           include JobFlow::DSL
@@ -165,7 +165,7 @@ RSpec.describe JobFlow::Runner do
                    current_task_name: "Symbol",
                    current_task_namespace: "Symbol"
                  } do |ctx|
-              current_task = ctx.current_task
+              current_task = ctx._task_context.task
 
               {
                 current_task_task_name: current_task&.task_name,
@@ -290,7 +290,7 @@ RSpec.describe JobFlow::Runner do
           namespace :parallel do
             task :concurrent_process,
                  each: ->(ctx) { ctx.arguments.items },
-                 enqueue: { condition: ->(ctx) { ctx._each_context.parent_job_id.nil? }, concurrency: 2 },
+                 enqueue: { condition: ->(ctx) { ctx._task_context.parent_job_id.nil? }, concurrency: 2 },
                  output: { result: "Integer" } do |ctx|
               { result: ctx.each_value * 3 }
             end
@@ -400,7 +400,7 @@ RSpec.describe JobFlow::Runner do
       end
     end
 
-    context "when current_task is set (sub-job execution)" do
+    context "when task is set (sub-job execution)" do
       let(:job) do
         klass = Class.new(ActiveJob::Base) do
           include JobFlow::DSL
@@ -418,10 +418,9 @@ RSpec.describe JobFlow::Runner do
         JobFlow::Context.new(
           workflow: job.class._workflow,
           arguments: JobFlow::Arguments.new(data: { items: [10, 20] }),
-          each_context: JobFlow::EachContext.new(parent_job_id: "parent-job-id", index: 1, value: 20),
+          task_context: JobFlow::TaskContext.new(task:, parent_job_id: "parent-job-id", index: 1, value: 20),
           output: JobFlow::Output.new,
-          job_status: JobFlow::JobStatus.new,
-          current_task: task
+          job_status: JobFlow::JobStatus.new
         )
       end
 
@@ -843,8 +842,8 @@ RSpec.describe JobFlow::Runner do
                   "job_flow_context" => JobFlow::Context.new(
                     workflow: job.class._workflow,
                     arguments: JobFlow::Arguments.new(data: {}),
-                    current_task: job.class._workflow.fetch_task(:parallel_process),
-                    each_context: JobFlow::EachContext.new(
+                    task_context: JobFlow::TaskContext.new(
+                      task: job.class._workflow.fetch_task(:parallel_process),
                       parent_job_id: job.job_id,
                       index: idx,
                       value: idx + 1
@@ -1008,8 +1007,8 @@ RSpec.describe JobFlow::Runner do
                 "job_flow_context" => JobFlow::Context.new(
                   workflow: job.class._workflow,
                   arguments: JobFlow::Arguments.new(data: {}),
-                  current_task: job.class._workflow.fetch_task(:fast_parallel),
-                  each_context: JobFlow::EachContext.new(
+                  task_context: JobFlow::TaskContext.new(
+                    task: job.class._workflow.fetch_task(:fast_parallel),
                     parent_job_id: job.job_id,
                     index: idx,
                     value: [10, 20][idx]
@@ -1117,8 +1116,8 @@ RSpec.describe JobFlow::Runner do
                 "job_flow_context" => JobFlow::Context.new(
                   workflow: job.class._workflow,
                   arguments: JobFlow::Arguments.new(data: {}),
-                  current_task: job.class._workflow.fetch_task(:parallel_compute),
-                  each_context: JobFlow::EachContext.new(
+                  task_context: JobFlow::TaskContext.new(
+                    task: job.class._workflow.fetch_task(:parallel_compute),
                     parent_job_id: job.job_id,
                     index: idx,
                     value: [2, 3][idx]

@@ -13,7 +13,7 @@ module JobFlow
 
     #:  () -> void
     def run
-      task = context.current_task
+      task = context._task_context.task
       return run_task(task) unless task.nil?
 
       run_workflow
@@ -61,21 +61,21 @@ module JobFlow
 
     #:  (Task) -> void
     def run_task(task)
-      context._with_each_value(task).each do |each_ctx|
-        run_each_task(task, each_ctx)
+      context._with_each_value(task).each do |ctx|
+        run_each_task(task, ctx)
       rescue StandardError => e
-        run_error_hooks(task, each_ctx, e)
+        run_error_hooks(task, ctx, e)
         raise
       end
     end
 
     #:  (Task, Context) -> void
-    def run_each_task(task, each_ctx)
-      Instrumentation.instrument_task(job, task, each_ctx) do
-        each_ctx._with_task_throttle do
-          run_hooks(task, each_ctx) do
-            data = task.block.call(each_ctx)
-            add_task_output(ctx: each_ctx, task:, each_index: each_ctx._each_context.index, data:)
+    def run_each_task(task, ctx)
+      Instrumentation.instrument_task(job, task, ctx) do
+        ctx._with_task_throttle do
+          run_hooks(task, ctx) do
+            data = task.block.call(ctx)
+            add_task_output(ctx:, task:, each_index: ctx._task_context.index, data:)
           end
         end
       end
@@ -106,7 +106,7 @@ module JobFlow
 
     #:  (Task) -> void
     def enqueue_task(task) # rubocop:disable Metrics/AbcSize
-      sub_jobs = context._with_each_value(task).map { |each_ctx| job.class.from_context(each_ctx.dup) }
+      sub_jobs = context._with_each_value(task).map { |ctx| job.class.from_context(ctx.dup) }
       job.class.perform_all_later(sub_jobs)
       context.job_status.update_task_job_statuses_from_jobs(task_name: task.task_name, jobs: sub_jobs)
       Instrumentation.notify_task_enqueue(job, task, sub_jobs.size)
