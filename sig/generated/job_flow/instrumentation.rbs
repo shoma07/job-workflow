@@ -47,6 +47,10 @@ module JobFlow
 
       DEPENDENT_WAIT_COMPLETE: untyped
 
+      QUEUE_PAUSE: untyped
+
+      QUEUE_RESUME: untyped
+
       CUSTOM: untyped
     end
 
@@ -74,6 +78,12 @@ module JobFlow
     # :  (Semaphore) -> void
     def self.notify_throttle_release: (Semaphore) -> void
 
+    # :  (String) -> void
+    def self.notify_queue_pause: (String) -> void
+
+    # :  (String) -> void
+    def self.notify_queue_resume: (String) -> void
+
     # :  (String, Hash[Symbol, untyped]) { () -> untyped } -> untyped
     def self.instrument_custom: (String, Hash[Symbol, untyped]) { () -> untyped } -> untyped
 
@@ -100,5 +110,8 @@ module JobFlow
 
     # :  (Semaphore) -> Hash[Symbol, untyped]
     private def self.build_throttle_payload: (Semaphore) -> Hash[Symbol, untyped]
+
+    # :  (String) -> Hash[Symbol, untyped]
+    private def self.build_queue_payload: (String) -> Hash[Symbol, untyped]
   end
 end

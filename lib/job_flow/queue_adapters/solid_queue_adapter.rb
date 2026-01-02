@@ -2,6 +2,7 @@
 
 module JobFlow
   module QueueAdapters
+    # rubocop:disable Naming/PredicateMethod
     class SolidQueueAdapter < Abstract
       #:  () -> bool
       def semaphore_available?
@@ -50,6 +51,60 @@ module JobFlow
         SolidQueue::Configuration.prepend(SchedulingPatch)
       end
 
+      #:  (String) -> bool
+      def pause_queue(queue_name)
+        return false unless defined?(SolidQueue::Queue)
+
+        SolidQueue::Queue.find_by_name(queue_name).pause
+        true
+      rescue ActiveRecord::RecordNotUnique
+        true
+      end
+
+      #:  (String) -> bool
+      def resume_queue(queue_name)
+        return false unless defined?(SolidQueue::Queue)
+
+        SolidQueue::Queue.find_by_name(queue_name).resume
+        true
+      end
+
+      #:  (String) -> bool
+      def queue_paused?(queue_name)
+        return false unless defined?(SolidQueue::Queue)
+
+        SolidQueue::Queue.find_by_name(queue_name).paused?
+      end
+
+      #:  () -> Array[String]
+      def paused_queues
+        return [] unless defined?(SolidQueue::Pause)
+
+        SolidQueue::Pause.pluck(:queue_name)
+      end
+
+      #:  (String) -> Integer?
+      def queue_latency(queue_name)
+        return nil unless defined?(SolidQueue::Queue)
+
+        SolidQueue::Queue.find_by_name(queue_name).latency
+      end
+
+      #:  (String) -> Integer
+      def queue_size(queue_name)
+        return 0 unless defined?(SolidQueue::Queue)
+
+        SolidQueue::Queue.find_by_name(queue_name).size
+      end
+
+      #:  (String) -> bool
+      def clear_queue(queue_name)
+        return false unless defined?(SolidQueue::Queue)
+
+        SolidQueue::Queue.find_by_name(queue_name).clear
+        true
+      end
+
       module SchedulingPatch
         private
 
@@ -63,5 +118,6 @@ module JobFlow
         end
       end
     end
+    # rubocop:enable Naming/PredicateMethod
   end
 end

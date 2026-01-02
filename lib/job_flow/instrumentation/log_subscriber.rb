@@ -105,6 +105,16 @@ module JobFlow
         log_event(event, :debug)
       end
 
+      #:  (ActiveSupport::Notifications::Event) -> void
+      def queue_pause(event)
+        log_event(event, :info)
+      end
+
+      #:  (ActiveSupport::Notifications::Event) -> void
+      def queue_resume(event)
+        log_event(event, :info)
+      end
+
       private
 
       #:  (ActiveSupport::Notifications::Event, log_level) -> void
@@ -135,6 +145,7 @@ module JobFlow
           concurrency_key
           concurrency_limit
           dependent_task_name
+          queue_name
         ]
         result = payload.slice(*payload_keys)
         add_error_attributes(result, payload)

@@ -358,6 +358,44 @@ RSpec.describe JobFlow::Instrumentation::LogSubscriber do
     end
   end
 
+  describe "#queue_pause" do
+    subject(:call) { subscriber.queue_pause(event) }
+
+    let(:event) do
+      ActiveSupport::Notifications::Event.new(
+        "queue.pause.job_flow",
+        Time.current,
+        Time.current,
+        "transaction_id",
+        { queue_name: "default" }
+      )
+    end
+
+    it "logs at info level" do
+      call
+      expect(logger).to have_received(:info).with(hash_including(event: "queue.pause.job_flow", queue_name: "default"))
+    end
+  end
+
+  describe "#queue_resume" do
+    subject(:call) { subscriber.queue_resume(event) }
+
+    let(:event) do
+      ActiveSupport::Notifications::Event.new(
+        "queue.resume.job_flow",
+        Time.current,
+        Time.current,
+        "transaction_id",
+        { queue_name: "default" }
+      )
+    end
+
+    it "logs at info level" do
+      call
+      expect(logger).to have_received(:info).with(hash_including(event: "queue.resume.job_flow", queue_name: "default"))
+    end
+  end
+
   describe "#build_log_payload" do
     subject(:call) { subscriber.workflow_complete(event) }
 

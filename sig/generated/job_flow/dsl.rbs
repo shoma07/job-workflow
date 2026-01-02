@@ -49,6 +49,8 @@ module JobFlow
 
       def enqueue: (Hash[untyped, untyped]) -> void
 
+      def queue_name: () -> String
+
       def queue_as: () -> String
 
       def limits_concurrency: (to: Integer, key: ^(untyped) -> untyped, ?duration: ActiveSupport::Duration?, ?group: String?, ?on_conflict: Symbol?) -> void
