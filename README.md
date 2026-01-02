@@ -304,17 +304,41 @@ Tasks can define structured outputs that are automatically collected and made av
 
 ## Documentation
 
-For comprehensive documentation, including advanced features and best practices, see [GUIDE.md](GUIDE.md).
+For comprehensive documentation, including advanced features and best practices, see the **[guides/](guides/README.md)** directory.
 
-Topics covered:
-- Task dependencies and execution order
-- Parallel processing patterns
-- Task outputs and data flow
-- Throttling and rate limiting
-- Error handling and retries
-- Conditional execution
-- Testing strategies
-- Production deployment
+### 📚 Complete Guide Structure
+
+The documentation is organized into the following sections:
+
+- **[Getting Started](guides/GETTING_STARTED.md)** - 5-minute quick start and introduction
+- **Fundamentals** - Core concepts and basic usage
+  - [DSL Basics](guides/DSL_BASICS.md)
+  - [Task Outputs](guides/TASK_OUTPUTS.md)
+  - [Parallel Processing](guides/PARALLEL_PROCESSING.md)
+- **Intermediate** - Advanced patterns and features
+  - [Error Handling](guides/ERROR_HANDLING.md)
+  - [Conditional Execution](guides/CONDITIONAL_EXECUTION.md)
+  - [Lifecycle Hooks](guides/LIFECYCLE_HOOKS.md)
+- **Advanced** - Power features for complex workflows
+  - [Namespaces](guides/NAMESPACES.md)
+  - [Throttling](guides/THROTTLING.md)
+  - [Scheduled Jobs](guides/SCHEDULED_JOBS.md)
+- **Observability** - Monitoring and debugging
+  - [Structured Logging](guides/STRUCTURED_LOGGING.md)
+  - [Instrumentation](guides/INSTRUMENTATION.md)
+  - [OpenTelemetry Integration](guides/OPENTELEMETRY_INTEGRATION.md)
+- **Practical** - Production and operations
+  - [Production Deployment](guides/PRODUCTION_DEPLOYMENT.md)
+  - [Queue Management](guides/QUEUE_MANAGEMENT.md)
+  - [Workflow Status Query](guides/WORKFLOW_STATUS_QUERY.md)
+  - [Testing Strategy](guides/TESTING_STRATEGY.md)
+  - [Troubleshooting](guides/TROUBLESHOOTING.md)
+- **Reference** - Complete API documentation
+  - [API Reference](guides/API_REFERENCE.md)
+  - [Type Definitions Guide](guides/TYPE_DEFINITIONS_GUIDE.md)
+  - [Best Practices](guides/BEST_PRACTICES.md)
+
+[Browse all guides →](guides/README.md)
 
 ## Requirements
 
