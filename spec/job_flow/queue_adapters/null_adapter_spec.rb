@@ -162,6 +162,7 @@ RSpec.describe JobFlow::QueueAdapters::NullAdapter do
     before do
       adapter.pause_queue("import")
       adapter.enqueue_test_job("import", double)
+      adapter.store_job("job-123", { "class_name" => "TestJob" })
     end
 
     it "clears all paused queues" do
@@ -172,6 +173,52 @@ RSpec.describe JobFlow::QueueAdapters::NullAdapter do
     it "clears all queued jobs" do
       reset!
       expect(adapter.queue_size("import")).to eq(0)
+    end
+
+    it "clears all stored jobs" do
+      reset!
+      expect(adapter.find_job("job-123")).to be_nil
+    end
+  end
+
+  describe "#find_job" do
+    subject(:find_job) { adapter.find_job("job-123") }
+
+    context "when job is not stored" do
+      it { is_expected.to be_nil }
+    end
+
+    context "when job is stored" do
+      let(:job_data) do
+        {
+          "job_id" => "job-123",
+          "class_name" => "TestJob",
+          "queue_name" => "default",
+          "arguments" => { "value" => 42 },
+          "status" => :running
+        }
+      end
+
+      before { adapter.store_job("job-123", job_data) }
+
+      it { is_expected.to eq(job_data) }
+    end
+  end
+
+  describe "#store_job" do
+    subject(:store_job) { adapter.store_job("job-456", job_data) }
+
+    let(:job_data) do
+      {
+        "job_id" => "job-456",
+        "class_name" => "AnotherJob",
+        "status" => :pending
+      }
+    end
+
+    it "stores the job data" do
+      store_job
+      expect(adapter.find_job("job-456")).to eq(job_data)
     end
   end
 end

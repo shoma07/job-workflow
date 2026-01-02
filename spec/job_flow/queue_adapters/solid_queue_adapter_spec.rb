@@ -388,4 +388,56 @@ RSpec.describe JobFlow::QueueAdapters::SolidQueueAdapter do
       end
     end
   end
+
+  describe "#find_job" do
+    subject(:find_job) { adapter.find_job("job-123") }
+
+    context "when SolidQueue::Job is not defined" do
+      before { hide_const("SolidQueue::Job") }
+
+      it { is_expected.to be_nil }
+    end
+
+    context "when SolidQueue::Job is defined" do
+      let(:job) { Class.new.new }
+
+      before do
+        stub_const("SolidQueue::Job", job.class)
+        allow(job.class).to receive(:find_by).with(active_job_id: "job-123").and_return(job)
+        allow(job).to receive_messages(
+          active_job_id: "job-123",
+          class_name: "TestJob",
+          queue_name: "default",
+          arguments: { "value" => 42 },
+          failed?: false,
+          finished?: false,
+          claimed?: true
+        )
+      end
+
+      it do
+        expect(find_job).to have_attributes(
+          class: Hash,
+          to_h: eq(
+            {
+              "job_id" => "job-123",
+              "class_name" => "TestJob",
+              "queue_name" => "default",
+              "arguments" => { "value" => 42 },
+              "status" => :running
+            }
+          )
+        )
+      end
+    end
+
+    context "when job is not found" do
+      before do
+        stub_const("SolidQueue::Job", Class.new)
+        allow(SolidQueue::Job).to receive(:find_by).with(active_job_id: "job-123").and_return(nil)
+      end
+
+      it { is_expected.to be_nil }
+    end
+  end
 end

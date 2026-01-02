@@ -46,6 +46,9 @@ module JobFlow
       # :  (String) -> bool
       def clear_queue: (String) -> bool
 
+      # :  (String) -> Hash[String, untyped]?
+      def find_job: (String) -> Hash[String, untyped]?
+
       module SchedulingPatch
         private
 
