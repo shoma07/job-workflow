@@ -75,6 +75,8 @@ module JobFlow
       #
       #   def enqueue: (Hash[untyped, untyped]) -> void
       #
+      #   def queue_name: () -> String
+      #
       #   def queue_as: () -> String
       #
       #   def limits_concurrency: (

@@ -2,7 +2,21 @@ module SolidQueue
   class Queue
     def self.find_by_name: (String) -> Queue
 
+    def paused?: () -> bool
+
+    def pause: () -> Pause
+
+    def resume: () -> Integer
+
     def latency: () -> Integer
+
+    def size: () -> Integer
+
+    def clear: () -> void
+  end
+
+  class Pause < Record
+    def self.pluck: (Symbol) -> Array[String]
   end
 
   class Record < ActiveRecord::Base

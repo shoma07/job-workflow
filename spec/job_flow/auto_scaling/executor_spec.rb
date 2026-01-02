@@ -22,24 +22,25 @@ RSpec.describe JobFlow::AutoScaling::Executor do
       allow(adapter).to receive(:update_desired_count)
     end
 
-    shared_context "with stub SolidQueue::Queue" do
-      let(:solid_queue_queue) { Class.new.new }
-
+    shared_context "with stub JobFlow::Queue.latency" do
       before do
-        stub_const("SolidQueue::Queue", solid_queue_queue.class)
-        allow(SolidQueue::Queue).to receive(:find_by_name).with("default").and_return(solid_queue_queue)
-        allow(solid_queue_queue).to receive(:latency).and_return(1800)
+        allow(JobFlow::Queue).to receive(:latency).with("default").and_return(1800)
       end
     end
 
-    context "when SolidQueue::Queue is not defined" do
+    context "when queue latency is nil" do
+      before do
+        allow(JobFlow::Queue).to receive(:latency).with("default").and_return(nil)
+      end
+
       it do
-        expect { update_desired_count }.to raise_error(JobFlow::Error, /SolidQueue::Queue is not defined!/)
+        update_desired_count
+        expect(adapter).to have_received(:update_desired_count).with(1)
       end
     end
 
     context "when queue latency is less than max latency and step_count is 1" do
-      include_context "with stub SolidQueue::Queue"
+      include_context "with stub JobFlow::Queue.latency"
 
       it do
         update_desired_count
@@ -48,7 +49,7 @@ RSpec.describe JobFlow::AutoScaling::Executor do
     end
 
     context "when queue latency is less than max latency step_count is 3" do
-      include_context "with stub SolidQueue::Queue"
+      include_context "with stub JobFlow::Queue.latency"
 
       let(:step_count) { 3 }
 
@@ -59,10 +60,10 @@ RSpec.describe JobFlow::AutoScaling::Executor do
     end
 
     context "when queue latency is grater than max_latency" do
-      include_context "with stub SolidQueue::Queue"
+      include_context "with stub JobFlow::Queue.latency"
 
       before do
-        allow(solid_queue_queue).to receive(:latency).and_return(3_600)
+        allow(JobFlow::Queue).to receive(:latency).with("default").and_return(3_600)
       end
 
       it do
