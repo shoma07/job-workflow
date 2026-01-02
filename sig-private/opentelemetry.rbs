@@ -1,0 +1,40 @@
+module OpenTelemetry
+  def self.tracer_provider: () -> OpenTelemetry::Trace::TracerProvider
+  def self.handle_error: (exception: StandardError, message: String) -> void
+  def self.respond_to?: (Symbol) -> bool
+
+  module Trace
+    def self.context_with_span: (OpenTelemetry::Trace::Span) -> untyped
+
+    class TracerProvider
+      def tracer: (String, String) -> OpenTelemetry::Trace::Tracer
+    end
+
+    class Tracer
+      def start_span: (String, ?kind: Symbol, ?attributes: Hash[String, untyped]) -> OpenTelemetry::Trace::Span
+    end
+
+    class Span
+      def finish: () -> void
+      def record_exception: (StandardError) -> void
+      def status=: (Status) -> void
+      def status: () -> Status
+    end
+
+    class Status
+      UNSET: Integer
+      OK: Integer
+      ERROR: Integer
+
+      def self.ok: () -> Status
+      def self.error: (String) -> Status
+
+      def code: () -> Integer
+    end
+  end
+
+  module Context
+    def self.attach: (untyped) -> untyped
+    def self.detach: (untyped) -> void
+  end
+end

@@ -2,8 +2,6 @@
 
 module JobFlow
   class Context # rubocop:disable Metrics/ClassLength
-    include Logger::ContextLogging
-
     attr_reader :workflow #: Workflow
     attr_reader :arguments #: Arguments
     attr_reader :current_task #: Task?
@@ -134,6 +132,38 @@ module JobFlow
       semaphore.with(&)
     end
 
+    # Instruments a custom operation with ActiveSupport::Notifications.
+    # This creates a span in OpenTelemetry (if enabled) and logs the event.
+    #
+    # @example Basic usage
+    #   ```ruby
+    #   ctx.instrument("api_call", endpoint: "/users") do
+    #     HTTP.get("https://api.example.com/users")
+    #   end
+    #   ```
+    #
+    # @example With automatic operation name
+    #   ```ruby
+    #   ctx.instrument do
+    #     # operation name defaults to "custom"
+    #     expensive_operation()
+    #   end
+    #   ```
+    #
+    #:  (?String, **untyped) { () -> untyped } -> untyped
+    def instrument(operation = "custom", **payload, &)
+      task = current_task
+      full_payload = {
+        job_id: current_job_id,
+        job_name: current_job.class.name,
+        task_name: task&.task_name,
+        each_index: each_context.index,
+        operation:,
+        **payload
+      }
+      Instrumentation.instrument_custom(operation, full_payload, &)
+    end
+
     #:  () -> untyped
     def each_value
       raise "each_value can be called only within each_values block" unless each_context.enabled?
@@ -241,7 +271,7 @@ module JobFlow
     #:  (Task, TaskRetry, Integer, StandardError) -> void
     def wait_next_retry(task, task_retry, next_retry_count, error)
       delay = task_retry.delay_for(next_retry_count)
-      log_task_retry(task, each_context, current_job_id, next_retry_count, delay, error)
+      Instrumentation.notify_task_retry(task, self, current_job_id, next_retry_count, delay, error)
       sleep(delay)
     end
   end

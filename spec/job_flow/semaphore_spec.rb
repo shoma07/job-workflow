@@ -122,6 +122,7 @@ RSpec.describe JobFlow::Semaphore do
       before do
         allow(adapter).to receive(:semaphore_available?).and_return(true)
         allow(adapter).to receive(:semaphore_signal).with(semaphore).and_return(true)
+        allow(JobFlow::Instrumentation).to receive(:notify_throttle_release)
       end
 
       it { expect(signal).to be(true) }
@@ -130,12 +131,18 @@ RSpec.describe JobFlow::Semaphore do
         signal
         expect(adapter).to have_received(:semaphore_signal).with(semaphore)
       end
+
+      it "fires a throttle_release event" do
+        signal
+        expect(JobFlow::Instrumentation).to have_received(:notify_throttle_release).with(semaphore)
+      end
     end
 
     context "when adapter is available and signal fails" do
       before do
         allow(adapter).to receive(:semaphore_available?).and_return(true)
         allow(adapter).to receive(:semaphore_signal).with(semaphore).and_return(false)
+        allow(JobFlow::Instrumentation).to receive(:notify_throttle_release)
       end
 
       it { expect(signal).to be(false) }
@@ -143,6 +150,11 @@ RSpec.describe JobFlow::Semaphore do
       it do
         signal
         expect(adapter).to have_received(:semaphore_signal).with(semaphore)
+      end
+
+      it "fires a throttle_release event even on failure" do
+        signal
+        expect(JobFlow::Instrumentation).to have_received(:notify_throttle_release).with(semaphore)
       end
     end
   end

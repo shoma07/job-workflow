@@ -1,0 +1,17 @@
+module ActiveSupport
+  module Notifications
+    # Interface for start/finish subscribers (Monotonic subscriber)
+    interface _StartFinishSubscriber
+      def start: (String, String, Hash[Symbol, untyped]) -> void
+      def finish: (String, String, Hash[Symbol, untyped]) -> void
+    end
+
+    # Allow start/finish subscriber objects
+    def self.subscribe: (String | Regexp, _StartFinishSubscriber) -> Subscriber
+                      | ...
+
+    # Allow instrument with a no-arg block
+    def self.instrument: (String name, ?Hash[untyped, untyped] payload) ?{ () -> untyped } -> untyped
+                       | ...
+  end
+end

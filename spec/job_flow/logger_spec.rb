@@ -95,125 +95,6 @@ RSpec.describe JobFlow::Logger do
     end
   end
 
-  describe JobFlow::Logger::Logging do
-    let(:test_class) do
-      Class.new do
-        include JobFlow::Logger::Logging
-      end
-    end
-    let(:instance) { test_class.new }
-
-    describe "#logger" do
-      subject(:logger) { instance.logger }
-
-      it "returns JobFlow.logger" do
-        expect(logger).to eq(JobFlow.logger)
-      end
-    end
-
-    describe "#log_info" do
-      subject(:log_info) { instance.log_info(payload) }
-
-      let(:payload) { { event: "test", message: "hello" } }
-
-      it "logs at info level" do
-        allow(instance.logger).to receive(:info)
-        log_info
-        expect(instance.logger).to have_received(:info).with(payload)
-      end
-    end
-
-    describe "#log_debug" do
-      subject(:log_debug) { instance.log_debug(payload) }
-
-      let(:payload) { { event: "test", message: "debug" } }
-
-      it "logs at debug level" do
-        allow(instance.logger).to receive(:debug)
-        log_debug
-        expect(instance.logger).to have_received(:debug).with(payload)
-      end
-    end
-
-    describe "#log_warn" do
-      subject(:log_warn) { instance.log_warn(payload) }
-
-      let(:payload) { { event: "test", message: "warning" } }
-
-      it "logs at warn level" do
-        allow(instance.logger).to receive(:warn)
-        log_warn
-        expect(instance.logger).to have_received(:warn).with(payload)
-      end
-    end
-
-    describe "#log_error" do
-      subject(:log_error) { instance.log_error(payload) }
-
-      let(:payload) { { event: "test", message: "error" } }
-
-      it "logs at error level" do
-        allow(instance.logger).to receive(:error)
-        log_error
-        expect(instance.logger).to have_received(:error).with(payload)
-      end
-    end
-  end
-
-  describe JobFlow::Logger::Events do
-    it "defines WORKFLOW_START" do
-      expect(described_class::WORKFLOW_START).to eq("workflow.start")
-    end
-
-    it "defines WORKFLOW_COMPLETE" do
-      expect(described_class::WORKFLOW_COMPLETE).to eq("workflow.complete")
-    end
-
-    it "defines TASK_START" do
-      expect(described_class::TASK_START).to eq("task.start")
-    end
-
-    it "defines TASK_COMPLETE" do
-      expect(described_class::TASK_COMPLETE).to eq("task.complete")
-    end
-
-    it "defines TASK_SKIP" do
-      expect(described_class::TASK_SKIP).to eq("task.skip")
-    end
-
-    it "defines TASK_ENQUEUE" do
-      expect(described_class::TASK_ENQUEUE).to eq("task.enqueue")
-    end
-
-    it "defines TASK_ERROR" do
-      expect(described_class::TASK_ERROR).to eq("task.error")
-    end
-
-    it "defines TASK_RETRY" do
-      expect(described_class::TASK_RETRY).to eq("task.retry")
-    end
-
-    it "defines THROTTLE_WAIT" do
-      expect(described_class::THROTTLE_WAIT).to eq("throttle.wait")
-    end
-
-    it "defines THROTTLE_ACQUIRE" do
-      expect(described_class::THROTTLE_ACQUIRE).to eq("throttle.acquire")
-    end
-
-    it "defines THROTTLE_RELEASE" do
-      expect(described_class::THROTTLE_RELEASE).to eq("throttle.release")
-    end
-
-    it "defines DEPENDENT_WAIT" do
-      expect(described_class::DEPENDENT_WAIT).to eq("dependent.wait")
-    end
-
-    it "defines DEPENDENT_COMPLETE" do
-      expect(described_class::DEPENDENT_COMPLETE).to eq("dependent.complete")
-    end
-  end
-
   describe ".logger class method" do
     subject(:logger) { JobFlow.logger }
 
@@ -229,9 +110,7 @@ RSpec.describe JobFlow::Logger do
   describe ".logger= class method" do
     let(:custom_logger) { ActiveSupport::Logger.new(StringIO.new) }
 
-    after do
-      JobFlow.instance_variable_set(:@logger, nil)
-    end
+    after { JobFlow.logger = nil }
 
     it "sets custom logger" do
       JobFlow.logger = custom_logger

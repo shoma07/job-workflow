@@ -2,8 +2,6 @@
 
 module JobFlow
   class Semaphore
-    include Logger::SemaphoreLogging
-
     DEFAULT_POLLING_INTERVAL: Float
 
     attr_reader concurrency_key: String
@@ -29,8 +27,8 @@ module JobFlow
     # :  () -> bool
     def signal: () -> bool
 
-    # :  [T] () { () -> T } -> T
-    def with: [T] () { () -> T } -> T
+    # :  () { () -> untyped } -> untyped
+    def with: () { () -> untyped } -> untyped
 
     private
 
