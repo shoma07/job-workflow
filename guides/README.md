@@ -1,0 +1,154 @@
+# JobFlow Guides
+
+Welcome to the JobFlow documentation! This directory contains comprehensive guides to help you build robust, production-ready workflows with JobFlow.
+
+## 📚 Documentation Structure
+
+### 🚀 Getting Started
+
+Start here if you're new to JobFlow:
+
+- **[GETTING_STARTED.md](GETTING_STARTED.md)** - Quick 5-minute introduction and detailed getting started guide
+  - What is JobFlow and why use it
+  - Installation and setup
+  - Your first workflow
+  - Core concepts (Workflow, Task, Arguments, Context, Outputs)
+
+### 📖 Fundamentals
+
+Core concepts and features you'll use in every workflow:
+
+- **[DSL_BASICS.md](DSL_BASICS.md)** - Mastering the JobFlow DSL
+  - Defining tasks
+  - Working with arguments
+  - Task dependencies
+  - Task options (retry, condition, throttle, timeout)
+
+- **[TASK_OUTPUTS.md](TASK_OUTPUTS.md)** - Understanding task outputs
+  - Defining and accessing outputs
+  - Using outputs with map tasks
+  - Output persistence and design patterns
+
+- **[PARALLEL_PROCESSING.md](PARALLEL_PROCESSING.md)** - Efficient parallel execution
+  - Collection task basics
+  - Fork-Join pattern
+  - Controlling concurrency
+  - Context isolation
+
+### 🔧 Intermediate
+
+Advanced workflow patterns and features:
+
+- **[ERROR_HANDLING.md](ERROR_HANDLING.md)** - Robust error handling
+  - Retry configuration (simple and advanced)
+  - Retry strategies (linear, exponential, jitter)
+  - Task-level retry settings
+
+- **[CONDITIONAL_EXECUTION.md](CONDITIONAL_EXECUTION.md)** - Dynamic workflow control
+  - Basic conditional execution
+  - Complex conditions
+  - Best practices
+
+- **[LIFECYCLE_HOOKS.md](LIFECYCLE_HOOKS.md)** - Extending task behavior
+  - Hook types (before, after, around, on_error)
+  - Hook scope (global vs task-specific)
+  - Execution order and error handling
+
+### 🎓 Advanced
+
+Power features for complex workflows:
+
+- **[NAMESPACES.md](NAMESPACES.md)** - Organizing large workflows
+  - Basic namespace usage
+  - Nested namespaces
+  - Cross-namespace dependencies
+
+- **[THROTTLING.md](THROTTLING.md)** - Rate limiting and resource control
+  - Task-level throttling
+  - Runtime throttling
+  - Sharing throttle keys across jobs
+
+- **[SCHEDULED_JOBS.md](SCHEDULED_JOBS.md)** - Cron-like job scheduling
+  - Schedule DSL basics
+  - Schedule expressions (cron and natural language)
+  - Multiple schedules per job
+  - SolidQueue integration
+
+### 📊 Observability
+
+Monitoring and debugging your workflows:
+
+- **[STRUCTURED_LOGGING.md](STRUCTURED_LOGGING.md)** - JSON-based logging
+  - Log event types
+  - Customizing the logger
+  - Querying and analyzing logs
+
+- **[INSTRUMENTATION.md](INSTRUMENTATION.md)** - Event-driven observability
+  - Architecture and event types
+  - Custom instrumentation
+  - Building custom subscribers
+
+- **[OPENTELEMETRY_INTEGRATION.md](OPENTELEMETRY_INTEGRATION.md)** - Distributed tracing
+  - Configuration and setup
+  - Span attributes and naming
+  - Viewing traces in your backend
+
+### 🏭 Practical
+
+Production deployment and operations:
+
+- **[PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md)** - Running JobFlow in production
+  - SolidQueue configuration
+  - Worker optimization
+  - Auto-scaling (AWS ECS)
+  - SolidCache configuration
+
+- **[QUEUE_MANAGEMENT.md](QUEUE_MANAGEMENT.md)** - Managing job queues
+  - Queue operations (status, pause, resume, clear)
+  - Finding workflows by queue
+  - Production best practices
+
+- **[WORKFLOW_STATUS_QUERY.md](WORKFLOW_STATUS_QUERY.md)** - Monitoring workflow execution
+  - Finding and inspecting workflows
+  - Accessing arguments, outputs, and job status
+  - Building dashboards and APIs
+
+- **[TESTING_STRATEGY.md](TESTING_STRATEGY.md)** - Testing your workflows
+  - Unit testing individual tasks
+  - Integration testing workflows
+  - Test best practices
+
+- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Common issues and solutions
+  - CircularDependencyError
+  - UnknownTaskError
+  - Debugging workflows
+
+### 📘 Reference
+
+Complete API documentation and best practices:
+
+- **[API_REFERENCE.md](API_REFERENCE.md)** - Detailed API documentation
+  - DSL method reference
+  - Class documentation
+  - Method signatures
+
+- **[TYPE_DEFINITIONS_GUIDE.md](TYPE_DEFINITIONS_GUIDE.md)** - Working with RBS types
+  - rbs-inline basics
+  - Type definition methods
+  - Using `: syntax` and `@rbs`
+
+- **[BEST_PRACTICES.md](BEST_PRACTICES.md)** - Design patterns and recommendations
+  - Workflow design principles
+  - Task granularity
+  - Dependency management
+  - Testing strategies
+
+---
+
+## 🤝 Contributing
+
+Found an issue or have a suggestion? Please open an issue on the [GitHub repository](https://github.com/shoma07/job-flow).
+
+## 📄 License
+
+JobFlow is released under the MIT License. See LICENSE file for details.
