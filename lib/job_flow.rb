@@ -8,9 +8,13 @@ require "net/http"
 require "active_support"
 require "active_support/concern"
 require "active_support/core_ext"
+require "active_support/log_subscriber"
 require "active_job"
 require_relative "job_flow/version"
 require_relative "job_flow/logger"
+require_relative "job_flow/instrumentation"
+require_relative "job_flow/instrumentation/log_subscriber"
+require_relative "job_flow/instrumentation/opentelemetry_subscriber"
 require_relative "job_flow/queue_adapter"
 require_relative "job_flow/task_retry"
 require_relative "job_flow/task_throttle"
@@ -41,9 +45,10 @@ require_relative "job_flow/auto_scaling"
 module JobFlow
   class Error < StandardError; end
 
-  ActiveSupport.on_load(:solid_queue) do
-    QueueAdapter.current.install_scheduling_hook!
-  end
+  extend Logger
 
+  Instrumentation::LogSubscriber.attach!
+
+  ActiveSupport.on_load(:solid_queue) { QueueAdapter.current.install_scheduling_hook! }
   QueueAdapter.current.install_scheduling_hook!
 end

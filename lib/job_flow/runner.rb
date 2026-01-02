@@ -2,8 +2,6 @@
 
 module JobFlow
   class Runner # rubocop:disable Metrics/ClassLength
-    include Logger::RunnerLogging
-
     attr_reader :context #: Context
 
     #:  (job: DSL, context: Context) -> void
@@ -42,7 +40,7 @@ module JobFlow
 
     #:  () -> void
     def run_workflow
-      log_workflow(job) do
+      Instrumentation.instrument_workflow(job) do
         tasks.each do |task|
           next if skip_task?(task)
 
@@ -57,7 +55,7 @@ module JobFlow
     #:  (Task) -> bool
     def skip_task?(task)
       result = !task.condition.call(context)
-      log_task_skip(job, task)
+      Instrumentation.notify_task_skip(job, task, "condition_not_met") if result
       result
     end
 
@@ -73,7 +71,7 @@ module JobFlow
 
     #:  (Task, Context) -> void
     def run_each_task(task, each_ctx)
-      log_task(job, task, each_ctx) do
+      Instrumentation.instrument_task(job, task, each_ctx) do
         each_ctx._with_task_throttle do
           run_hooks(task, each_ctx) do
             data = task.block.call(each_ctx)
@@ -111,7 +109,7 @@ module JobFlow
       sub_jobs = context._with_each_value(task).map { |each_ctx| job.class.from_context(each_ctx.dup) }
       job.class.perform_all_later(sub_jobs)
       context.job_status.update_task_job_statuses_from_jobs(task_name: task.task_name, jobs: sub_jobs)
-      log_task_enqueue(job, task, sub_jobs.size)
+      Instrumentation.notify_task_enqueue(job, task, sub_jobs.size)
     end
 
     #:  (ctx: Context, task: Task, each_index: Integer, data: untyped) -> void
@@ -133,7 +131,7 @@ module JobFlow
 
     #:  (Task, ActiveJob::Continuation::Step) -> void
     def wait_for_map_task_completion(task, step)
-      log_dependent(job, task) do
+      Instrumentation.instrument_dependent_wait(job, task) do
         loop do
           # Checkpoint for resumable execution
           step.checkpoint!

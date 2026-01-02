@@ -2,8 +2,6 @@
 
 module JobFlow
   class Semaphore
-    include Logger::SemaphoreLogging
-
     DEFAULT_POLLING_INTERVAL = 3.0 #: Float
     private_constant :DEFAULT_POLLING_INTERVAL
 
@@ -40,14 +38,12 @@ module JobFlow
     def wait
       return true unless self.class.available?
 
-      loop do
-        if QueueAdapter.current.semaphore_wait(self)
-          log_throttle_acquire(self)
-          return true
-        end
+      Instrumentation.instrument_throttle(self) do
+        loop do
+          return true if QueueAdapter.current.semaphore_wait(self)
 
-        log_throttle_wait(self, polling_interval)
-        sleep(polling_interval)
+          sleep(polling_interval)
+        end
       end
     end
 
@@ -56,12 +52,12 @@ module JobFlow
       return true unless self.class.available?
 
       result = QueueAdapter.current.semaphore_signal(self)
-      log_throttle_release(self)
+      Instrumentation.notify_throttle_release(self)
       result
     end
 
-    #:  [T] () { () -> T } -> T
-    def with
+    #: [T] () { () -> T } -> T
+    def with(&)
       wait
       yield
     ensure

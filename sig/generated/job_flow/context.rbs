@@ -2,8 +2,7 @@
 
 module JobFlow
   class Context
-    include Logger::ContextLogging
-
+    # rubocop:disable Metrics/ClassLength
     attr_reader workflow: Workflow
 
     attr_reader arguments: Arguments
@@ -53,6 +52,27 @@ module JobFlow
 
     # :  (limit: Integer, ?key: String?, ?ttl: Integer) { () -> void } -> void
     def throttle: (limit: Integer, ?key: String?, ?ttl: Integer) { () -> void } -> void
+
+    # Instruments a custom operation with ActiveSupport::Notifications.
+    # This creates a span in OpenTelemetry (if enabled) and logs the event.
+    #
+    # @example Basic usage
+    #   ```ruby
+    #   ctx.instrument("api_call", endpoint: "/users") do
+    #     HTTP.get("https://api.example.com/users")
+    #   end
+    #   ```
+    #
+    # @example With automatic operation name
+    #   ```ruby
+    #   ctx.instrument do
+    #     # operation name defaults to "custom"
+    #     expensive_operation()
+    #   end
+    #   ```
+    #
+    # :  (?String, **untyped) { () -> untyped } -> untyped
+    def instrument: (?String, **untyped) { () -> untyped } -> untyped
 
     # :  () -> untyped
     def each_value: () -> untyped

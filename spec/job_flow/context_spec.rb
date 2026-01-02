@@ -1000,4 +1000,122 @@ RSpec.describe JobFlow::Context do
       it { expect { throttle_call }.to raise_error("throttle can be called only in task") }
     end
   end
+
+  describe "#instrument" do
+    let(:job) do
+      klass = Class.new(ActiveJob::Base) do
+        include JobFlow::DSL
+
+        argument :arg_one, "String", default: nil
+
+        task :instrumented_task do |_ctx|
+          "task_result"
+        end
+      end
+      klass.new
+    end
+
+    let(:workflow) { job.class._workflow }
+
+    let(:ctx) do
+      context = described_class.from_hash(
+        workflow:,
+        each_context: {},
+        task_outputs: [],
+        task_job_statuses: []
+      )
+      context._current_job = job
+      context
+    end
+
+    let(:task) { workflow.fetch_task(:instrumented_task) }
+
+    context "when called within a task" do
+      subject(:instrument_result) do
+        ctx._with_each_value(task).map do |each_ctx|
+          each_ctx.instrument("api_call", api: "external") { "api_response" }
+        end
+      end
+
+      let(:events) { [] }
+
+      before do
+        ActiveSupport::Notifications.subscribe(/\.job_flow$/) do |event|
+          events << event
+        end
+      end
+
+      after do
+        ActiveSupport::Notifications.unsubscribe(/\.job_flow$/)
+      end
+
+      it { is_expected.to eq(["api_response"]) }
+
+      it "fires custom event" do
+        instrument_result
+        custom_event = events.find { |e| e.name == "api_call.job_flow" }
+        expect(custom_event).not_to be_nil
+      end
+
+      it "includes operation in payload" do
+        instrument_result
+        custom_event = events.find { |e| e.name == "api_call.job_flow" }
+        expect(custom_event.payload[:operation]).to eq("api_call")
+      end
+
+      it "includes custom payload attributes" do
+        instrument_result
+        custom_event = events.find { |e| e.name == "api_call.job_flow" }
+        expect(custom_event.payload[:api]).to eq("external")
+      end
+    end
+
+    context "when called with default operation" do
+      subject(:instrument_result) do
+        ctx._with_each_value(task).map do |each_ctx|
+          each_ctx.instrument { "default_result" }
+        end
+      end
+
+      let(:events) { [] }
+
+      before do
+        ActiveSupport::Notifications.subscribe(/\.job_flow$/) do |event|
+          events << event
+        end
+      end
+
+      after do
+        ActiveSupport::Notifications.unsubscribe(/\.job_flow$/)
+      end
+
+      it { is_expected.to eq(["default_result"]) }
+
+      it "uses 'custom' as default operation" do
+        instrument_result
+        custom_event = events.find { |e| e.name == "custom.job_flow" }
+        expect(custom_event.payload[:operation]).to eq("custom")
+      end
+    end
+
+    context "when current_task is nil" do
+      let(:events) { [] }
+
+      before do
+        ActiveSupport::Notifications.subscribe(/\.job_flow$/) do |event|
+          events << event
+        end
+      end
+
+      after do
+        ActiveSupport::Notifications.unsubscribe(/\.job_flow$/)
+      end
+
+      it "sets task_name to nil in payload" do
+        ctx.instrument("test_op") { "result" }
+        custom_event = events.find { |e| e.name == "test_op.job_flow" }
+        expect(custom_event.payload[:task_name]).to be_nil
+      end
+    end
+  end
 end

@@ -1,0 +1,111 @@
+# Generated from lib/job_flow/instrumentation/opentelemetry_subscriber.rb with RBS::Inline
+
+module JobFlow
+  module Instrumentation
+    # OpenTelemetrySubscriber provides OpenTelemetry tracing integration for JobFlow events.
+    # It subscribes to ActiveSupport::Notifications and creates OpenTelemetry spans.
+    #
+    # @example Enable OpenTelemetry integration
+    #   ```ruby
+    #   # Ensure OpenTelemetry is configured first
+    #   OpenTelemetry::SDK.configure do |c|
+    #     c.service_name = "my-app"
+    #   end
+    #
+    #   # Then subscribe JobFlow events
+    #   JobFlow::Instrumentation::OpenTelemetrySubscriber.subscribe!
+    #   ```
+    #
+    # @note This subscriber requires the opentelemetry-api gem to be installed.
+    #   If not available, subscription will be silently skipped.
+    class OpenTelemetrySubscriber
+      # rubocop:disable Metrics/ClassLength
+      module Attributes
+        JOB_NAME: String
+
+        JOB_ID: String
+
+        TASK_NAME: String
+
+        TASK_EACH_INDEX: String
+
+        TASK_RETRY_COUNT: String
+
+        WORKFLOW_NAME: String
+
+        ERROR_CLASS: String
+
+        ERROR_MESSAGE: String
+
+        CONCURRENCY_KEY: String
+
+        CONCURRENCY_LIMIT: String
+      end
+
+      SUBSCRIBED_EVENTS: untyped
+
+      def self.subscriptions: () -> Array[untyped]
+
+      def self.subscriptions=: (Array[untyped]) -> void
+
+      # :  () -> Array[untyped]?
+      def self.subscribe!: () -> Array[untyped]?
+
+      # :  () -> void
+      def self.unsubscribe!: () -> void
+
+      # :  () -> void
+      def self.reset!: () -> void
+
+      # :  () -> bool
+      def self.opentelemetry_available?: () -> bool
+
+      # :  (String, String, Hash[Symbol, untyped]) -> void
+      def start: (String, String, Hash[Symbol, untyped]) -> void
+
+      # :  (String, String, Hash[Symbol, untyped]) -> void
+      def finish: (String, String, Hash[Symbol, untyped]) -> void
+
+      private
+
+      # :  (String, Hash[Symbol, untyped]) -> untyped
+      def start_span: (String, Hash[Symbol, untyped]) -> untyped
+
+      # :  (untyped) -> untyped
+      def attach_span_context: (untyped) -> untyped
+
+      # :  (Hash[Symbol, untyped], untyped, untyped) -> void
+      def store_span_info: (Hash[Symbol, untyped], untyped, untyped) -> void
+
+      # :  (Hash[Symbol, untyped]) -> Array[untyped?]
+      def extract_span_info: (Hash[Symbol, untyped]) -> Array[untyped?]
+
+      # :  (Hash[Symbol, untyped], untyped) -> void
+      def handle_exception: (Hash[Symbol, untyped], untyped) -> void
+
+      # :  (untyped, untyped) -> void
+      def finish_span: (untyped, untyped) -> void
+
+      # :  (untyped) -> void
+      def assign_span_status_ok: (untyped) -> void
+
+      # :  (String, Hash[Symbol, untyped]) -> String
+      def build_span_name: (String, Hash[Symbol, untyped]) -> String
+
+      # :  (Hash[Symbol, untyped]) -> Hash[String, untyped]
+      def build_attributes: (Hash[Symbol, untyped]) -> Hash[String, untyped]
+
+      # :  (Hash[String, untyped], Hash[Symbol, untyped]) -> void
+      def add_error_attributes: (Hash[String, untyped], Hash[Symbol, untyped]) -> void
+
+      # :  (String) -> Symbol
+      def determine_span_kind: (String) -> Symbol
+
+      # :  () -> untyped
+      def tracer: () -> untyped
+
+      # :  (StandardError) -> void
+      def handle_error: (StandardError) -> void
+    end
+  end
+end

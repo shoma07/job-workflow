@@ -28,18 +28,20 @@ Welcome to the comprehensive guide for JobFlow. This document provides informati
 ### Observability
 
 10. [Structured Logging](#structured-logging)
+11. [Instrumentation](#instrumentation)
+12. [OpenTelemetry Integration](#opentelemetry-integration)
 
 ### Practical
 
-11. [Production Deployment](#production-deployment)
-12. [Testing Strategy](#testing-strategy)
-13. [Troubleshooting](#troubleshooting)
+13. [Production Deployment](#production-deployment)
+14. [Testing Strategy](#testing-strategy)
+15. [Troubleshooting](#troubleshooting)
 
 ### Reference
 
-14. [API Reference](#api-reference)
-15. [Type Definitions Guide](#type-definitions-guide)
-16. [Best Practices](#best-practices)
+16. [API Reference](#api-reference)
+17. [Type Definitions Guide](#type-definitions-guide)
+18. [Best Practices](#best-practices)
 
 ---
 
@@ -1868,11 +1870,11 @@ JobFlow automatically logs the following events:
 | `task.skip` | Task skipped (condition not met) | INFO | `job_name`, `job_id`, `task_name`, `reason` |
 | `task.enqueue` | Sub-jobs enqueued for map task | INFO | `job_name`, `job_id`, `task_name`, `sub_job_count` |
 | `task.retry` | Task retry after failure | WARN | `job_name`, `job_id`, `task_name`, `each_index`, `attempt`, `max_attempts`, `delay_seconds`, `error_class`, `error_message` |
-| `throttle.wait` | Waiting for semaphore acquisition | DEBUG | `concurrency_key`, `concurrency_limit`, `polling_interval` |
-| `throttle.acquire` | Semaphore acquired | DEBUG | `concurrency_key`, `concurrency_limit` |
+| `throttle.acquire.start` | Semaphore acquisition started | DEBUG | `concurrency_key`, `concurrency_limit` |
+| `throttle.acquire.complete` | Semaphore acquisition completed | DEBUG | `concurrency_key`, `concurrency_limit` |
 | `throttle.release` | Semaphore released | DEBUG | `concurrency_key` |
-| `dependent.wait` | Waiting for dependent task completion | DEBUG | `job_name`, `job_id`, `dependent_task_name` |
-| `dependent.complete` | Dependent task completed | DEBUG | `job_name`, `job_id`, `dependent_task_name` |
+| `dependent.wait.start` | Waiting for dependent task started | DEBUG | `job_name`, `job_id`, `dependent_task_name` |
+| `dependent.wait.complete` | Dependent task completed | DEBUG | `job_name`, `job_id`, `dependent_task_name` |
 
 ### Default Configuration
 
@@ -1918,8 +1920,8 @@ JobFlow.logger.formatter
 #### Throttling Events
 
 ```json
-{"time":"2026-01-02T10:00:20.678901+09:00","level":"DEBUG","progname":"ruby","event":"throttle.wait","concurrency_key":"api_rate_limit","concurrency_limit":10,"polling_interval":3.0}
-{"time":"2026-01-02T10:00:23.789012+09:00","level":"DEBUG","progname":"ruby","event":"throttle.acquire","concurrency_key":"api_rate_limit","concurrency_limit":10}
+{"time":"2026-01-02T10:00:20.678901+09:00","level":"DEBUG","progname":"ruby","event":"throttle.acquire.start","concurrency_key":"api_rate_limit","concurrency_limit":10}
+{"time":"2026-01-02T10:00:23.789012+09:00","level":"DEBUG","progname":"ruby","event":"throttle.acquire.complete","concurrency_key":"api_rate_limit","concurrency_limit":10}
 {"time":"2026-01-02T10:00:28.890123+09:00","level":"DEBUG","progname":"ruby","event":"throttle.release","concurrency_key":"api_rate_limit"}
 ```
 
@@ -1997,11 +1999,11 @@ echo "Start: $START, End: $END"
 #### Analyzing Throttling Behavior
 
 ```bash
-# Count throttle wait events by concurrency_key
-cat log/production.log | jq -r 'select(.event == "throttle.wait") | .concurrency_key' | sort | uniq -c
+# Count throttle acquire events by concurrency_key
+cat log/production.log | jq -r 'select(.event == "throttle.acquire.start") | .concurrency_key' | sort | uniq -c
 
-# Average wait time (requires timestamps)
-cat log/production.log | jq 'select(.event == "throttle.wait" or .event == "throttle.acquire")' | jq -s 'group_by(.concurrency_key) | map({key: .[0].concurrency_key, count: length})'
+# Calculate semaphore wait duration (requires timestamps)
+cat log/production.log | jq 'select(.event == "throttle.acquire.start" or .event == "throttle.acquire.complete")' | jq -s 'group_by(.concurrency_key) | map({key: .[0].concurrency_key, count: length})'
 ```
 
 ### Best Practices
@@ -2040,7 +2042,7 @@ Set up alerts for:
 
 - High retry rates: `event == "task.retry"`
 - Long workflow durations: time between `workflow.start` and `workflow.complete`
-- Throttling bottlenecks: frequent `throttle.wait` events
+- Long throttle wait times: duration between `throttle.acquire.start` and `throttle.acquire.complete`
 - Skipped tasks: unexpected `task.skip` events
 
 #### 4. Structured Log Queries
@@ -2108,6 +2110,229 @@ JobFlow.logger.tagged(custom_field: "value") do
   MyWorkflowJob.perform_later
 end
 ```
+
+---
+
+## Instrumentation
+
+JobFlow provides a comprehensive instrumentation system built on `ActiveSupport::Notifications`. This enables:
+
+- **Structured Logging**: Automatic JSON log output for all workflow events
+- **OpenTelemetry Integration**: Distributed tracing with span creation
+- **Custom Subscribers**: Build your own event handlers
+
+### Architecture
+
+JobFlow uses `ActiveSupport::Notifications` as the single event source, with subscribers handling the events:
+
+```
+┌─────────────────────┐
+│   JobFlow Core      │
+│  (Runner/Context)   │
+└─────────┬───────────┘
+          │ instrument("task.job_flow", payload)
+          ▼
+┌─────────────────────────────────────┐
+│   ActiveSupport::Notifications      │
+│         (Event Bus)                 │
+└─────────┬──────────┬────────────────┘
+          │          │
+          ▼          ▼
+┌─────────────┐  ┌──────────────────┐
+│ LogSubscriber│  │ OpenTelemetry   │
+│ (built-in)  │  │   Subscriber    │
+└─────────────┘  └──────────────────┘
+```
+
+### Event Types
+
+JobFlow emits multiple events for each operation to support both tracing and logging:
+
+#### Tracing Events (for OpenTelemetry spans)
+
+| Event Name | Description | Key Payload Fields |
+|------------|-------------|-------------------|
+| `workflow.job_flow` | Workflow execution span | `job_name`, `job_id`, `duration_ms` |
+| `task.job_flow` | Task execution span | `task_name`, `each_index`, `retry_count`, `duration_ms` |
+| `throttle.acquire.job_flow` | Semaphore acquisition span | `concurrency_key`, `concurrency_limit`, `duration_ms` |
+| `dependent.wait.job_flow` | Dependency wait span | `dependent_task_name`, `duration_ms` |
+
+#### Logging Events (for structured logs)
+
+| Event Name | Description | Key Payload Fields |
+|------------|-------------|-------------------|
+| `workflow.start.job_flow` | Workflow started | `job_name`, `job_id` |
+| `workflow.complete.job_flow` | Workflow completed | `job_name`, `job_id` |
+| `task.start.job_flow` | Task started | `task_name`, `each_index`, `retry_count` |
+| `task.complete.job_flow` | Task completed | `task_name`, `each_index`, `retry_count` |
+| `task.error.job_flow` | Task error (used by runner) | `task_name`, `error_class`, `error_message` |
+| `task.skip.job_flow` | Task skipped | `task_name`, `reason` |
+| `task.enqueue.job_flow` | Sub-jobs enqueued | `task_name`, `sub_job_count` |
+| `task.retry.job_flow` | Task retry | `task_name`, `attempt`, `max_attempts`, `delay_seconds`, `error_class` |
+| `throttle.acquire.start.job_flow` | Semaphore acquisition started | `concurrency_key`, `concurrency_limit` |
+| `throttle.acquire.complete.job_flow` | Semaphore acquisition completed | `concurrency_key`, `concurrency_limit` |
+| `throttle.release.job_flow` | Semaphore released | `concurrency_key`, `concurrency_limit` |
+| `dependent.wait.start.job_flow` | Dependency wait started | `dependent_task_name` |
+| `dependent.wait.complete.job_flow` | Dependency wait completed | `dependent_task_name` |
+
+### Custom Event Instrumentation
+
+Use `ctx.instrument` within tasks to create custom spans:
+
+```ruby
+class DataProcessingJob < ApplicationJob
+  include JobFlow::DSL
+
+  task :fetch_data do |ctx|
+    # Create a custom instrumented span for API calls
+    ctx.instrument("api_call", endpoint: "/users", method: "GET") do
+      HTTP.get("https://api.example.com/users")
+    end
+  end
+
+  task :process_items, each: -> (ctx) { ctx.args.items } do |ctx|
+    ctx.instrument("item_processing", item_id: ctx.each_value[:id]) do
+      process_item(ctx.each_value)
+    end
+  end
+end
+```
+
+Custom events are published as `<operation>.job_flow` and include:
+- `job_id`, `job_name`, `task_name`, `each_index` (automatic)
+- Any custom fields you provide
+- `duration_ms` (automatic)
+
+### Subscribing to Events
+
+#### Using ActiveSupport::Notifications
+
+```ruby
+# config/initializers/job_flow_monitoring.rb
+
+# Subscribe to all JobFlow events
+ActiveSupport::Notifications.subscribe(/\.job_flow$/) do |name, start, finish, id, payload|
+  duration = (finish - start) * 1000
+  Rails.logger.info("JobFlow event: #{name}, duration: #{duration}ms")
+end
+
+# Subscribe to specific events
+ActiveSupport::Notifications.subscribe("task.retry.job_flow") do |*args|
+  event = ActiveSupport::Notifications::Event.new(*args)
+  Bugsnag.notify("Task retry: #{event.payload[:task_name]}")
+end
+```
+
+#### Custom Metrics Collection
+
+```ruby
+# Send metrics to StatsD/Datadog
+ActiveSupport::Notifications.subscribe("task.job_flow") do |*args|
+  event = ActiveSupport::Notifications::Event.new(*args)
+  StatsD.timing(
+    "job_flow.task.duration",
+    event.duration,
+    tags: ["task:#{event.payload[:task_name]}", "job:#{event.payload[:job_name]}"]
+  )
+end
+
+ActiveSupport::Notifications.subscribe("task.retry.job_flow") do |*args|
+  event = ActiveSupport::Notifications::Event.new(*args)
+  StatsD.increment(
+    "job_flow.task.retry",
+    tags: ["task:#{event.payload[:task_name]}", "error:#{event.payload[:error_class]}"]
+  )
+end
+```
+
+---
+
+## OpenTelemetry Integration
+
+JobFlow provides optional OpenTelemetry integration for distributed tracing. When enabled, all workflow and task executions create OpenTelemetry spans.
+
+### Prerequisites
+
+Install the OpenTelemetry gems:
+
+```ruby
+# Gemfile
+gem 'opentelemetry-api'
+gem 'opentelemetry-sdk'
+gem 'opentelemetry-exporter-otlp'  # Or your preferred exporter
+```
+
+### Configuration
+
+```ruby
+# config/initializers/opentelemetry.rb
+require 'opentelemetry/sdk'
+require 'opentelemetry/exporter/otlp'
+
+OpenTelemetry::SDK.configure do |c|
+  c.service_name = 'my-application'
+  c.use_all  # Auto-instrument Rails, HTTP clients, etc.
+end
+
+# Enable JobFlow OpenTelemetry integration
+JobFlow::Instrumentation::OpenTelemetrySubscriber.subscribe!
+```
+
+### Span Attributes
+
+JobFlow spans include the following attributes:
+
+| Attribute | Description |
+|-----------|-------------|
+| `job_flow.job.name` | Job class name |
+| `job_flow.job.id` | Unique job identifier |
+| `job_flow.task.name` | Task name |
+| `job_flow.task.each_index` | Index in map task iteration |
+| `job_flow.task.retry_count` | Current retry attempt |
+| `job_flow.concurrency.key` | Throttle concurrency key |
+| `job_flow.concurrency.limit` | Throttle concurrency limit |
+| `job_flow.error.class` | Exception class (on error) |
+| `job_flow.error.message` | Exception message (on error) |
+
+### Span Naming
+
+Spans are named based on the event type:
+
+- `DataProcessingJob workflow` - Workflow execution
+- `DataProcessingJob.fetch_data task` - Task execution
+- `DataProcessingJob.process_items task` - Map task execution
+- `JobFlow throttle.acquire` - Throttle acquisition
+- `JobFlow dependent.wait` - Dependency waiting
+
+### Viewing Traces
+
+Configure your preferred backend (Jaeger, Zipkin, Honeycomb, Datadog, etc.):
+
+```ruby
+# Example: OTLP exporter
+OpenTelemetry::SDK.configure do |c|
+  c.add_span_processor(
+    OpenTelemetry::SDK::Trace::Export::BatchSpanProcessor.new(
+      OpenTelemetry::Exporter::OTLP::Exporter.new(
+        endpoint: 'http://localhost:4318/v1/traces'
+      )
+    )
+  )
+end
+```
+
+### Disabling OpenTelemetry
+
+To disable OpenTelemetry integration:
+
+```ruby
+# Unsubscribe from all events
+JobFlow::Instrumentation::OpenTelemetrySubscriber.unsubscribe!
+```
+
+### Error Handling
+
+OpenTelemetry subscriber errors are handled gracefully and do not affect workflow execution. Errors are reported via `OpenTelemetry.handle_error` if available.
 
 ---
 
