@@ -46,4 +46,32 @@ RSpec.describe JobFlow::QueueAdapters::Abstract do
   describe "#install_scheduling_hook!" do
     it { expect(adapter.install_scheduling_hook!).to be_nil }
   end
+
+  describe "#pause_queue" do
+    it { expect { adapter.pause_queue("default") }.to raise_error(NotImplementedError) }
+  end
+
+  describe "#resume_queue" do
+    it { expect { adapter.resume_queue("default") }.to raise_error(NotImplementedError) }
+  end
+
+  describe "#queue_paused?" do
+    it { expect { adapter.queue_paused?("default") }.to raise_error(NotImplementedError) }
+  end
+
+  describe "#paused_queues" do
+    it { expect { adapter.paused_queues }.to raise_error(NotImplementedError) }
+  end
+
+  describe "#queue_latency" do
+    it { expect { adapter.queue_latency("default") }.to raise_error(NotImplementedError) }
+  end
+
+  describe "#queue_size" do
+    it { expect { adapter.queue_size("default") }.to raise_error(NotImplementedError) }
+  end
+
+  describe "#clear_queue" do
+    it { expect { adapter.clear_queue("default") }.to raise_error(NotImplementedError) }
+  end
 end

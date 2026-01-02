@@ -40,6 +40,7 @@ require_relative "job_flow/context"
 require_relative "job_flow/output_def"
 require_relative "job_flow/task_output"
 require_relative "job_flow/output"
+require_relative "job_flow/queue"
 require_relative "job_flow/auto_scaling"
 
 module JobFlow

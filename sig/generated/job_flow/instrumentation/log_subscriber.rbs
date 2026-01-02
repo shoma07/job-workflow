@@ -66,6 +66,12 @@ module JobFlow
       # :  (ActiveSupport::Notifications::Event) -> void
       def dependent_wait_complete: (ActiveSupport::Notifications::Event) -> void
 
+      # :  (ActiveSupport::Notifications::Event) -> void
+      def queue_pause: (ActiveSupport::Notifications::Event) -> void
+
+      # :  (ActiveSupport::Notifications::Event) -> void
+      def queue_resume: (ActiveSupport::Notifications::Event) -> void
+
       private
 
       # :  (ActiveSupport::Notifications::Event, log_level) -> void

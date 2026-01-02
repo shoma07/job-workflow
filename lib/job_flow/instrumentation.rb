@@ -30,6 +30,8 @@ module JobFlow
       DEPENDENT_WAIT = "dependent.wait.#{NAMESPACE}".freeze
       DEPENDENT_WAIT_START = "dependent.wait.start.#{NAMESPACE}".freeze
       DEPENDENT_WAIT_COMPLETE = "dependent.wait.complete.#{NAMESPACE}".freeze
+      QUEUE_PAUSE = "queue.pause.#{NAMESPACE}".freeze
+      QUEUE_RESUME = "queue.resume.#{NAMESPACE}".freeze
       CUSTOM = "custom.#{NAMESPACE}".freeze
     end
 
@@ -88,6 +90,16 @@ module JobFlow
       #:  (Semaphore) -> void
       def notify_throttle_release(semaphore)
         instrument(Events::THROTTLE_RELEASE, build_throttle_payload(semaphore))
+      end
+
+      #:  (String) -> void
+      def notify_queue_pause(queue_name)
+        instrument(Events::QUEUE_PAUSE, build_queue_payload(queue_name))
+      end
+
+      #:  (String) -> void
+      def notify_queue_resume(queue_name)
+        instrument(Events::QUEUE_RESUME, build_queue_payload(queue_name))
       end
 
       #:  (String, Hash[Symbol, untyped]) { () -> untyped } -> untyped
@@ -185,6 +197,13 @@ module JobFlow
           semaphore:,
           concurrency_key: semaphore.concurrency_key,
           concurrency_limit: semaphore.concurrency_limit
+        }
+      end
+
+      #:  (String) -> Hash[Symbol, untyped]
+      def build_queue_payload(queue_name)
+        {
+          queue_name:
         }
       end
     end

@@ -24,9 +24,7 @@ module JobFlow
 
       #:  () -> Integer?
       def queue_latency
-        raise Error, "SolidQueue::Queue is not defined!" unless defined?(SolidQueue::Queue)
-
-        SolidQueue::Queue.find_by_name(config.queue_name).latency
+        Queue.latency(config.queue_name)
       end
 
       #:  () -> Integer
