@@ -79,7 +79,7 @@ RSpec.describe JobFlow::Instrumentation do
         ),
         instance_double(
           JobFlow::Context,
-          _each_context: instance_double(JobFlow::EachContext, index: 0, retry_count: 0)
+          _task_context: instance_double(JobFlow::TaskContext, index: 0, retry_count: 0)
         )
       ) { "task_result" }
     end
@@ -151,7 +151,7 @@ RSpec.describe JobFlow::Instrumentation do
         ),
         instance_double(
           JobFlow::Context,
-          _each_context: instance_double(JobFlow::EachContext, index: 1)
+          _task_context: instance_double(JobFlow::TaskContext, index: 1)
         ),
         "job-456",
         2,

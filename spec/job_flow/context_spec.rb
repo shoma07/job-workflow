@@ -14,7 +14,7 @@ RSpec.describe JobFlow::Context do
   let(:ctx) do
     described_class.from_hash(
       workflow:,
-      each_context: {},
+      task_context: {},
       task_outputs: [],
       task_job_statuses: []
     )
@@ -26,7 +26,7 @@ RSpec.describe JobFlow::Context do
         described_class.new(
           workflow:,
           arguments: JobFlow::Arguments.new(data: { arg_one: nil, arg_two: 1 }),
-          each_context: JobFlow::EachContext.new,
+          task_context: JobFlow::TaskContext.new,
           output: JobFlow::Output.new,
           job_status: JobFlow::JobStatus.new
         )
@@ -45,12 +45,12 @@ RSpec.describe JobFlow::Context do
       end
     end
 
-    context "when each_context has values" do
+    context "when task_context has values" do
       subject(:init) do
         described_class.new(
           workflow:,
           arguments: JobFlow::Arguments.new(data: { arg_one: nil, arg_two: [1, 2] }),
-          each_context: JobFlow::EachContext.new(
+          task_context: JobFlow::TaskContext.new(
             parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076",
             index: 1
           ),
@@ -59,21 +59,21 @@ RSpec.describe JobFlow::Context do
         )
       end
 
-      it "creates a context with given arguments and each_context" do
+      it "creates a context with given arguments and task_context" do
         expect(init).to have_attributes(
           arguments: have_attributes(
             to_h: { arg_one: nil, arg_two: [1, 2] },
             arg_one: nil,
             arg_two: [1, 2]
           ),
-          _each_context: have_attributes(
+          _task_context: have_attributes(
             parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076",
             index: 1
           )
         )
       end
 
-      it "allows resuming _with_each_value from restored each_context index" do
+      it "allows resuming _with_each_value from restored task_context index" do
         job = Class.new(ActiveJob::Base) { include JobFlow::DSL }.new
         init._current_job = job
         task = JobFlow::Task.new(
@@ -83,17 +83,17 @@ RSpec.describe JobFlow::Context do
           each: ->(_ctx) { [0, 1, 2, 3] },
           block: ->(_ctx) {}
         )
-        indices = init._with_each_value(task).map { |ctx| ctx._each_context.index }
+        indices = init._with_each_value(task).map { |ctx| ctx._task_context.index }
         expect(indices).to eq([1, 2, 3])
       end
     end
 
-    context "when each_context has retry_count for resumption" do
+    context "when task_context has retry_count for resumption" do
       subject(:context_with_retry) do
         described_class.new(
           workflow:,
           arguments: JobFlow::Arguments.new(data: { arg_one: nil, arg_two: [1, 2] }),
-          each_context: JobFlow::EachContext.new(
+          task_context: JobFlow::TaskContext.new(
             parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076",
             index: 0,
             retry_count: 2
@@ -119,8 +119,8 @@ RSpec.describe JobFlow::Context do
         context_with_retry._current_job = job_instance
       end
 
-      it "allows resuming _with_each_value from restored each_context retry_count" do
-        retry_counts = context_with_retry._with_each_value(task_with_retry).map { |ctx| ctx._each_context.retry_count }
+      it "allows resuming _with_each_value from restored task_context retry_count" do
+        retry_counts = context_with_retry._with_each_value(task_with_retry).map { |ctx| ctx._task_context.retry_count }
         expect(retry_counts).to eq([2])
       end
     end
@@ -130,7 +130,7 @@ RSpec.describe JobFlow::Context do
         described_class.new(
           workflow:,
           arguments: JobFlow::Arguments.new(data: { arg_one: nil, arg_two: 1 }),
-          each_context: JobFlow::EachContext.new,
+          task_context: JobFlow::TaskContext.new,
           output: JobFlow::Output.new(
             task_outputs: [
               JobFlow::TaskOutput.new(task_name: :task_one, each_index: 0, data: { result: 100 }),
@@ -154,7 +154,7 @@ RSpec.describe JobFlow::Context do
         described_class.new(
           workflow:,
           arguments: JobFlow::Arguments.new(data: { arg_one: nil, arg_two: 1 }),
-          each_context: JobFlow::EachContext.new,
+          task_context: JobFlow::TaskContext.new,
           output: JobFlow::Output.new,
           job_status: JobFlow::JobStatus.new(
             task_job_statuses: [
@@ -182,7 +182,7 @@ RSpec.describe JobFlow::Context do
         described_class.new(
           workflow:,
           arguments: JobFlow::Arguments.new(data: { arg_one: nil, arg_two: 1 }),
-          each_context: JobFlow::EachContext.new,
+          task_context: JobFlow::TaskContext.new,
           output: JobFlow::Output.new,
           job_status: JobFlow::JobStatus.new
         )
@@ -204,7 +204,7 @@ RSpec.describe JobFlow::Context do
     let(:hash) do
       {
         workflow:,
-        each_context: { parent_job_id: "parent-id", index: 0, value: 10 },
+        task_context: { parent_job_id: "parent-id", index: 0, value: 10 },
         task_outputs: [
           { task_name: :task_a, each_index: 0, data: { result: 100 } },
           { task_name: :task_b, each_index: 0, data: { value: 200 } }
@@ -218,7 +218,7 @@ RSpec.describe JobFlow::Context do
     it "creates a Context from hash" do
       expect(from_hash).to have_attributes(
         arguments: have_attributes(arg_one: nil, arg_two: 1),
-        _each_context: have_attributes(parent_job_id: "parent-id", index: 0, value: 10),
+        _task_context: have_attributes(parent_job_id: "parent-id", index: 0, value: 10),
         job_status: be_a(JobFlow::JobStatus)
       )
     end
@@ -238,8 +238,8 @@ RSpec.describe JobFlow::Context do
       let(:serialized_hash) do
         {
           "workflow" => workflow,
-          "current_task_name" => nil,
-          "each_context" => {
+          "task_context" => {
+            "task_name" => nil,
             "parent_job_id" => "parent-id",
             "index" => 0,
             "value" => 10
@@ -258,7 +258,7 @@ RSpec.describe JobFlow::Context do
       it "deserializes a Context from hash" do
         expect(deserialized).to have_attributes(
           arguments: have_attributes(arg_one: nil, arg_two: 1),
-          _each_context: have_attributes(parent_job_id: "parent-id", index: 0, value: 10),
+          _task_context: have_attributes(parent_job_id: "parent-id", index: 0, value: 10),
           job_status: be_a(JobFlow::JobStatus)
         )
       end
@@ -275,8 +275,8 @@ RSpec.describe JobFlow::Context do
       let(:serialized_hash) do
         {
           "workflow" => workflow,
-          "current_task_name" => nil,
-          "each_context" => {
+          "task_context" => {
+            "task_name" => nil,
             "parent_job_id" => nil,
             "index" => 0,
             "value" => nil
@@ -303,7 +303,7 @@ RSpec.describe JobFlow::Context do
       described_class.new(
         workflow:,
         arguments: JobFlow::Arguments.new(data: { arg_one: "test", arg_two: 42 }),
-        each_context: JobFlow::EachContext.new(parent_job_id: "parent-id", index: 0, value: 10),
+        task_context: JobFlow::TaskContext.new(parent_job_id: "parent-id", index: 0, value: 10),
         output: JobFlow::Output.new(
           task_outputs: [
             JobFlow::TaskOutput.new(task_name: :task_a, each_index: 0, data: { result: 100 })
@@ -320,8 +320,8 @@ RSpec.describe JobFlow::Context do
     it "serializes the context to a hash" do
       expect(serialized).to eq(
         {
-          "current_task_name" => nil,
-          "each_context" => {
+          "task_context" => {
+            "task_name" => nil,
             "parent_job_id" => "parent-id",
             "index" => 0,
             "value" => 10,
@@ -343,7 +343,7 @@ RSpec.describe JobFlow::Context do
         described_class.new(
           workflow:,
           arguments: JobFlow::Arguments.new(data: { arg_one: "test", arg_two: 42 }),
-          each_context: JobFlow::EachContext.new,
+          task_context: JobFlow::TaskContext.new,
           output: JobFlow::Output.new(
             task_outputs: [
               JobFlow::TaskOutput.new(task_name: :"ns:task_one", each_index: 0, data: { result: 100 })
@@ -409,7 +409,7 @@ RSpec.describe JobFlow::Context do
   end
 
   describe "#parent_job_id" do
-    subject(:parent_job_id) { ctx._each_context.parent_job_id }
+    subject(:parent_job_id) { ctx._task_context.parent_job_id }
 
     let(:job) do
       klass = Class.new(ActiveJob::Base) do
@@ -440,8 +440,8 @@ RSpec.describe JobFlow::Context do
       end
 
       it "returns the parent job id" do
-        ctx._with_each_value(task).each do |each_ctx|
-          expect(each_ctx._each_context.parent_job_id).to eq(job.job_id)
+        ctx._with_each_value(task).each do |ctx|
+          expect(ctx._task_context.parent_job_id).to eq(job.job_id)
         end
       end
 
@@ -464,60 +464,56 @@ RSpec.describe JobFlow::Context do
       )
     end
 
-    context "when enabled and current_task is set" do
+    context "when enabled and task is set" do
       let(:ctx) do
         described_class.new(
           workflow:,
           arguments: JobFlow::Arguments.new(data: {}),
-          each_context: JobFlow::EachContext.new(parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076"),
+          task_context: JobFlow::TaskContext.new(task:, parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076"),
           output: JobFlow::Output.new,
-          job_status: JobFlow::JobStatus.new,
-          current_task: task
+          job_status: JobFlow::JobStatus.new
         )
       end
 
       it { is_expected.to eq("019b6901-8bdf-7fd4-83aa-6c18254fe076/task_name") }
     end
 
-    context "when not enabled and current_task is not set" do
+    context "when not enabled and task is not set" do
       let(:ctx) do
         described_class.new(
           workflow:,
           arguments: JobFlow::Arguments.new(data: {}),
-          each_context: JobFlow::EachContext.new,
+          task_context: JobFlow::TaskContext.new,
           output: JobFlow::Output.new,
-          job_status: JobFlow::JobStatus.new,
-          current_task: nil
+          job_status: JobFlow::JobStatus.new
         )
       end
 
       it { is_expected.to be_nil }
     end
 
-    context "when not enabled and current_task is set" do
+    context "when not enabled and task is set" do
       let(:ctx) do
         described_class.new(
           workflow:,
           arguments: JobFlow::Arguments.new(data: {}),
-          each_context: JobFlow::EachContext.new,
+          task_context: JobFlow::TaskContext.new(task: task),
           output: JobFlow::Output.new,
-          job_status: JobFlow::JobStatus.new,
-          current_task: task
+          job_status: JobFlow::JobStatus.new
         )
       end
 
       it { is_expected.to eq("task_name") }
     end
 
-    context "when enabled and current_task is not set" do
+    context "when enabled and task is not set" do
       let(:ctx) do
         described_class.new(
           workflow:,
           arguments: JobFlow::Arguments.new(data: {}),
-          each_context: JobFlow::EachContext.new(parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076"),
+          task_context: JobFlow::TaskContext.new(parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076"),
           output: JobFlow::Output.new,
-          job_status: JobFlow::JobStatus.new,
-          current_task: nil
+          job_status: JobFlow::JobStatus.new
         )
       end
 
@@ -692,8 +688,8 @@ RSpec.describe JobFlow::Context do
 
     context "when called inside _with_each_value" do
       it "returns the current element value" do
-        ctx._with_each_value(task).each do |each_ctx|
-          expect(each_ctx.each_value).to be_in([10, 20])
+        ctx._with_each_value(task).each do |ctx_with_each_value|
+          expect(ctx_with_each_value.each_value).to be_in([10, 20])
         end
       end
 
@@ -712,7 +708,7 @@ RSpec.describe JobFlow::Context do
         described_class.new(
           workflow:,
           arguments: JobFlow::Arguments.new(data: {}),
-          each_context: JobFlow::EachContext.new,
+          task_context: JobFlow::TaskContext.new,
           output: JobFlow::Output.new(
             task_outputs: [
               JobFlow::TaskOutput.new(
@@ -731,7 +727,7 @@ RSpec.describe JobFlow::Context do
       end
     end
 
-    context "when called with current_task but outside _with_each_value" do
+    context "when called with task but outside _with_each_value" do
       let(:task) do
         JobFlow::Task.new(
           job_name: "TestJob",
@@ -745,7 +741,7 @@ RSpec.describe JobFlow::Context do
         described_class.new(
           workflow:,
           arguments: JobFlow::Arguments.new(data: {}),
-          each_context: JobFlow::EachContext.new,
+          task_context: JobFlow::TaskContext.new(task:),
           output: JobFlow::Output.new(
             task_outputs: [
               JobFlow::TaskOutput.new(
@@ -755,8 +751,7 @@ RSpec.describe JobFlow::Context do
               )
             ]
           ),
-          job_status: JobFlow::JobStatus.new,
-          current_task: task
+          job_status: JobFlow::JobStatus.new
         )
       end
 
@@ -780,7 +775,8 @@ RSpec.describe JobFlow::Context do
         described_class.new(
           workflow:,
           arguments: JobFlow::Arguments.new(data: {}),
-          each_context: JobFlow::EachContext.new(
+          task_context: JobFlow::TaskContext.new(
+            task: task,
             parent_job_id: "parent_job",
             index: 2
           ),
@@ -793,8 +789,7 @@ RSpec.describe JobFlow::Context do
               )
             ]
           ),
-          job_status: JobFlow::JobStatus.new,
-          current_task: task
+          job_status: JobFlow::JobStatus.new
         )
       end
 
@@ -814,7 +809,8 @@ RSpec.describe JobFlow::Context do
         described_class.new(
           workflow:,
           arguments: JobFlow::Arguments.new(data: {}),
-          each_context: JobFlow::EachContext.new(
+          task_context: JobFlow::TaskContext.new(
+            task: task,
             parent_job_id: "parent_job",
             index: 2
           ),
@@ -827,8 +823,7 @@ RSpec.describe JobFlow::Context do
               )
             ]
           ),
-          job_status: JobFlow::JobStatus.new,
-          current_task: task
+          job_status: JobFlow::JobStatus.new
         )
       end
 
@@ -869,27 +864,17 @@ RSpec.describe JobFlow::Context do
 
     it "raises an error when nested" do
       expect do
-        ctx._with_each_value(items_task).each do |each_ctx|
-          each_ctx._with_each_value(nested_task).to_a
+        ctx._with_each_value(items_task).each do |ctx_with_each_value|
+          ctx_with_each_value._with_each_value(nested_task).to_a
         end
       end.to raise_error("Nested _with_each_value calls are not allowed")
-    end
-  end
-
-  describe "#with_retry" do
-    context "when called without current_task" do
-      it "raises an error" do
-        expect { ctx.send(:with_retry) { |retry_count| retry_count } }.to raise_error(
-          "with_retry can be called only within iterate_each_value"
-        )
-      end
     end
   end
 
   describe "#_with_task_throttle" do
     before { ctx._current_job = job }
 
-    context "when current_task is nil" do
+    context "when task is nil" do
       it do
         expect { ctx._with_task_throttle { "result" } }.to raise_error(
           "with_throttle can be called only within iterate_each_value"
@@ -899,8 +884,8 @@ RSpec.describe JobFlow::Context do
 
     context "when semaphore is nil (no throttle limit)" do
       subject(:throttle_results) do
-        ctx._with_each_value(task_without_throttle).map do |each_ctx|
-          each_ctx._with_task_throttle { "no_throttle_result" }
+        ctx._with_each_value(task_without_throttle).map do |ctx_with_each_value|
+          ctx_with_each_value._with_task_throttle { "no_throttle_result" }
         end
       end
 
@@ -919,8 +904,8 @@ RSpec.describe JobFlow::Context do
 
     context "when semaphore is present (throttle limit set)" do
       subject(:throttle_results) do
-        ctx._with_each_value(task_with_throttle).map do |each_ctx|
-          each_ctx._with_task_throttle { "throttled_result" }
+        ctx._with_each_value(task_with_throttle).map do |ctx_with_each_value|
+          ctx_with_each_value._with_task_throttle { "throttled_result" }
         end
       end
 
@@ -954,8 +939,8 @@ RSpec.describe JobFlow::Context do
 
     context "when called with explicit key" do
       subject(:throttle_result) do
-        ctx._with_each_value(task).map do |each_ctx|
-          each_ctx.throttle(key: "custom_key", limit: 5) { "result_with_key" }
+        ctx._with_each_value(task).map do |ctx_with_each_value|
+          ctx_with_each_value.throttle(key: "custom_key", limit: 5) { "result_with_key" }
         end
       end
 
@@ -964,8 +949,8 @@ RSpec.describe JobFlow::Context do
 
     context "when called without key (uses default key)" do
       subject(:throttle_result) do
-        ctx._with_each_value(task).map do |each_ctx|
-          each_ctx.throttle(limit: 3) { "result_without_key" }
+        ctx._with_each_value(task).map do |ctx_with_each_value|
+          ctx_with_each_value.throttle(limit: 3) { "result_without_key" }
         end
       end
 
@@ -974,9 +959,9 @@ RSpec.describe JobFlow::Context do
 
     context "when called multiple times (increments call count)" do
       subject(:throttle_results) do
-        ctx._with_each_value(task).flat_map do |each_ctx|
-          result1 = each_ctx.throttle(limit: 2) { "first" }
-          result2 = each_ctx.throttle(limit: 2) { "second" }
+        ctx._with_each_value(task).flat_map do |ctx_with_each_value|
+          result1 = ctx_with_each_value.throttle(limit: 2) { "first" }
+          result2 = ctx_with_each_value.throttle(limit: 2) { "second" }
           [result1, result2]
         end
       end
@@ -986,15 +971,15 @@ RSpec.describe JobFlow::Context do
 
     context "when called with custom ttl" do
       subject(:throttle_result) do
-        ctx._with_each_value(task).map do |each_ctx|
-          each_ctx.throttle(limit: 5, ttl: 60) { "result_with_ttl" }
+        ctx._with_each_value(task).map do |ctx_with_each_value|
+          ctx_with_each_value.throttle(limit: 5, ttl: 60) { "result_with_ttl" }
         end
       end
 
       it { is_expected.to eq(["result_with_ttl"]) }
     end
 
-    context "when called outside of task (current_task is nil)" do
+    context "when called outside of task (task is nil)" do
       subject(:throttle_call) { ctx.throttle(limit: 3) { "result_no_task" } }
 
       it { expect { throttle_call }.to raise_error("throttle can be called only in task") }
@@ -1020,7 +1005,7 @@ RSpec.describe JobFlow::Context do
     let(:ctx) do
       context = described_class.from_hash(
         workflow:,
-        each_context: {},
+        task_context: {},
         task_outputs: [],
         task_job_statuses: []
       )
@@ -1032,8 +1017,8 @@ RSpec.describe JobFlow::Context do
 
     context "when called within a task" do
       subject(:instrument_result) do
-        ctx._with_each_value(task).map do |each_ctx|
-          each_ctx.instrument("api_call", api: "external") { "api_response" }
+        ctx._with_each_value(task).map do |ctx_with_each_value|
+          ctx_with_each_value.instrument("api_call", api: "external") { "api_response" }
         end
       end
 
@@ -1072,8 +1057,8 @@ RSpec.describe JobFlow::Context do
 
     context "when called with default operation" do
       subject(:instrument_result) do
-        ctx._with_each_value(task).map do |each_ctx|
-          each_ctx.instrument { "default_result" }
+        ctx._with_each_value(task).map do |ctx_with_each_value|
+          ctx_with_each_value.instrument { "default_result" }
         end
       end
 
@@ -1098,7 +1083,7 @@ RSpec.describe JobFlow::Context do
       end
     end
 
-    context "when current_task is nil" do
+    context "when task is nil" do
       let(:events) { [] }
 
       before do

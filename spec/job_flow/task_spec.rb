@@ -22,7 +22,7 @@ RSpec.describe JobFlow::Task do
   let(:ctx) do
     JobFlow::Context.from_hash(
       workflow:,
-      each_context: {},
+      task_context: {},
       task_outputs: [],
       task_job_statuses: []
     )

@@ -7,8 +7,6 @@ module JobFlow
 
     attr_reader arguments: Arguments
 
-    attr_reader current_task: Task?
-
     attr_reader output: Output
 
     attr_reader job_status: JobStatus
@@ -22,12 +20,11 @@ module JobFlow
     # :  (
     #      workflow: Workflow,
     #      arguments: Arguments,
-    #      each_context: EachContext,
+    #      task_context: TaskContext,
     #      output: Output,
-    #      job_status: JobStatus,
-    #      ?current_task: Task?
+    #      job_status: JobStatus
     #    ) -> void
-    def initialize: (workflow: Workflow, arguments: Arguments, each_context: EachContext, output: Output, job_status: JobStatus, ?current_task: Task?) -> void
+    def initialize: (workflow: Workflow, arguments: Arguments, task_context: TaskContext, output: Output, job_status: JobStatus) -> void
 
     # :  () -> Hash[String, untyped]
     def serialize: () -> Hash[String, untyped]
@@ -80,8 +77,8 @@ module JobFlow
     # :  () -> TaskOutput?
     def each_task_output: () -> TaskOutput?
 
-    # :  () -> EachContext
-    def _each_context: () -> EachContext
+    # :  () -> TaskContext
+    def _task_context: () -> TaskContext
 
     # :  (TaskOutput) -> void
     def _add_task_output: (TaskOutput) -> void
@@ -92,13 +89,11 @@ module JobFlow
 
     attr_writer arguments: Arguments
 
-    attr_writer current_task: Task?
-
     attr_writer output: Output
 
     attr_writer job_status: JobStatus
 
-    attr_accessor each_context: EachContext
+    attr_accessor task_context: TaskContext
 
     attr_accessor enabled_with_each_value: bool
 
@@ -108,10 +103,10 @@ module JobFlow
     def current_job: () -> DSL
 
     # :  (Task, Enumerator::Yielder) -> void
-    def with_each_context: (Task, Enumerator::Yielder) -> void
+    def with_task_context: (Task, Enumerator::Yielder) -> void
 
     # :  () -> void
-    def clear_each_context: () -> void
+    def clear_task_context: () -> void
 
     # :  (Task) { (untyped, Integer) -> void } -> void
     def with_each_index_and_value: (Task) { (untyped, Integer) -> void } -> void
@@ -119,8 +114,8 @@ module JobFlow
     # :  () { () -> void } -> void
     def with_task_timeout: () { () -> void } -> void
 
-    # :  () { (Integer) -> void } -> void
-    def with_retry: () { (Integer) -> void } -> void
+    # :  (Task) { (Integer) -> void } -> void
+    def with_retry: (Task) { (Integer) -> void } -> void
 
     # :  (Task, TaskRetry, Integer, StandardError) -> void
     def wait_next_retry: (Task, TaskRetry, Integer, StandardError) -> void

@@ -4,7 +4,6 @@ module JobFlow
   class Context # rubocop:disable Metrics/ClassLength
     attr_reader :workflow #: Workflow
     attr_reader :arguments #: Arguments
-    attr_reader :current_task #: Task?
     attr_reader :output #: Output
     attr_reader :job_status #: JobStatus
 
@@ -15,7 +14,7 @@ module JobFlow
         new(
           workflow:,
           arguments: Arguments.new(data: workflow.build_arguments_hash),
-          each_context: EachContext.new(**(hash[:each_context] || {}).symbolize_keys),
+          task_context: TaskContext.new(**(hash[:task_context] || {}).symbolize_keys),
           output: Output.from_hash_array(hash.fetch(:task_outputs, [])),
           job_status: JobStatus.from_hash_array(hash.fetch(:task_job_statuses, []))
         )
@@ -27,8 +26,16 @@ module JobFlow
         new(
           workflow: hash.fetch("workflow"),
           arguments: Arguments.new(data: workflow.build_arguments_hash),
-          current_task: workflow.fetch_task(hash["current_task_name"]&.to_sym),
-          each_context: EachContext.deserialize(hash["each_context"]),
+          task_context: TaskContext.deserialize(
+            hash["task_context"].merge(
+              "task" => workflow.fetch_task(
+                hash.fetch(
+                  "task_context",
+                  {} #: Hash[String, untyped]
+                )["task_name"]&.to_sym
+              )
+            )
+          ),
           output: Output.deserialize(hash),
           job_status: JobStatus.deserialize(hash)
         )
@@ -38,23 +45,20 @@ module JobFlow
     #:  (
     #     workflow: Workflow,
     #     arguments: Arguments,
-    #     each_context: EachContext,
+    #     task_context: TaskContext,
     #     output: Output,
-    #     job_status: JobStatus,
-    #     ?current_task: Task?
+    #     job_status: JobStatus
     #   ) -> void
-    def initialize( # rubocop:disable Metrics/ParameterLists
+    def initialize(
       workflow:,
       arguments:,
-      each_context:,
+      task_context:,
       output:,
-      job_status:,
-      current_task: nil
+      job_status:
     )
       self.workflow = workflow
       self.arguments = arguments
-      self.current_task = current_task
-      self.each_context = each_context
+      self.task_context = task_context
       self.output = output
       self.job_status = job_status
       self.enabled_with_each_value = false
@@ -64,8 +68,7 @@ module JobFlow
     #:  () -> Hash[String, untyped]
     def serialize
       {
-        "current_task_name" => current_task&.task_name,
-        "each_context" => _each_context.serialize,
+        "task_context" => _task_context.serialize,
         "task_outputs" => output.flat_task_outputs.map(&:serialize),
         "task_job_statuses" => job_status.flat_task_job_statuses.map(&:serialize)
       }
@@ -89,10 +92,10 @@ module JobFlow
 
     #:  () -> String?
     def concurrency_key
-      task = current_task
+      task = task_context.task
       return if task.nil?
 
-      [each_context.parent_job_id, task.task_name].compact.join("/")
+      [task_context.parent_job_id, task.task_name].compact.join("/")
     end
 
     #:  (Task) -> Enumerator[Context]
@@ -101,7 +104,7 @@ module JobFlow
 
       self.enabled_with_each_value = true
       Enumerator.new do |y|
-        with_each_context(task, y)
+        with_task_context(task, y)
       ensure
         self.enabled_with_each_value = false
       end
@@ -109,7 +112,7 @@ module JobFlow
 
     #:  () { () -> void } -> void
     def _with_task_throttle(&)
-      task = current_task || (raise "with_throttle can be called only within iterate_each_value")
+      task = task_context.task || (raise "with_throttle can be called only within iterate_each_value")
 
       semaphore = task.throttle.semaphore
       return yield if semaphore.nil?
@@ -119,7 +122,7 @@ module JobFlow
 
     #:  (limit: Integer, ?key: String?, ?ttl: Integer) { () -> void } -> void
     def throttle(limit:, key: nil, ttl: 180, &)
-      task = current_task || (raise "throttle can be called only in task")
+      task = task_context.task || (raise "throttle can be called only in task")
 
       semaphore = Semaphore.new(
         concurrency_key: key || "#{task.throttle_prefix_key}:#{throttle_index}",
@@ -152,12 +155,12 @@ module JobFlow
     #
     #:  (?String, **untyped) { () -> untyped } -> untyped
     def instrument(operation = "custom", **payload, &)
-      task = current_task
+      task = task_context.task
       full_payload = {
         job_id: current_job_id,
         job_name: current_job.class.name,
         task_name: task&.task_name,
-        each_index: each_context.index,
+        each_index: task_context.index,
         operation:,
         **payload
       }
@@ -166,25 +169,25 @@ module JobFlow
 
     #:  () -> untyped
     def each_value
-      raise "each_value can be called only within each_values block" unless each_context.enabled?
+      raise "each_value can be called only within each_values block" unless task_context.enabled?
 
-      each_context.value
+      task_context.value
     end
 
     #:  () -> TaskOutput?
     def each_task_output
-      task = current_task
+      task = task_context.task
       raise "each_task_output can be called only _with_task block" if task.nil?
-      raise "each_task_output can be called only _with_each_value block" unless each_context.enabled?
+      raise "each_task_output can be called only _with_each_value block" unless task_context.enabled?
 
       task_name = task.task_name
-      each_index = each_context.index
+      each_index = task_context.index
       output.fetch(task_name:, each_index:)
     end
 
-    #:  () -> EachContext
-    def _each_context
-      each_context
+    #:  () -> TaskContext
+    def _task_context
+      task_context
     end
 
     #:  (TaskOutput) -> void
@@ -196,10 +199,9 @@ module JobFlow
 
     attr_writer :workflow #: Workflow
     attr_writer :arguments #: Arguments
-    attr_writer :current_task #: Task?
     attr_writer :output #: Output
     attr_writer :job_status #: JobStatus
-    attr_accessor :each_context #: EachContext
+    attr_accessor :task_context #: TaskContext
     attr_accessor :enabled_with_each_value #: bool
     attr_accessor :throttle_index #: Integer
 
@@ -212,31 +214,29 @@ module JobFlow
     end
 
     #:  (Task, Enumerator::Yielder) -> void
-    def with_each_context(task, yielder) # rubocop:disable Metrics/MethodLength
+    def with_task_context(task, yielder)
       with_each_index_and_value(task) do |value, index|
-        self.current_task = task
-        with_retry do |retry_count|
+        with_retry(task) do |retry_count|
+          self.task_context = TaskContext.new(task:, parent_job_id: current_job_id, index:, value:, retry_count:)
           with_task_timeout do
-            self.each_context = EachContext.new(parent_job_id: current_job_id, index:, value:, retry_count:)
             yielder << self
           end
         end
       ensure
-        clear_each_context
+        clear_task_context
       end
     end
 
     #:  () -> void
-    def clear_each_context
-      self.current_task = nil
-      self.each_context = EachContext.new
+    def clear_task_context
+      self.task_context = TaskContext.new
       self.throttle_index = 0
     end
 
     #:  (Task) { (untyped, Integer) -> void } -> void
     def with_each_index_and_value(task)
       task.each.call(self).each.with_index do |value, index|
-        next if index < each_context.index
+        next if index < task_context.index
 
         yield value, index
       end
@@ -244,7 +244,7 @@ module JobFlow
 
     #:  () { () -> void } -> void
     def with_task_timeout
-      task = current_task || (raise "with_task_timeout can be called only within with_each_context")
+      task = task_context.task || (raise "with_task_timeout can be called only within with_task_context")
 
       timeout = task.timeout
       return yield if timeout.nil?
@@ -252,19 +252,19 @@ module JobFlow
       Timeout.timeout(timeout) { yield } # rubocop:disable Style/ExplicitBlockArgument
     end
 
-    #:  () { (Integer) -> void } -> void
-    def with_retry
-      task = current_task || (raise "with_retry can be called only within iterate_each_value")
+    #:  (Task) { (Integer) -> void } -> void
+    def with_retry(task)
       task_retry = task.task_retry
       0.upto(task_retry.count) do |retry_count|
-        next if retry_count < each_context.retry_count
+        next if retry_count < task_context.retry_count
 
         yield retry_count
         break
       rescue StandardError => e
-        raise e if (retry_count + 1) >= task_retry.count
+        next_retry_count = retry_count + 1
+        raise e if next_retry_count >= task_retry.count
 
-        wait_next_retry(task, task_retry, retry_count + 1, e)
+        wait_next_retry(task, task_retry, next_retry_count, e)
       end
     end
 

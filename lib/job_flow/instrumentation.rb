@@ -126,7 +126,7 @@ module JobFlow
 
       #:  (DSL, Task, Context) -> Hash[Symbol, untyped]
       def build_task_payload(job, task, ctx)
-        each_ctx = ctx._each_context
+        task_ctx = ctx._task_context
         {
           job:,
           job_id: job.job_id,
@@ -134,8 +134,8 @@ module JobFlow
           task:,
           task_name: task.task_name,
           context: ctx,
-          each_index: each_ctx.index,
-          retry_count: each_ctx.retry_count
+          each_index: task_ctx.index,
+          retry_count: task_ctx.retry_count
         }
       end
 
@@ -165,12 +165,12 @@ module JobFlow
 
       #:  (Task, Context, String, Integer, Float, StandardError) -> Hash[Symbol, untyped]
       def build_task_retry_payload(task, ctx, job_id, attempt, delay, error) # rubocop:disable Metrics/ParameterLists
-        each_ctx = ctx._each_context
+        task_ctx = ctx._task_context
         {
           task:,
           task_name: task.task_name,
           job_id:,
-          each_index: each_ctx.index,
+          each_index: task_ctx.index,
           attempt:,
           max_attempts: task.task_retry.count,
           delay_seconds: delay.round(3),

@@ -395,11 +395,11 @@ RSpec.describe JobFlow::DSL do
         expect(serialize).to have_key("job_flow_context")
       end
 
-      it "includes each_context and task_job_statuses" do
+      it "includes task_context and task_job_statuses" do
         context_data = serialize["job_flow_context"]
         expect(context_data).to include(
-          "current_task_name" => nil,
-          "each_context" => {
+          "task_context" => {
+            "task_name" => nil,
             "parent_job_id" => nil,
             "index" => 0,
             "value" => nil,
@@ -449,7 +449,7 @@ RSpec.describe JobFlow::DSL do
       let(:job_data) do
         {
           "job_flow_context" => {
-            "each_context" => {
+            "task_context" => {
               "parent_job_id" => nil,
               "task_name" => nil,
               "index" => nil,
@@ -802,8 +802,7 @@ RSpec.describe JobFlow::DSL do
         JobFlow::Context.new(
           workflow: klass._workflow,
           arguments: JobFlow::Arguments.new(data: { arg_one: 42 }),
-          current_task: nil,
-          each_context: JobFlow::EachContext.new,
+          task_context: JobFlow::TaskContext.new,
           output: JobFlow::Output.new(task_outputs: []),
           job_status: JobFlow::JobStatus.new(task_job_statuses: [])
         )
@@ -825,8 +824,7 @@ RSpec.describe JobFlow::DSL do
         JobFlow::Context.new(
           workflow:,
           arguments: JobFlow::Arguments.new(data: { arg_one: 42 }),
-          current_task: task,
-          each_context: JobFlow::EachContext.new,
+          task_context: JobFlow::TaskContext.new(task: task),
           output: JobFlow::Output.new(task_outputs: []),
           job_status: JobFlow::JobStatus.new(task_job_statuses: [])
         )
@@ -848,8 +846,7 @@ RSpec.describe JobFlow::DSL do
         JobFlow::Context.new(
           workflow:,
           arguments: JobFlow::Arguments.new(data: { arg_one: 42 }),
-          current_task: task,
-          each_context: JobFlow::EachContext.new,
+          task_context: JobFlow::TaskContext.new(task: task),
           output: JobFlow::Output.new(task_outputs: []),
           job_status: JobFlow::JobStatus.new(task_job_statuses: [])
         )

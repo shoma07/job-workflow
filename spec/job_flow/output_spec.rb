@@ -301,8 +301,8 @@ RSpec.describe JobFlow::Output do
           "job_flow_context" => JobFlow::Context.new(
             workflow:,
             arguments: JobFlow::Arguments.new(data: {}),
-            current_task: workflow.fetch_task(:sample_task),
-            each_context: JobFlow::EachContext.new(parent_job_id: "parent-id", index: 0, value: 10),
+            task_context: JobFlow::TaskContext.new(task: workflow.fetch_task(:sample_task), parent_job_id: "parent-id",
+                                                   index: 0, value: 10),
             output: described_class.new(
               task_outputs: [JobFlow::TaskOutput.new(task_name: :sample_task, each_index: 0, data: { result: 42 })]
             ),
@@ -315,8 +315,8 @@ RSpec.describe JobFlow::Output do
           "job_flow_context" => JobFlow::Context.new(
             workflow:,
             arguments: JobFlow::Arguments.new(data: {}),
-            current_task: workflow.fetch_task(:sample_task),
-            each_context: JobFlow::EachContext.new(parent_job_id: "parent-id", index: 1, value: 11),
+            task_context: JobFlow::TaskContext.new(task: workflow.fetch_task(:sample_task), parent_job_id: "parent-id",
+                                                   index: 1, value: 11),
             output: described_class.new(
               task_outputs: [JobFlow::TaskOutput.new(task_name: :sample_task, each_index: 1, data: { result: 82 })]
             ),
@@ -329,8 +329,8 @@ RSpec.describe JobFlow::Output do
           "job_flow_context" => JobFlow::Context.new(
             workflow:,
             arguments: JobFlow::Arguments.new(data: {}),
-            current_task: workflow.fetch_task(:sample_task),
-            each_context: JobFlow::EachContext.new(parent_job_id: "parent-id", index: 2, value: 12),
+            task_context: JobFlow::TaskContext.new(task: workflow.fetch_task(:sample_task), parent_job_id: "parent-id",
+                                                   index: 2, value: 12),
             output: described_class.new,
             job_status: JobFlow::JobStatus.new
           ).serialize
@@ -397,8 +397,8 @@ RSpec.describe JobFlow::Output do
           "job_flow_context" => JobFlow::Context.new(
             workflow:,
             arguments: JobFlow::Arguments.new(data: {}),
-            current_task: workflow.fetch_task(:db_task),
-            each_context: JobFlow::EachContext.new(parent_job_id: "parent-id", index: 0, value: 10),
+            task_context: JobFlow::TaskContext.new(task: workflow.fetch_task(:db_task), parent_job_id: "parent-id",
+                                                   index: 0, value: 10),
             output: described_class.new(
               task_outputs: [JobFlow::TaskOutput.new(task_name: :db_task, each_index: 0, data: { result: 100 })]
             ),
@@ -411,8 +411,8 @@ RSpec.describe JobFlow::Output do
           "job_flow_context" => JobFlow::Context.new(
             workflow:,
             arguments: JobFlow::Arguments.new(data: {}),
-            current_task: workflow.fetch_task(:db_task),
-            each_context: JobFlow::EachContext.new(parent_job_id: "parent-id", index: 1, value: 20),
+            task_context: JobFlow::TaskContext.new(task: workflow.fetch_task(:db_task), parent_job_id: "parent-id",
+                                                   index: 1, value: 20),
             output: described_class.new(
               task_outputs: [JobFlow::TaskOutput.new(task_name: :db_task, each_index: 1, data: { result: 200 })]
             ),
