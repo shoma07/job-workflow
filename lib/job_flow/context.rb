@@ -12,6 +12,7 @@ module JobFlow
       def from_hash(hash)
         workflow = hash.fetch(:workflow)
         new(
+          job: hash[:job],
           workflow:,
           arguments: Arguments.new(data: workflow.build_arguments_hash),
           task_context: TaskContext.new(**(hash[:task_context] || {}).symbolize_keys),
@@ -24,6 +25,7 @@ module JobFlow
       def deserialize(hash)
         workflow = hash.fetch("workflow")
         new(
+          job: hash["job"],
           workflow: hash.fetch("workflow"),
           arguments: Arguments.new(data: workflow.build_arguments_hash),
           task_context: TaskContext.deserialize(
@@ -47,15 +49,13 @@ module JobFlow
     #     arguments: Arguments,
     #     task_context: TaskContext,
     #     output: Output,
-    #     job_status: JobStatus
+    #     job_status: JobStatus,
+    #     ?job: DSL?
     #   ) -> void
-    def initialize(
-      workflow:,
-      arguments:,
-      task_context:,
-      output:,
-      job_status:
-    )
+    def initialize(workflow:, arguments:, task_context:, output:, job_status:, job: nil) # rubocop:disable Metrics/ParameterLists
+      raise "job does not match the provided workflow" if job&.then { |j| j.class._workflow != workflow }
+
+      self.job = job
       self.workflow = workflow
       self.arguments = arguments
       self.task_context = task_context
@@ -67,11 +67,7 @@ module JobFlow
 
     #:  () -> Hash[String, untyped]
     def serialize
-      {
-        "task_context" => _task_context.serialize,
-        "task_outputs" => output.flat_task_outputs.map(&:serialize),
-        "task_job_statuses" => job_status.flat_task_job_statuses.map(&:serialize)
-      }
+      sub_job? ? serialize_for_sub_job : serialize_for_job
     end
 
     #:  (Hash[Symbol, untyped]) -> Context
@@ -81,13 +77,26 @@ module JobFlow
     end
 
     #:  (DSL) -> void
-    def _current_job=(job)
-      @current_job = job
+    def _job=(job)
+      self.job = job
+    end
+
+    #:  () -> DSL?
+    def _job
+      job
     end
 
     #:  () -> String
-    def current_job_id
-      current_job.job_id
+    def job_id
+      local_job = job
+      raise "job is not set" if local_job.nil?
+
+      local_job.job_id
+    end
+
+    #:  () -> bool
+    def sub_job?
+      parent_job_id != job_id
     end
 
     #:  () -> String?
@@ -157,8 +166,8 @@ module JobFlow
     def instrument(operation = "custom", **payload, &)
       task = task_context.task
       full_payload = {
-        job_id: current_job_id,
-        job_name: current_job.class.name,
+        job_id: job_id,
+        job_name: job.class.name,
         task_name: task&.task_name,
         each_index: task_context.index,
         operation:,
@@ -195,8 +204,18 @@ module JobFlow
       output.add_task_output(task_output)
     end
 
+    #:  () -> void
+    def _load_parent_task_output
+      return unless sub_job?
+
+      workflow_status = WorkflowStatus.find(parent_job_id)
+      parent_context = workflow_status.context
+      parent_context.output.flat_task_outputs.each { |task_output| output.add_task_output(task_output) }
+    end
+
     private
 
+    attr_accessor :job #: DSL?
     attr_writer :workflow #: Workflow
     attr_writer :arguments #: Arguments
     attr_writer :output #: Output
@@ -205,32 +224,51 @@ module JobFlow
     attr_accessor :enabled_with_each_value #: bool
     attr_accessor :throttle_index #: Integer
 
-    #:  () -> DSL
-    def current_job
-      job = @current_job
-      raise "current_job is not set" if job.nil?
+    #:  () -> String
+    def parent_job_id
+      _task_context.parent_job_id || job_id
+    end
 
-      job
+    #:  () -> Hash[String, untyped]
+    def serialize_for_job
+      {
+        "task_context" => _task_context.serialize,
+        "task_outputs" => output.flat_task_outputs.map(&:serialize),
+        "task_job_statuses" => job_status.flat_task_job_statuses.map(&:serialize)
+      }
+    end
+
+    #:  () -> Hash[String, untyped]
+    def serialize_for_sub_job
+      task_output = output.fetch(task_name: task_context.task&.task_name, each_index: task_context.index)
+      {
+        "task_context" => _task_context.serialize,
+        "task_outputs" => [task_output].compact.map(&:serialize),
+        "task_job_statuses" => []
+      }
     end
 
     #:  (Task, Enumerator::Yielder) -> void
-    def with_task_context(task, yielder)
+    def with_task_context(task, yielder) # rubocop:disable Metrics/MethodLength
+      reset_task_context_if_task_changed(task)
+
       with_each_index_and_value(task) do |value, index|
         with_retry(task) do |retry_count|
-          self.task_context = TaskContext.new(task:, parent_job_id: current_job_id, index:, value:, retry_count:)
+          self.task_context = TaskContext.new(task:, parent_job_id:, index:, value:, retry_count:)
           with_task_timeout do
             yielder << self
           end
         end
       ensure
-        clear_task_context
+        self.throttle_index = 0
       end
     end
 
-    #:  () -> void
-    def clear_task_context
-      self.task_context = TaskContext.new
-      self.throttle_index = 0
+    #:  (Task) -> void
+    def reset_task_context_if_task_changed(task)
+      return if sub_job?
+
+      self.task_context = TaskContext.new if task_context.task&.task_name != task.task_name
     end
 
     #:  (Task) { (untyped, Integer) -> void } -> void
@@ -239,6 +277,8 @@ module JobFlow
         next if index < task_context.index
 
         yield value, index
+
+        break if sub_job?
       end
     end
 
@@ -271,7 +311,7 @@ module JobFlow
     #:  (Task, TaskRetry, Integer, StandardError) -> void
     def wait_next_retry(task, task_retry, next_retry_count, error)
       delay = task_retry.delay_for(next_retry_count)
-      Instrumentation.notify_task_retry(task, self, current_job_id, next_retry_count, delay, error)
+      Instrumentation.notify_task_retry(task, self, job_id, next_retry_count, delay, error)
       sleep(delay)
     end
   end

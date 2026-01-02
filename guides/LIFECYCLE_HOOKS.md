@@ -334,7 +334,7 @@ on_error do |ctx, exception, task|
   ErrorTracker.capture(exception, metadata: {
     workflow: self.class.name,
     task: task.task_name,
-    job_id: ctx.current_job_id
+    job_id: ctx.job_id
   })
 end
 ```

@@ -5,8 +5,8 @@ module JobFlow
     # rubocop:disable Metrics/ClassLength
     attr_reader context: Context
 
-    # :  (job: DSL, context: Context) -> void
-    def initialize: (job: DSL, context: Context) -> void
+    # :  (context: Context) -> void
+    def initialize: (context: Context) -> void
 
     # :  () -> void
     def run: () -> void

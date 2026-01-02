@@ -298,42 +298,53 @@ RSpec.describe JobFlow::Output do
     before do
       allow(all_jobs[0]).to receive(:arguments).and_return(
         {
-          "job_flow_context" => JobFlow::Context.new(
-            workflow:,
-            arguments: JobFlow::Arguments.new(data: {}),
-            task_context: JobFlow::TaskContext.new(task: workflow.fetch_task(:sample_task), parent_job_id: "parent-id",
-                                                   index: 0, value: 10),
-            output: described_class.new(
-              task_outputs: [JobFlow::TaskOutput.new(task_name: :sample_task, each_index: 0, data: { result: 42 })]
-            ),
-            job_status: JobFlow::JobStatus.new
-          ).serialize
+          "job_flow_context" => {
+            "task_context" => {
+              "task_name" => "sample_task",
+              "parent_job_id" => "parent-id",
+              "index" => 0,
+              "value" => 10,
+              "retry_count" => 0
+            },
+            "task_outputs" => [
+              { "task_name" => "sample_task", "each_index" => 0,
+                "data" => { "_aj_symbol_keys" => %w[result], "result" => 42 } }
+            ],
+            "task_job_statuses" => []
+          }
         }
       )
       allow(all_jobs[1]).to receive(:arguments).and_return(
         {
-          "job_flow_context" => JobFlow::Context.new(
-            workflow:,
-            arguments: JobFlow::Arguments.new(data: {}),
-            task_context: JobFlow::TaskContext.new(task: workflow.fetch_task(:sample_task), parent_job_id: "parent-id",
-                                                   index: 1, value: 11),
-            output: described_class.new(
-              task_outputs: [JobFlow::TaskOutput.new(task_name: :sample_task, each_index: 1, data: { result: 82 })]
-            ),
-            job_status: JobFlow::JobStatus.new
-          ).serialize
+          "job_flow_context" => {
+            "task_context" => {
+              "task_name" => "sample_task",
+              "parent_job_id" => "parent-id",
+              "index" => 1,
+              "value" => 11,
+              "retry_count" => 0
+            },
+            "task_outputs" => [
+              { "task_name" => "sample_task", "each_index" => 1,
+                "data" => { "_aj_symbol_keys" => %w[result], "result" => 82 } }
+            ],
+            "task_job_statuses" => []
+          }
         }
       )
       allow(all_jobs[2]).to receive(:arguments).and_return(
         {
-          "job_flow_context" => JobFlow::Context.new(
-            workflow:,
-            arguments: JobFlow::Arguments.new(data: {}),
-            task_context: JobFlow::TaskContext.new(task: workflow.fetch_task(:sample_task), parent_job_id: "parent-id",
-                                                   index: 2, value: 12),
-            output: described_class.new,
-            job_status: JobFlow::JobStatus.new
-          ).serialize
+          "job_flow_context" => {
+            "task_context" => {
+              "task_name" => "sample_task",
+              "parent_job_id" => "parent-id",
+              "index" => 2,
+              "value" => 12,
+              "retry_count" => 0
+            },
+            "task_outputs" => [],
+            "task_job_statuses" => []
+          }
         }
       )
     end
@@ -394,30 +405,38 @@ RSpec.describe JobFlow::Output do
     before do
       allow(solid_jobs[0]).to receive(:arguments).and_return(
         {
-          "job_flow_context" => JobFlow::Context.new(
-            workflow:,
-            arguments: JobFlow::Arguments.new(data: {}),
-            task_context: JobFlow::TaskContext.new(task: workflow.fetch_task(:db_task), parent_job_id: "parent-id",
-                                                   index: 0, value: 10),
-            output: described_class.new(
-              task_outputs: [JobFlow::TaskOutput.new(task_name: :db_task, each_index: 0, data: { result: 100 })]
-            ),
-            job_status: JobFlow::JobStatus.new
-          ).serialize
+          "job_flow_context" => {
+            "task_context" => {
+              "task_name" => "db_task",
+              "parent_job_id" => "parent-id",
+              "index" => 0,
+              "value" => 10,
+              "retry_count" => 0
+            },
+            "task_outputs" => [
+              { "task_name" => "db_task", "each_index" => 0,
+                "data" => { "_aj_symbol_keys" => %w[result], "result" => 100 } }
+            ],
+            "task_job_statuses" => []
+          }
         }
       )
       allow(solid_jobs[1]).to receive(:arguments).and_return(
         {
-          "job_flow_context" => JobFlow::Context.new(
-            workflow:,
-            arguments: JobFlow::Arguments.new(data: {}),
-            task_context: JobFlow::TaskContext.new(task: workflow.fetch_task(:db_task), parent_job_id: "parent-id",
-                                                   index: 1, value: 20),
-            output: described_class.new(
-              task_outputs: [JobFlow::TaskOutput.new(task_name: :db_task, each_index: 1, data: { result: 200 })]
-            ),
-            job_status: JobFlow::JobStatus.new
-          ).serialize
+          "job_flow_context" => {
+            "task_context" => {
+              "task_name" => "db_task",
+              "parent_job_id" => "parent-id",
+              "index" => 1,
+              "value" => 20,
+              "retry_count" => 0
+            },
+            "task_outputs" => [
+              { "task_name" => "db_task", "each_index" => 1,
+                "data" => { "_aj_symbol_keys" => %w[result], "result" => 200 } }
+            ],
+            "task_job_statuses" => []
+          }
         }
       )
 
