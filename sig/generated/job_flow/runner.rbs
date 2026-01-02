@@ -2,8 +2,7 @@
 
 module JobFlow
   class Runner
-    include Logger::RunnerLogging
-
+    # rubocop:disable Metrics/ClassLength
     attr_reader context: Context
 
     # :  (job: DSL, context: Context) -> void

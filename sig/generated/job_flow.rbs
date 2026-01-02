@@ -3,4 +3,6 @@
 module JobFlow
   class Error < StandardError
   end
+
+  extend Logger
 end
