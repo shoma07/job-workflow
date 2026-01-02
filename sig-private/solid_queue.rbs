@@ -52,6 +52,12 @@ module SolidQueue
     include Clearable
     include Recurrable
 
+    def active_job_id: () -> String
+
+    def class_name: () -> String
+
+    def queue_name: () -> String
+
     def arguments: () -> Hash[String, untyped]
   end
 

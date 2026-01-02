@@ -70,6 +70,11 @@ module JobFlow
       def clear_queue(_queue_name)
         raise NotImplementedError, "#{self.class}#clear_queue must be implemented"
       end
+
+      #:  (String) -> Hash[String, untyped]?
+      def find_job(_job_id)
+        raise NotImplementedError, "#{self.class}#find_job must be implemented"
+      end
     end
   end
 end

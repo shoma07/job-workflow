@@ -74,4 +74,8 @@ RSpec.describe JobFlow::QueueAdapters::Abstract do
   describe "#clear_queue" do
     it { expect { adapter.clear_queue("default") }.to raise_error(NotImplementedError) }
   end
+
+  describe "#find_job" do
+    it { expect { adapter.find_job("job-id-1") }.to raise_error(NotImplementedError) }
+  end
 end

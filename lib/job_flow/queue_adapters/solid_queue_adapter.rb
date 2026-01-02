@@ -105,6 +105,22 @@ module JobFlow
         true
       end
 
+      #:  (String) -> Hash[String, untyped]?
+      def find_job(job_id)
+        return unless defined?(SolidQueue::Job)
+
+        job = SolidQueue::Job.find_by(active_job_id: job_id)
+        return if job.nil?
+
+        {
+          "job_id" => job.active_job_id,
+          "class_name" => job.class_name,
+          "queue_name" => job.queue_name,
+          "arguments" => job.arguments,
+          "status" => job_status(job)
+        }
+      end
+
       module SchedulingPatch
         private
 

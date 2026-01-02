@@ -7,6 +7,7 @@ module JobFlow
       def initialize # rubocop:disable Lint/MissingSuper
         @paused_queues = Set.new #: Set[String]
         @queue_jobs = {} #: Hash[String, Array[untyped]]
+        @stored_jobs = {} #: Hash[String, Hash[String, untyped]]
       end
 
       #:  () -> bool
@@ -81,6 +82,11 @@ module JobFlow
         true
       end
 
+      #:  (String) -> Hash[String, untyped]?
+      def find_job(job_id)
+        @stored_jobs[job_id]
+      end
+
       # @note Test helpers
       #
       #:  (String, untyped) -> void
@@ -92,12 +98,20 @@ module JobFlow
         @queue_jobs[queue_name] << job
       end
 
+      # @note Test helpers - stores job data for find_job
+      #
+      #:  (String, Hash[String, untyped]) -> void
+      def store_job(job_id, job_data)
+        @stored_jobs[job_id] = job_data
+      end
+
       # @note Test helpers
       #
       #:  () -> void
       def reset!
         @paused_queues.clear
         @queue_jobs.clear
+        @stored_jobs.clear
       end
     end
     # rubocop:enable Naming/PredicateMethod
