@@ -8,11 +8,16 @@ RSpec.describe JobFlow::Context do
 
       argument :arg_one, "String", default: nil
       argument :arg_two, "Integer", default: 1
+
+      def self.name
+        "TestJob"
+      end
     end
     klass.new
   end
   let(:ctx) do
     described_class.from_hash(
+      job:,
       workflow:,
       task_context: {},
       task_outputs: [],
@@ -48,6 +53,7 @@ RSpec.describe JobFlow::Context do
     context "when task_context has values" do
       subject(:init) do
         described_class.new(
+          job:,
           workflow:,
           arguments: JobFlow::Arguments.new(data: { arg_one: nil, arg_two: [1, 2] }),
           task_context: JobFlow::TaskContext.new(
@@ -74,8 +80,6 @@ RSpec.describe JobFlow::Context do
       end
 
       it "allows resuming _with_each_value from restored task_context index" do
-        job = Class.new(ActiveJob::Base) { include JobFlow::DSL }.new
-        init._current_job = job
         task = JobFlow::Task.new(
           job_name: "TestJob",
           name: :ctx_two,
@@ -84,7 +88,50 @@ RSpec.describe JobFlow::Context do
           block: ->(_ctx) {}
         )
         indices = init._with_each_value(task).map { |ctx| ctx._task_context.index }
-        expect(indices).to eq([1, 2, 3])
+        # For sub-jobs (parent_job_id present), only the specific index should be executed
+        expect(indices).to eq([1])
+      end
+    end
+
+    context "when task_context has parent_job_id (sub-job scenario)" do
+      subject(:sub_job_context) do
+        described_class.new(
+          workflow:,
+          arguments: JobFlow::Arguments.new(data: { arg_one: nil, arg_two: [1, 2] }),
+          task_context: JobFlow::TaskContext.new(
+            parent_job_id: "parent-job-123",
+            index: 2
+          ),
+          output: JobFlow::Output.new,
+          job_status: JobFlow::JobStatus.new
+        )
+      end
+
+      let(:task_with_multiple_items) do
+        JobFlow::Task.new(
+          job_name: "TestJob",
+          name: :multi_task,
+          namespace: JobFlow::Namespace.default,
+          each: ->(_ctx) { [10, 20, 30, 40, 50] },
+          block: ->(_ctx) {}
+        )
+      end
+
+      before do
+        job_instance = Class.new(ActiveJob::Base) { include JobFlow::DSL }.new
+        sub_job_context._job = job_instance
+      end
+
+      it "executes only the specific index (not subsequent indices)" do
+        indices = sub_job_context._with_each_value(task_with_multiple_items).map do |ctx|
+          ctx._task_context.index
+        end
+        expect(indices).to eq([2])
+      end
+
+      it "provides the correct value for the specific index" do
+        values = sub_job_context._with_each_value(task_with_multiple_items).map(&:each_value)
+        expect(values).to eq([30])
       end
     end
 
@@ -116,12 +163,57 @@ RSpec.describe JobFlow::Context do
 
       before do
         job_instance = Class.new(ActiveJob::Base) { include JobFlow::DSL }.new
-        context_with_retry._current_job = job_instance
+        context_with_retry._job = job_instance
       end
 
       it "allows resuming _with_each_value from restored task_context retry_count" do
         retry_counts = context_with_retry._with_each_value(task_with_retry).map { |ctx| ctx._task_context.retry_count }
         expect(retry_counts).to eq([2])
+      end
+    end
+
+    context "when task fails and retries within with_retry" do
+      subject(:ctx) do
+        described_class.new(
+          workflow:,
+          arguments: JobFlow::Arguments.new(data: { arg_one: nil, arg_two: [1, 2] }),
+          task_context: JobFlow::TaskContext.new,
+          output: JobFlow::Output.new,
+          job_status: JobFlow::JobStatus.new
+        )
+      end
+
+      let(:task_with_retry) do
+        JobFlow::Task.new(
+          job_name: "TestJob",
+          name: :flaky_task,
+          namespace: JobFlow::Namespace.default,
+          each: ->(_ctx) { [:item] },
+          block: ->(_ctx) {},
+          task_retry: 2
+        )
+      end
+
+      before do
+        job_instance = Class.new(ActiveJob::Base) { include JobFlow::DSL }.new
+        ctx._job = job_instance
+      end
+
+      # rubocop:disable RSpec/ExampleLength
+      it "maintains task_context across retries within the same index" do
+        # rubocop:enable RSpec/ExampleLength
+        attempt_count = 0
+        retry_counts_seen = []
+
+        enumerator = ctx._with_each_value(task_with_retry)
+        enumerator.each do |task_ctx|
+          retry_counts_seen << task_ctx._task_context.retry_count
+          attempt_count += 1
+          raise "Simulated failure" if attempt_count == 1
+        end
+
+        # Should have been called twice: once for retry_count=0 (failed), once for retry_count=1 (succeeded)
+        expect(retry_counts_seen).to eq([0, 1])
       end
     end
 
@@ -194,6 +286,50 @@ RSpec.describe JobFlow::Context do
 
       it "has no task_job_statuses" do
         expect(init.job_status.flat_task_job_statuses).to be_empty
+      end
+    end
+
+    context "when job workflow does not match the provided workflow" do
+      let(:different_job_class) do
+        Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          task :different_task do |_ctx|
+            "different"
+          end
+
+          def self.name
+            "DifferentJobClass"
+          end
+        end
+      end
+
+      let(:job_with_workflow) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          task :original_task do |_ctx|
+            "test"
+          end
+
+          def self.name
+            "JobWithWorkflow"
+          end
+        end
+        klass.new
+      end
+
+      it "raises an error when job's workflow does not match" do
+        expect do
+          described_class.new(
+            workflow: different_job_class._workflow,
+            job: job_with_workflow,
+            arguments: JobFlow::Arguments.new(data: {}),
+            task_context: JobFlow::TaskContext.new,
+            output: JobFlow::Output.new,
+            job_status: JobFlow::JobStatus.new
+          )
+        end.to raise_error(RuntimeError, "job does not match the provided workflow")
       end
     end
   end
@@ -301,9 +437,10 @@ RSpec.describe JobFlow::Context do
 
     let(:ctx) do
       described_class.new(
+        job:,
         workflow:,
         arguments: JobFlow::Arguments.new(data: { arg_one: "test", arg_two: 42 }),
-        task_context: JobFlow::TaskContext.new(parent_job_id: "parent-id", index: 0, value: 10),
+        task_context: JobFlow::TaskContext.new(parent_job_id: nil, index: 0, value: 10),
         output: JobFlow::Output.new(
           task_outputs: [
             JobFlow::TaskOutput.new(task_name: :task_a, each_index: 0, data: { result: 100 })
@@ -322,7 +459,7 @@ RSpec.describe JobFlow::Context do
         {
           "task_context" => {
             "task_name" => nil,
-            "parent_job_id" => "parent-id",
+            "parent_job_id" => nil,
             "index" => 0,
             "value" => 10,
             "retry_count" => 0
@@ -341,6 +478,7 @@ RSpec.describe JobFlow::Context do
     context "when task_outputs contain a namespaced task_name" do
       let(:ctx) do
         described_class.new(
+          job:,
           workflow:,
           arguments: JobFlow::Arguments.new(data: { arg_one: "test", arg_two: 42 }),
           task_context: JobFlow::TaskContext.new,
@@ -358,6 +496,46 @@ RSpec.describe JobFlow::Context do
         expect(task_names).to contain_exactly("ns:task_one")
       end
     end
+
+    context "when sub_job with nil task in task_context" do
+      let(:sub_job_class) do
+        Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          def self.name
+            "SubJobClass"
+          end
+        end
+      end
+
+      let(:sub_job) do
+        instance = sub_job_class.new
+        instance.job_id = "sub-job-id"
+        instance
+      end
+
+      let(:ctx) do
+        described_class.new(
+          workflow: sub_job_class._workflow,
+          job: sub_job,
+          arguments: JobFlow::Arguments.new(data: {}),
+          task_context: JobFlow::TaskContext.new(parent_job_id: "parent-job-id", index: 1),
+          output: JobFlow::Output.new(task_outputs: []),
+          job_status: JobFlow::JobStatus.new
+        )
+      end
+
+      it "serializes for sub-job without error when task is nil" do
+        expect(serialized).to include(
+          "task_context" => include(
+            "parent_job_id" => "parent-job-id",
+            "index" => 1,
+            "task_name" => nil
+          ),
+          "task_outputs" => []
+        )
+      end
+    end
   end
 
   describe "#arguments" do
@@ -368,86 +546,141 @@ RSpec.describe JobFlow::Context do
     end
   end
 
-  describe "#_current_job=" do
-    subject(:assign_current_job) { ctx._current_job = job }
+  describe "#_job=" do
+    subject(:assign_current_job) { local_ctx._job = new_job }
 
-    let(:job) do
+    let(:new_job) do
       klass = Class.new(ActiveJob::Base) do
         include JobFlow::DSL
       end
       klass.new
     end
 
+    let(:local_ctx) do
+      described_class.new(
+        workflow:,
+        arguments: JobFlow::Arguments.new(data: { arg_one: nil, arg_two: 1 }),
+        task_context: JobFlow::TaskContext.new,
+        output: JobFlow::Output.new,
+        job_status: JobFlow::JobStatus.new
+      )
+    end
+
     it do
       expect { assign_current_job }.to(change do
-        ctx.current_job_id
+        local_ctx.job_id
       rescue StandardError
         nil
-      end.from(nil).to(job.job_id))
+      end.from(nil).to(new_job.job_id))
     end
   end
 
-  describe "#current_job_id" do
-    subject(:current_job_id) { ctx.current_job_id }
+  describe "#job_id" do
+    subject(:job_id) { local_ctx.job_id }
 
-    context "when current job is assigned" do
-      let(:job) do
+    context "when job is assigned" do
+      let(:new_job) do
         klass = Class.new(ActiveJob::Base) do
           include JobFlow::DSL
         end
         klass.new
       end
 
-      before { ctx._current_job = job }
+      let(:local_ctx) do
+        described_class.new(
+          workflow:,
+          arguments: JobFlow::Arguments.new(data: { arg_one: nil, arg_two: 1 }),
+          task_context: JobFlow::TaskContext.new,
+          output: JobFlow::Output.new,
+          job_status: JobFlow::JobStatus.new
+        )
+      end
 
-      it { is_expected.to eq(job.job_id) }
+      before { local_ctx._job = new_job }
+
+      it { is_expected.to eq(new_job.job_id) }
     end
 
-    context "when current job is not assigned" do
-      it { expect { current_job_id }.to raise_error(RuntimeError) }
+    context "when job is not assigned" do
+      let(:local_ctx) do
+        described_class.new(
+          workflow:,
+          arguments: JobFlow::Arguments.new(data: { arg_one: nil, arg_two: 1 }),
+          task_context: JobFlow::TaskContext.new,
+          output: JobFlow::Output.new,
+          job_status: JobFlow::JobStatus.new
+        )
+      end
+
+      it { expect { job_id }.to raise_error(RuntimeError, "job is not set") }
     end
   end
 
   describe "#parent_job_id" do
-    subject(:parent_job_id) { ctx._task_context.parent_job_id }
-
-    let(:job) do
-      klass = Class.new(ActiveJob::Base) do
-        include JobFlow::DSL
-
-        argument :items, "Array[Integer]", default: [10, 20]
-      end
-      klass.new
-    end
-
-    before { ctx._current_job = job }
-
     context "when parent_job_id is not set" do
+      let(:new_job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          argument :items, "Array[Integer]", default: [10, 20]
+        end
+        klass.new
+      end
+
+      let(:local_ctx) do
+        described_class.from_hash(
+          workflow: new_job.class._workflow,
+          task_context: {},
+          task_outputs: [],
+          task_job_statuses: []
+        )
+      end
+
+      before { local_ctx._job = new_job }
+
       it "is nil" do
-        expect(parent_job_id).to be_nil
+        expect(local_ctx._task_context.parent_job_id).to be_nil
       end
     end
 
     context "when called inside _with_each_value" do
-      let(:task) do
-        JobFlow::Task.new(
-          job_name: "TestJob",
-          name: :process_items,
-          namespace: JobFlow::Namespace.default,
-          each: ->(ctx) { ctx.arguments.items },
-          block: ->(_ctx) {}
+      let(:new_job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          argument :items, "Array[Integer]", default: [10, 20]
+        end
+        klass.new
+      end
+
+      let(:local_ctx) do
+        ctx = described_class.from_hash(
+          workflow: new_job.class._workflow,
+          task_context: {},
+          task_outputs: [],
+          task_job_statuses: []
         )
+        ctx._job = new_job
+        ctx
       end
 
       it "returns the parent job id" do
-        ctx._with_each_value(task).each do |ctx|
-          expect(ctx._task_context.parent_job_id).to eq(job.job_id)
+        task = JobFlow::Task.new(
+          job_name: "TestJob", name: :process_items, namespace: JobFlow::Namespace.default,
+          each: ->(ctx) { ctx.arguments.items }, block: ->(_ctx) {}
+        )
+        local_ctx._with_each_value(task).each do |ctx_with_value|
+          expect(ctx_with_value._task_context.parent_job_id).to eq(new_job.job_id)
         end
       end
 
-      it "resets each_value state after iteration" do
-        ctx._with_each_value(task).to_a
-        expect(parent_job_id).to be_nil
+      it "maintains task_context parent_job_id after iteration" do
+        task = JobFlow::Task.new(
+          job_name: "TestJob", name: :process_items, namespace: JobFlow::Namespace.default,
+          each: ->(ctx) { ctx.arguments.items }, block: ->(_ctx) {}
+        )
+        local_ctx._with_each_value(task).to_a
+        expect(local_ctx._task_context.parent_job_id).to eq(new_job.job_id)
       end
     end
   end
@@ -628,13 +861,13 @@ RSpec.describe JobFlow::Context do
       )
     end
 
-    before { ctx._current_job = job }
+    before { ctx._job = job }
 
     context "when current_job is not set" do
-      before { ctx._current_job = nil }
+      before { ctx._job = nil }
 
       it "raises an error" do
-        expect { with_each_value.to_a }.to raise_error("current_job is not set")
+        expect { with_each_value.to_a }.to raise_error("job is not set")
       end
     end
 
@@ -651,9 +884,25 @@ RSpec.describe JobFlow::Context do
       expect(values).to eq([1, 2, 3])
     end
 
-    it "resets each_value state after iteration" do
+    it "retains last task_context state after iteration" do
       with_each_value.to_a
-      expect { ctx.each_value }.to raise_error("each_value can be called only within each_values block")
+      expect(ctx.each_value).to eq(3)
+    end
+
+    context "when called with the same task consecutively" do
+      it "does not reset task_context when task_name matches" do
+        # First call - execute all items
+        ctx._with_each_value(task).to_a
+
+        # Store the task reference from first call
+        first_call_task = ctx._task_context.task
+
+        # Second call with same task - should NOT reset task_context
+        ctx._with_each_value(task).to_a
+
+        # The task reference should remain the same (not reset to new TaskContext)
+        expect(ctx._task_context.task).to eq(first_call_task)
+      end
     end
   end
 
@@ -678,7 +927,7 @@ RSpec.describe JobFlow::Context do
       )
     end
 
-    before { ctx._current_job = job }
+    before { ctx._job = job }
 
     context "when called outside with_each_value" do
       it "raises an error" do
@@ -693,9 +942,9 @@ RSpec.describe JobFlow::Context do
         end
       end
 
-      it "raises an error after iteration" do
+      it "returns last value after iteration" do
         ctx._with_each_value(task).to_a
-        expect { each_value }.to raise_error("each_value can be called only within each_values block")
+        expect(each_value).to eq(20)
       end
     end
   end
@@ -860,7 +1109,7 @@ RSpec.describe JobFlow::Context do
       )
     end
 
-    before { ctx._current_job = job }
+    before { ctx._job = job }
 
     it "raises an error when nested" do
       expect do
@@ -872,7 +1121,7 @@ RSpec.describe JobFlow::Context do
   end
 
   describe "#_with_task_throttle" do
-    before { ctx._current_job = job }
+    before { ctx._job = job }
 
     context "when task is nil" do
       it do
@@ -925,7 +1174,7 @@ RSpec.describe JobFlow::Context do
   end
 
   describe "#throttle" do
-    before { ctx._current_job = job }
+    before { ctx._job = job }
 
     let(:task) do
       JobFlow::Task.new(
@@ -1009,7 +1258,7 @@ RSpec.describe JobFlow::Context do
         task_outputs: [],
         task_job_statuses: []
       )
-      context._current_job = job
+      context._job = job
       context
     end
 
@@ -1100,6 +1349,325 @@ RSpec.describe JobFlow::Context do
         ctx.instrument("test_op") { "result" }
         custom_event = events.find { |e| e.name == "test_op.job_flow" }
         expect(custom_event.payload[:task_name]).to be_nil
+      end
+    end
+  end
+
+  describe "#serialize (sub-job optimization)" do
+    let(:workflow) do
+      klass = Class.new(ActiveJob::Base) do
+        include JobFlow::DSL
+
+        task :parent_task
+        task :child_task
+      end
+      klass._workflow
+    end
+
+    context "when context is for a sub-job (has task and parent_job_id)" do
+      subject(:serialized) { ctx.serialize }
+
+      let(:parent_task) { workflow.tasks.find { |t| t.task_name == :parent_task } }
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+        end
+        instance = klass.new
+        instance.job_id = "sub-job-id"
+        instance
+      end
+      let(:ctx) do
+        context = described_class.new(
+          workflow:,
+          arguments: JobFlow::Arguments.new(data: {}),
+          task_context: JobFlow::TaskContext.new(
+            task: parent_task,
+            parent_job_id: "parent-job-123",
+            index: 0
+          ),
+          output: JobFlow::Output.new(
+            task_outputs: [
+              JobFlow::TaskOutput.new(task_name: :parent_task, each_index: 0, data: { result: 100 }),
+              JobFlow::TaskOutput.new(task_name: :child_task, each_index: 0, data: { result: 200 })
+            ]
+          ),
+          job_status: JobFlow::JobStatus.new(
+            task_job_statuses: [
+              JobFlow::TaskJobStatus.new(
+                task_name: :parent_task,
+                job_id: "job1",
+                each_index: 0,
+                status: :succeeded
+              ),
+              JobFlow::TaskJobStatus.new(
+                task_name: :child_task,
+                job_id: "job2",
+                each_index: 0,
+                status: :succeeded
+              )
+            ]
+          )
+        )
+        context._job = job
+        context
+      end
+
+      it "includes only current task's outputs" do
+        task_outputs = serialized.fetch("task_outputs")
+        expect(task_outputs).to match([hash_including("task_name" => "parent_task")])
+      end
+
+      it "excludes task job statuses for sub-jobs" do
+        task_job_statuses = serialized.fetch("task_job_statuses")
+        expect(task_job_statuses).to eq([])
+      end
+    end
+
+    context "when context is not for a sub-job (no parent_job_id)" do
+      subject(:serialized) { ctx.serialize }
+
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+        end
+        klass.new
+      end
+      let(:ctx) do
+        context = described_class.new(
+          workflow:,
+          arguments: JobFlow::Arguments.new(data: {}),
+          task_context: JobFlow::TaskContext.new,
+          output: JobFlow::Output.new(
+            task_outputs: [
+              JobFlow::TaskOutput.new(task_name: :parent_task, each_index: 0, data: { result: 100 }),
+              JobFlow::TaskOutput.new(task_name: :child_task, each_index: 0, data: { result: 200 })
+            ]
+          ),
+          job_status: JobFlow::JobStatus.new(
+            task_job_statuses: [
+              JobFlow::TaskJobStatus.new(
+                task_name: :parent_task,
+                job_id: "job1",
+                each_index: 0,
+                status: :succeeded
+              ),
+              JobFlow::TaskJobStatus.new(
+                task_name: :child_task,
+                job_id: "job2",
+                each_index: 0,
+                status: :succeeded
+              )
+            ]
+          )
+        )
+        context._job = job
+        context
+      end
+
+      it "includes all task outputs" do
+        task_outputs = serialized.fetch("task_outputs")
+        expect(task_outputs.size).to eq(2)
+      end
+
+      it "includes all task job statuses" do
+        task_job_statuses = serialized.fetch("task_job_statuses")
+        expect(task_job_statuses.size).to eq(2)
+      end
+    end
+
+    context "when context has task but no parent_job_id" do
+      subject(:serialized) { ctx.serialize }
+
+      let(:parent_task) { workflow.tasks.find { |t| t.task_name == :parent_task } }
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+        end
+        klass.new
+      end
+      let(:ctx) do
+        context = described_class.new(
+          workflow:,
+          arguments: JobFlow::Arguments.new(data: {}),
+          task_context: JobFlow::TaskContext.new(task: parent_task, index: 0),
+          output: JobFlow::Output.new(
+            task_outputs: [
+              JobFlow::TaskOutput.new(task_name: :parent_task, each_index: 0, data: { result: 100 }),
+              JobFlow::TaskOutput.new(task_name: :child_task, each_index: 0, data: { result: 200 })
+            ]
+          ),
+          job_status: JobFlow::JobStatus.new(
+            task_job_statuses: [
+              JobFlow::TaskJobStatus.new(
+                task_name: :parent_task,
+                job_id: "job1",
+                each_index: 0,
+                status: :succeeded
+              ),
+              JobFlow::TaskJobStatus.new(
+                task_name: :child_task,
+                job_id: "job2",
+                each_index: 0,
+                status: :succeeded
+              )
+            ]
+          )
+        )
+        context._job = job
+        context
+      end
+
+      it "includes all task outputs" do
+        task_outputs = serialized.fetch("task_outputs")
+        expect(task_outputs.size).to eq(2)
+      end
+
+      it "includes all task job statuses" do
+        task_job_statuses = serialized.fetch("task_job_statuses")
+        expect(task_job_statuses.size).to eq(2)
+      end
+    end
+  end
+
+  describe "#_load_parent_task_output" do
+    let(:workflow) do
+      klass = Class.new(ActiveJob::Base) do
+        include JobFlow::DSL
+
+        task :test_task
+      end
+      klass._workflow
+    end
+
+    context "when parent_job_id is present and parent exists" do
+      subject(:ctx) do
+        context = described_class.new(
+          workflow:,
+          arguments: JobFlow::Arguments.new(data: {}),
+          task_context: JobFlow::TaskContext.new(parent_job_id: "parent-job-id"),
+          output: JobFlow::Output.new,
+          job_status: JobFlow::JobStatus.new
+        )
+        context._job = job
+        context
+      end
+
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+        end
+        instance = klass.new
+        instance.job_id = "sub-job-id"
+        instance
+      end
+
+      let(:parent_context_data) do
+        {
+          "task_outputs" => [
+            { "task_name" => "parent_task", "each_index" => 0,
+              "data" => { "_aj_symbol_keys" => %w[value], "value" => 42 } }
+          ],
+          "task_job_statuses" => [
+            { "task_name" => "parent_task", "job_id" => "job-parent", "each_index" => 0, "status" => "succeeded" }
+          ]
+        }
+      end
+      let(:parent_workflow_status) do
+        instance_double(
+          JobFlow::WorkflowStatus,
+          context: described_class.new(
+            workflow:,
+            arguments: JobFlow::Arguments.new(data: {}),
+            task_context: JobFlow::TaskContext.new,
+            output: JobFlow::Output.new(
+              task_outputs: [
+                JobFlow::TaskOutput.new(task_name: :parent_task, each_index: 0, data: { value: 42 })
+              ]
+            ),
+            job_status: JobFlow::JobStatus.new(
+              task_job_statuses: [
+                JobFlow::TaskJobStatus.new(
+                  task_name: :parent_task,
+                  job_id: "job-parent",
+                  each_index: 0,
+                  status: :succeeded
+                )
+              ]
+            )
+          )
+        )
+      end
+
+      before do
+        allow(JobFlow::WorkflowStatus).to receive(:find).with("parent-job-id")
+                                                        .and_return(parent_workflow_status)
+      end
+
+      it "merges parent context into current context" do
+        ctx._load_parent_task_output
+        expect(ctx.output.flat_task_outputs.size).to eq(1)
+      end
+
+      it "loads parent context on each call" do
+        ctx._load_parent_task_output
+        ctx._load_parent_task_output
+        expect(JobFlow::WorkflowStatus).to have_received(:find).twice
+      end
+    end
+
+    context "when parent_job_id is nil" do
+      subject(:ctx) do
+        context = described_class.new(
+          workflow:,
+          arguments: JobFlow::Arguments.new(data: {}),
+          task_context: JobFlow::TaskContext.new,
+          output: JobFlow::Output.new,
+          job_status: JobFlow::JobStatus.new
+        )
+        context._job = job
+        context
+      end
+
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+        end
+        klass.new
+      end
+
+      it "does not attempt to load parent context" do
+        allow(JobFlow::WorkflowStatus).to receive(:find)
+        ctx._load_parent_task_output
+        expect(JobFlow::WorkflowStatus).not_to have_received(:find)
+      end
+    end
+
+    context "when parent_job_id is present but parent does not exist" do
+      subject(:ctx) do
+        context = described_class.new(
+          workflow:,
+          arguments: JobFlow::Arguments.new(data: {}),
+          task_context: JobFlow::TaskContext.new(parent_job_id: "missing-parent"),
+          output: JobFlow::Output.new,
+          job_status: JobFlow::JobStatus.new
+        )
+        context._job = job
+        context
+      end
+
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+        end
+        instance = klass.new
+        instance.job_id = "sub-job-id"
+        instance
+      end
+
+      before { allow(JobFlow::QueueAdapter.current).to receive(:find_by).with(job_id: job.job_id).and_return(nil) }
+
+      it "does not raise an error" do
+        expect { ctx._load_parent_task_output }.to raise_error(JobFlow::WorkflowStatus::NotFoundError)
       end
     end
   end

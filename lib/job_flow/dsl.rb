@@ -32,9 +32,9 @@ module JobFlow
 
     #:  (Hash[untyped, untyped]) -> void
     def perform(arguments)
-      self._context ||= Context.from_hash({ workflow: self.class._workflow })
+      self._context ||= Context.from_hash({ job: self, workflow: self.class._workflow })
       context = self._context #: Context
-      Runner.new(job: self, context: context._update_arguments(arguments)).run
+      Runner.new(context: context._update_arguments(arguments)).run
     end
 
     #:  (Context) -> void
@@ -57,7 +57,9 @@ module JobFlow
       super
 
       job_data["job_flow_context"]&.then do |context_data|
-        self._context = Context.deserialize(context_data.merge("workflow" => self.class._workflow))
+        self._context = Context.deserialize(
+          context_data.merge("job" => self, "workflow" => self.class._workflow)
+        )
       end
     end
 
@@ -88,10 +90,12 @@ module JobFlow
       #   ) -> void
 
       #:  (Context) -> DSL
-      def from_context(context)
-        task = context._task_context.task
-        job = new(context.arguments.to_h)
-        job._context = context
+      def from_context(context) # rubocop:disable Metrics/AbcSize
+        new_context = context.dup
+        task = new_context._task_context.task
+        job = new(new_context.arguments.to_h)
+        new_context._job = job
+        job._context = new_context
         job.set(queue: task.enqueue.queue) if !task.nil? && !task.enqueue.queue.nil?
         job
       end

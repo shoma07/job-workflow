@@ -4,17 +4,16 @@ module JobFlow
   class Runner # rubocop:disable Metrics/ClassLength
     attr_reader :context #: Context
 
-    #:  (job: DSL, context: Context) -> void
-    def initialize(job:, context:)
-      context._current_job = job
-      @job = job
+    #:  (context: Context) -> void
+    def initialize(context:)
       @context = context
+      @job = context._job || (raise "current job is not set in context")
     end
 
     #:  () -> void
     def run
       task = context._task_context.task
-      return run_task(task) unless task.nil?
+      return run_task(task) if !task.nil? && context.sub_job?
 
       run_workflow
     end
@@ -61,6 +60,7 @@ module JobFlow
 
     #:  (Task) -> void
     def run_task(task)
+      context._load_parent_task_output
       context._with_each_value(task).each do |ctx|
         run_each_task(task, ctx)
       rescue StandardError => e
@@ -105,8 +105,8 @@ module JobFlow
     end
 
     #:  (Task) -> void
-    def enqueue_task(task) # rubocop:disable Metrics/AbcSize
-      sub_jobs = context._with_each_value(task).map { |ctx| job.class.from_context(ctx.dup) }
+    def enqueue_task(task)
+      sub_jobs = context._with_each_value(task).map { |ctx| job.class.from_context(ctx) }
       job.class.perform_all_later(sub_jobs)
       context.job_status.update_task_job_statuses_from_jobs(task_name: task.task_name, jobs: sub_jobs)
       Instrumentation.notify_task_enqueue(job, task, sub_jobs.size)
