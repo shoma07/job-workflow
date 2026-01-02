@@ -135,8 +135,7 @@ RSpec.describe JobFlow::WorkflowStatus do
     context "when job_flow_context is present" do
       let(:context_data) do
         {
-          "current_task_name" => "step_one",
-          "each_context" => {},
+          "task_context" => { "task_name" => :step_one, "each_index" => 0, "data" => {} },
           "task_outputs" => [
             { "task_name" => "step_one", "each_index" => 0, "data" => { "data" => "test_data" } }
           ],
