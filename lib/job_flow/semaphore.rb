@@ -56,7 +56,7 @@ module JobFlow
       result
     end
 
-    #:  () { () -> untyped } -> untyped
+    #: [T] () { () -> T } -> T
     def with(&)
       wait
       yield

@@ -27,8 +27,8 @@ module JobFlow
     # :  () -> bool
     def signal: () -> bool
 
-    # :  () { () -> untyped } -> untyped
-    def with: () { () -> untyped } -> untyped
+    # : [T] () { () -> T } -> T
+    def with: [T] () { () -> T } -> T
 
     private
 

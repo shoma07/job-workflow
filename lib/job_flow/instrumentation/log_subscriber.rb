@@ -16,6 +16,7 @@ module JobFlow
           attach_to(NAMESPACE.to_sym)
         end
       end
+
       # @rbs!
       #   type log_level = :debug | :info | :warn | :error
 
