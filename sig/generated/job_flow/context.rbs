@@ -22,9 +22,10 @@ module JobFlow
     #      arguments: Arguments,
     #      task_context: TaskContext,
     #      output: Output,
-    #      job_status: JobStatus
+    #      job_status: JobStatus,
+    #      ?job: DSL?
     #    ) -> void
-    def initialize: (workflow: Workflow, arguments: Arguments, task_context: TaskContext, output: Output, job_status: JobStatus) -> void
+    def initialize: (workflow: Workflow, arguments: Arguments, task_context: TaskContext, output: Output, job_status: JobStatus, ?job: DSL?) -> void
 
     # :  () -> Hash[String, untyped]
     def serialize: () -> Hash[String, untyped]
@@ -33,10 +34,16 @@ module JobFlow
     def _update_arguments: (Hash[Symbol, untyped]) -> Context
 
     # :  (DSL) -> void
-    def _current_job=: (DSL) -> void
+    def _job=: (DSL) -> void
+
+    # :  () -> DSL?
+    def _job: () -> DSL?
 
     # :  () -> String
-    def current_job_id: () -> String
+    def job_id: () -> String
+
+    # :  () -> bool
+    def sub_job?: () -> bool
 
     # :  () -> String?
     def concurrency_key: () -> String?
@@ -83,7 +90,12 @@ module JobFlow
     # :  (TaskOutput) -> void
     def _add_task_output: (TaskOutput) -> void
 
+    # :  () -> void
+    def _load_parent_task_output: () -> void
+
     private
+
+    attr_accessor job: DSL?
 
     attr_writer workflow: Workflow
 
@@ -99,14 +111,20 @@ module JobFlow
 
     attr_accessor throttle_index: Integer
 
-    # :  () -> DSL
-    def current_job: () -> DSL
+    # :  () -> String
+    def parent_job_id: () -> String
+
+    # :  () -> Hash[String, untyped]
+    def serialize_for_job: () -> Hash[String, untyped]
+
+    # :  () -> Hash[String, untyped]
+    def serialize_for_sub_job: () -> Hash[String, untyped]
 
     # :  (Task, Enumerator::Yielder) -> void
     def with_task_context: (Task, Enumerator::Yielder) -> void
 
-    # :  () -> void
-    def clear_task_context: () -> void
+    # :  (Task) -> void
+    def reset_task_context_if_task_changed: (Task) -> void
 
     # :  (Task) { (untyped, Integer) -> void } -> void
     def with_each_index_and_value: (Task) { (untyped, Integer) -> void } -> void

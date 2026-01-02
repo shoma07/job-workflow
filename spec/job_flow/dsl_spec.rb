@@ -399,8 +399,8 @@ RSpec.describe JobFlow::DSL do
         context_data = serialize["job_flow_context"]
         expect(context_data).to include(
           "task_context" => {
-            "task_name" => nil,
-            "parent_job_id" => nil,
+            "task_name" => :increment,
+            "parent_job_id" => job.job_id,
             "index" => 0,
             "value" => nil,
             "retry_count" => 0
@@ -811,9 +811,12 @@ RSpec.describe JobFlow::DSL do
       it do
         expect(from_context).to have_attributes(
           class: klass,
-          _context: context,
           queue_name: "default"
         )
+      end
+
+      it "sets job on the context" do
+        expect(from_context._context._job).to eq(from_context)
       end
     end
 
@@ -833,9 +836,12 @@ RSpec.describe JobFlow::DSL do
       it do
         expect(from_context).to have_attributes(
           class: klass,
-          _context: context,
           queue_name: "default"
         )
+      end
+
+      it "sets job on the context" do
+        expect(from_context._context._job).to eq(from_context)
       end
     end
 
@@ -855,9 +861,12 @@ RSpec.describe JobFlow::DSL do
       it "creates a new job instance from context" do
         expect(from_context).to have_attributes(
           class: klass,
-          _context: context,
           queue_name: "custom_queue"
         )
+      end
+
+      it "sets job on the context" do
+        expect(from_context._context._job).to eq(from_context)
       end
     end
   end
