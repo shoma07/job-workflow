@@ -4,6 +4,20 @@ module JobFlow
   module QueueAdapters
     # rubocop:disable Naming/PredicateMethod
     class SolidQueueAdapter < Abstract
+      # @note
+      #   - Registry scope: @semaphore_registry is process-scoped (shared across fibers/threads
+      #     in the same process) and lives for the lifetime of the worker process. It is not
+      #     serialized to persistent storage; semaphores are transient per worker instance.
+      #   - Cleanup: The adapter relies on SolidQueue::Worker lifecycle hooks to clean up
+      #     active semaphores when the worker stops. If a worker crashes, semaphores will
+      #     leak until the underlying database records expire or are manually cleaned.
+      #
+      #:  () -> void
+      def initialize
+        @semaphore_registry = {} #: Hash[Object, ^(SolidQueue::Worker) -> void]
+        super
+      end
+
       #:  () -> void
       def initialize_adapter!
         SolidQueue::Configuration.prepend(SchedulingPatch) if defined?(SolidQueue::Configuration)
@@ -15,17 +29,44 @@ module JobFlow
         defined?(SolidQueue::Semaphore) ? true : false
       end
 
+      # @note
+      #   - Thread safety: @semaphore_registry is a non-thread-safe Hash. In multi-threaded workers,
+      #     concurrent calls to semaphore_wait or semaphore_signal may cause race conditions.
+      #     Mitigation: SolidQueue workers typically run in single-threaded Fiber mode; verify
+      #     worker configuration does not enable raw multithreading.
+      #   - Double-wait behavior: If semaphore_wait is called twice for the same Semaphore
+      #     (e.g., due to retry or requeue), the second call returns false and does not
+      #     re-register the hook. This is a fail-fast contract: the semaphore is already
+      #     being waited and will signal the registered hook.
+      #
       #:  (Semaphore) -> bool
       def semaphore_wait(semaphore)
         return true unless semaphore_available?
+        return false if semaphore_registry.key?(semaphore)
+        return false unless SolidQueue::Semaphore.wait(semaphore)
 
-        SolidQueue::Semaphore.wait(semaphore)
+        hook = ->(_) { SolidQueue::Semaphore.signal(semaphore) }
+        semaphore_registry[semaphore] = hook
+        SolidQueue::Worker.on_worker_stop(hook)
+        true
       end
 
+      # @note
+      #   - Lifecycle management: The adapter is responsible for removing the hook from
+      #     SolidQueue::Worker.lifecycle_hooks[:stop] before calling signal. The hook must
+      #     be deleted from the registry and the global lifecycle_hooks to prevent redundant
+      #     signal calls after the semaphore has already been signaled.
+      #   - Hook deletion order: The hook is deleted before calling signal to ensure the
+      #     hook lambda is no longer invoked even if the signal triggers a worker stop.
+      #
       #:  (Semaphore) -> bool
       def semaphore_signal(semaphore)
         return true unless semaphore_available?
+        return true unless semaphore_registry.key?(semaphore)
 
+        hook = semaphore_registry[semaphore]
+        SolidQueue::Worker.lifecycle_hooks[:stop].delete(hook)
+        semaphore_registry.delete(semaphore)
         SolidQueue::Semaphore.signal(semaphore)
       end
 
@@ -133,6 +174,8 @@ module JobFlow
       end
 
       private
+
+      attr_reader :semaphore_registry #: Hash[Object, ^(SolidQueue::Worker) -> void]
 
       #:  (SolidQueue::Job, DSL, Numeric) -> bool
       def reschedule_solid_queue_job(solid_queue_job, active_job, wait)
