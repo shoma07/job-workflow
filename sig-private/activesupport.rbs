@@ -14,4 +14,10 @@ module ActiveSupport
     def self.instrument: (String name, ?Hash[untyped, untyped] payload) ?{ () -> untyped } -> untyped
                        | ...
   end
+
+  module Cache
+    # SolidCacheStore is an optional cache store provided by the solid_cache gem
+    class SolidCacheStore < Store
+    end
+  end
 end
