@@ -41,25 +41,55 @@ The `dependency_wait` option enables efficient waiting by:
 
 ### Basic Usage
 
+**Important:** Boolean values for `dependency_wait` (e.g. `dependency_wait: true` or `dependency_wait: false`) are **not supported**. Use an Integer (shorthand for `poll_timeout`) or a Hash for explicit configuration.
+
+- Polling-only (default): omit `dependency_wait` or pass an empty Hash; this uses `poll_timeout = 0` (polling-only, no reschedule)
+
 ```ruby
+# Polling-only (worker will be occupied while waiting)
 task :aggregate,
      depends_on: [:process_items],
-     dependency_wait: true do |ctx|
-  # This task will release the worker if process_items is not complete
+     dependency_wait: {} do |ctx|
   ctx.output[:process_items].sum { |h| h[:result] }
 end
 ```
 
+To enable non-blocking rescheduling, set a positive `poll_timeout` (either as an Integer or inside a Hash):
+
+```ruby
+# Example: poll up to 30s in-process, then reschedule for later execution
+task :aggregate,
+     depends_on: [:process_items],
+     dependency_wait: { poll_timeout: 30, poll_interval: 2, reschedule_delay: 5 } do |ctx|
+  ctx.output[:process_items].sum { |h| h[:result] }
+end
+
+# Or use the integer shorthand to set poll_timeout directly:
+
+task :aggregate,
+     depends_on: [:process_items],
+     dependency_wait: 30 do |ctx|
+  ctx.output[:process_items].sum { |h| h[:result] }
+end
+```
 ### Configuration Options
 
 ```ruby
+# Enable rescheduling after 30s of polling
 task :aggregate,
      depends_on: [:process_items],
      dependency_wait: {
-       poll_timeout: 30,      # Max seconds to poll before rescheduling (default: 10)
-       poll_interval: 2,      # Seconds between polls during initial wait (default: 1)
-       reschedule_delay: 5    # Seconds to wait before job is re-executed (default: 5)
+       poll_timeout: 30,      # Max seconds to poll before rescheduling
+       poll_interval: 2,      # Seconds between polls during initial wait
+       reschedule_delay: 5    # Seconds to wait before job is re-executed
      } do |ctx|
+  ctx.output[:process_items]
+end
+
+# Shorthand: integer value sets poll_timeout (rescheduling enabled)
+task :aggregate,
+     depends_on: [:process_items],
+     dependency_wait: 30 do |ctx|
   ctx.output[:process_items]
 end
 ```
@@ -68,9 +98,9 @@ end
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `poll_timeout` | 10 | Maximum seconds to poll in-process before rescheduling. Increasing this reduces reschedule overhead but keeps workers busy longer. |
-| `poll_interval` | 1 | Seconds between dependency checks during the initial polling phase. Lower values provide faster detection but increase database queries. |
-| `reschedule_delay` | 5 | Seconds until the rescheduled job becomes executable. Should be tuned based on expected sub-job completion time. |
+| `poll_timeout` | 0 (polling-only) | If `<= 0`, the runner will poll indefinitely and **will not** reschedule; set to a positive integer (seconds) to enable rescheduling after that many seconds. |
+| `poll_interval` | 5 | Seconds between dependency checks during the in-process polling phase. Lower values detect completions sooner but increase DB load. |
+| `reschedule_delay` | 5 | Seconds until the rescheduled job becomes executable once rescheduled. Should be tuned based on expected completion time of dependent work. |
 
 ## How It Works
 
@@ -208,6 +238,7 @@ end
 ### 1. Tune `poll_timeout` Based on Expected Wait Time
 
 ```ruby
+# If you want rescheduling: choose a positive poll_timeout
 # For quick tasks (< 30s expected)
 dependency_wait: { poll_timeout: 10, reschedule_delay: 5 }
 
@@ -218,6 +249,7 @@ dependency_wait: { poll_timeout: 30, reschedule_delay: 15 }
 dependency_wait: { poll_timeout: 60, reschedule_delay: 30 }
 ```
 
+**Note**: Boolean shorthand for `dependency_wait` is not supported. To enable rescheduling use a positive `poll_timeout` (via integer shorthand or as a Hash option); otherwise omit `dependency_wait` or pass an empty Hash to use polling-only behavior (poll_timeout = 0).
 ### 2. Consider Worker Pool Size
 
 If you have many workers, a longer `poll_timeout` is acceptable:
@@ -244,7 +276,7 @@ end
 
 task :aggregate,
      depends_on: [:process],
-     dependency_wait: true do |ctx|
+     dependency_wait: { poll_timeout: 30, reschedule_delay: 10 } do |ctx|
   # Workers won't be blocked waiting for sub-jobs
 end
 
@@ -255,7 +287,7 @@ end
 
 task :next_step,
      depends_on: [:process],
-     dependency_wait: true do |ctx|
+     dependency_wait: {} do |ctx|
   # dependency_wait adds overhead here since process is synchronous
 end
 ```
