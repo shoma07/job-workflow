@@ -18,55 +18,92 @@ RSpec.describe JobFlow::QueueAdapters::SolidQueueAdapter do
   end
 
   describe "#semaphore_wait" do
-    let(:semaphore) do
-      JobFlow::Semaphore.new(
-        concurrency_key: "test",
-        concurrency_duration: 1.minute
-      )
+    subject(:semaphore_wait) { adapter.semaphore_wait(semaphore) }
+
+    let(:semaphore) { JobFlow::Semaphore.new(concurrency_key: "test", concurrency_duration: 1.minute) }
+
+    before do
+      stub_const("SolidQueue::Semaphore", Class.new)
+      stub_const("SolidQueue::Worker", Class.new do
+        mattr_accessor :lifecycle_hooks, default: { stop: [] }
+
+        def self.on_worker_stop(_proc)
+          # no-op for tests
+        end
+      end)
+
+      allow(SolidQueue::Semaphore).to receive(:wait).with(semaphore).and_return(true)
     end
 
     context "when SolidQueue::Semaphore is not defined" do
       before { hide_const("SolidQueue::Semaphore") }
 
-      it { expect(adapter.semaphore_wait(semaphore)).to be(true) }
+      it { is_expected.to be(true) }
     end
 
     context "when SolidQueue::Semaphore is defined" do
-      before do
-        stub_const("SolidQueue::Semaphore", Class.new)
-        allow(SolidQueue::Semaphore).to receive(:wait).with(semaphore).and_return(true)
-      end
-
-      it { expect(adapter.semaphore_wait(semaphore)).to be(true) }
+      it { is_expected.to be(true) }
 
       it do
-        adapter.semaphore_wait(semaphore)
+        semaphore_wait
         expect(SolidQueue::Semaphore).to have_received(:wait).with(semaphore)
       end
+    end
+
+    context "when SolidQueue::Semaphore.wait returns false" do
+      before { allow(SolidQueue::Semaphore).to receive(:wait).and_return(false) }
+
+      it { is_expected.to be(false) }
+    end
+
+    context "when called again for same semaphore" do
+      before { adapter.semaphore_wait(semaphore) }
+
+      it { is_expected.to be(false) }
     end
   end
 
   describe "#semaphore_signal" do
-    let(:semaphore) do
-      JobFlow::Semaphore.new(
-        concurrency_key: "test",
-        concurrency_duration: 1.minute
-      )
+    subject(:semaphore_signal) { adapter.semaphore_signal(semaphore) }
+
+    let(:semaphore) { JobFlow::Semaphore.new(concurrency_key: "test", concurrency_duration: 1.minute) }
+
+    before do
+      stub_const("SolidQueue::Semaphore", Class.new)
+      allow(SolidQueue::Semaphore).to receive(:wait).with(anything).and_return(true)
+      allow(SolidQueue::Semaphore).to receive(:signal).with(anything).and_return(true)
+
+      stub_const("SolidQueue::Worker", Class.new do
+        mattr_accessor :lifecycle_hooks, default: { stop: [] }
+
+        def self.on_worker_stop(hook_proc)
+          lifecycle_hooks[:stop] << hook_proc
+        end
+      end)
     end
 
     context "when SolidQueue::Semaphore is not defined" do
       before { hide_const("SolidQueue::Semaphore") }
 
-      it { expect(adapter.semaphore_signal(semaphore)).to be(true) }
+      it { is_expected.to be(true) }
     end
 
-    context "when SolidQueue::Semaphore is defined" do
-      before do
-        stub_const("SolidQueue::Semaphore", Class.new)
-        allow(SolidQueue::Semaphore).to receive(:signal).with(semaphore).and_return(true)
-      end
+    context "when unregistered semaphore_registry" do
+      it { is_expected.to be(true) }
 
-      it { expect(adapter.semaphore_signal(semaphore)).to be(true) }
+      it do
+        semaphore_signal
+        expect(SolidQueue::Semaphore).not_to have_received(:signal)
+      end
+    end
+
+    context "when registered semaphore_registry" do
+      before { adapter.semaphore_wait(semaphore) }
+
+      it do
+        adapter.semaphore_signal(semaphore)
+        expect(SolidQueue::Worker.lifecycle_hooks[:stop].length).to eq(0)
+      end
 
       it do
         adapter.semaphore_signal(semaphore)
