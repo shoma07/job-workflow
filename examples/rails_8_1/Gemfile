@@ -1,0 +1,26 @@
+# frozen_string_literal: true
+
+source "https://rubygems.org"
+
+gem "job-flow", path: "../../"
+gem "puma", ">= 5.0"
+gem "rails", "~> 8.1.1"
+gem "solid_cache", "1.0.10"
+gem "solid_queue", "1.2.4"
+gem "sqlite3", ">= 2.1"
+
+group :development, :test do
+  gem "debug", require: "debug/prelude"
+  gem "rbs", require: false
+  gem "rbs-inline", require: false
+  gem "rspec-rails", require: false
+  gem "rubocop", require: false
+  gem "rubocop-performance", require: false
+  gem "rubocop-rails", require: false
+  gem "rubocop-rbs_inline", require: false
+  gem "rubocop-rspec", require: false
+  gem "rubocop-rspec_rails", require: false
+  gem "rubocop-thread_safety", require: false
+  gem "simplecov", require: false
+  gem "steep", require: false
+end
