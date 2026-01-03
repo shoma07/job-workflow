@@ -100,4 +100,9 @@ module SolidQueue
   class Configuration
     def recurring_tasks_config: () -> Hash[Symbol, Hash[Symbol, untyped]]
   end
+
+  class Worker
+    def self.on_worker_stop: (Proc) -> void
+    def self.lifecycle_hooks: () -> Hash[Symbol, Array[Proc]]
+  end
 end
