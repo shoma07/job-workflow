@@ -138,11 +138,6 @@ Complete API documentation and best practices:
   - Class documentation
   - Method signatures
 
-- **[TYPE_DEFINITIONS_GUIDE.md](TYPE_DEFINITIONS_GUIDE.md)** - Working with RBS types
-  - rbs-inline basics
-  - Type definition methods
-  - Using `: syntax` and `@rbs`
-
 - **[BEST_PRACTICES.md](BEST_PRACTICES.md)** - Design patterns and recommendations
   - Workflow design principles
   - Task granularity
