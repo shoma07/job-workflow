@@ -196,6 +196,22 @@ RSpec.describe JobFlow::Instrumentation do
     # rubocop:enable RSpec/ExampleLength,RSpec/MultipleExpectations
   end
 
+  describe ".notify_dependent_reschedule" do
+    subject(:call) { described_class.notify_dependent_reschedule(job, task, 10, 3) }
+
+    include_context "with job double"
+
+    let(:task) { instance_double(JobFlow::Task, task_name: :dependent_task) }
+    let(:event_name) { described_class::Events::DEPENDENT_RESCHEDULE }
+
+    it "fires a dependent.reschedule.job_flow event" do
+      expect(capture_events).to have_attributes(
+        size: 1,
+        last: have_attributes(last: include(reschedule_delay: 10, poll_count: 3))
+      )
+    end
+  end
+
   describe ".instrument_throttle" do
     subject(:call) { described_class.instrument_throttle(semaphore) { "throttled_result" } }
 

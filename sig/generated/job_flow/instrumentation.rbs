@@ -47,6 +47,8 @@ module JobFlow
 
       DEPENDENT_WAIT_COMPLETE: untyped
 
+      DEPENDENT_RESCHEDULE: untyped
+
       QUEUE_PAUSE: untyped
 
       QUEUE_RESUME: untyped
@@ -71,6 +73,9 @@ module JobFlow
 
     # :  (DSL, Task) { () -> untyped } -> untyped
     def self.instrument_dependent_wait: (DSL, Task) { () -> untyped } -> untyped
+
+    # :  (DSL, Task, Numeric, Integer) -> void
+    def self.notify_dependent_reschedule: (DSL, Task, Numeric, Integer) -> void
 
     # :  (Semaphore) { () -> untyped } -> untyped
     def self.instrument_throttle: (Semaphore) { () -> untyped } -> untyped
@@ -107,6 +112,9 @@ module JobFlow
 
     # :  (DSL, Task) -> Hash[Symbol, untyped]
     private def self.build_dependent_payload: (DSL, Task) -> Hash[Symbol, untyped]
+
+    # :  (DSL, Task, Numeric, Integer) -> Hash[Symbol, untyped]
+    private def self.build_dependent_reschedule_payload: (DSL, Task, Numeric, Integer) -> Hash[Symbol, untyped]
 
     # :  (Semaphore) -> Hash[Symbol, untyped]
     private def self.build_throttle_payload: (Semaphore) -> Hash[Symbol, untyped]

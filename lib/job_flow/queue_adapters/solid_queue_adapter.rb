@@ -4,6 +4,12 @@ module JobFlow
   module QueueAdapters
     # rubocop:disable Naming/PredicateMethod
     class SolidQueueAdapter < Abstract
+      #:  () -> void
+      def initialize_adapter!
+        SolidQueue::Configuration.prepend(SchedulingPatch) if defined?(SolidQueue::Configuration)
+        SolidQueue::ClaimedExecution.prepend(ClaimedExecutionPatch) if defined?(SolidQueue::ClaimedExecution)
+      end
+
       #:  () -> bool
       def semaphore_available?
         defined?(SolidQueue::Semaphore) ? true : false
@@ -42,13 +48,6 @@ module JobFlow
       #:  () -> bool
       def supports_concurrency_limits?
         defined?(SolidQueue) ? true : false
-      end
-
-      #:  () -> void
-      def install_scheduling_hook!
-        return unless defined?(SolidQueue::Configuration)
-
-        SolidQueue::Configuration.prepend(SchedulingPatch)
       end
 
       #:  (String) -> bool
@@ -119,6 +118,45 @@ module JobFlow
           "arguments" => job.arguments,
           "status" => job_status(job)
         }
+      end
+
+      #:  (DSL, Numeric) -> bool
+      def reschedule_job(job, wait)
+        return false unless defined?(SolidQueue::Job)
+
+        solid_queue_job = SolidQueue::Job.find_by(active_job_id: job.job_id)
+        return false unless solid_queue_job&.claimed?
+
+        reschedule_solid_queue_job(solid_queue_job, job, wait)
+      rescue ActiveRecord::RecordNotFound
+        false
+      end
+
+      private
+
+      #:  (SolidQueue::Job, DSL, Numeric) -> bool
+      def reschedule_solid_queue_job(solid_queue_job, active_job, wait)
+        solid_queue_job.with_lock do
+          solid_queue_job.claimed_execution&.destroy!
+          solid_queue_job.update!(
+            scheduled_at: wait.seconds.from_now,
+            arguments: active_job.serialize.deep_stringify_keys["arguments"]
+          )
+          solid_queue_job.prepare_for_execution
+        end
+        true
+      end
+
+      # @rbs module-self SolidQueue::ClaimedExecution
+      module ClaimedExecutionPatch
+        private
+
+        #:  () -> SolidQueue::ClaimedExecution
+        def finished
+          return self unless self.class.exists?(id)
+
+          super
+        end
       end
 
       module SchedulingPatch

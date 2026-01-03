@@ -5,6 +5,9 @@ module ActiveJob
   end
 
   module Continuation
+    class Interrupt < StandardError
+    end
+
     interface _Succ
       def succ: () -> self
     end

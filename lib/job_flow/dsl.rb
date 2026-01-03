@@ -123,6 +123,7 @@ module JobFlow
       #     ?condition: ^(Context) -> bool,
       #     ?throttle: Integer | Hash[Symbol, untyped],
       #     ?timeout: Numeric?,
+      #     ?dependency_wait: Hash[Symbol, untyped]
       #   ) { (untyped) -> void } -> void
       def task(
         task_name,
@@ -134,6 +135,7 @@ module JobFlow
         condition: ->(_ctx) { true },
         throttle: {},
         timeout: nil,
+        dependency_wait: {},
         &block
       )
         new_task = Task.new(
@@ -148,7 +150,8 @@ module JobFlow
           depends_on:,
           condition:,
           throttle:,
-          timeout:
+          timeout:,
+          dependency_wait:
         )
         _workflow.add_task(new_task)
         if new_task.enqueue.should_limits_concurrency? # rubocop:disable Style/GuardClause
