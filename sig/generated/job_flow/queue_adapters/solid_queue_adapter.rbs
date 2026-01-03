@@ -4,6 +4,9 @@ module JobFlow
   module QueueAdapters
     # rubocop:disable Naming/PredicateMethod
     class SolidQueueAdapter < Abstract
+      # :  () -> void
+      def initialize_adapter!: () -> void
+
       # :  () -> bool
       def semaphore_available?: () -> bool
 
@@ -21,9 +24,6 @@ module JobFlow
 
       # :  () -> bool
       def supports_concurrency_limits?: () -> bool
-
-      # :  () -> void
-      def install_scheduling_hook!: () -> void
 
       # :  (String) -> bool
       def pause_queue: (String) -> bool
@@ -48,6 +48,22 @@ module JobFlow
 
       # :  (String) -> Hash[String, untyped]?
       def find_job: (String) -> Hash[String, untyped]?
+
+      # :  (DSL, Numeric) -> bool
+      def reschedule_job: (DSL, Numeric) -> bool
+
+      private
+
+      # :  (SolidQueue::Job, DSL, Numeric) -> bool
+      def reschedule_solid_queue_job: (SolidQueue::Job, DSL, Numeric) -> bool
+
+      # @rbs module-self SolidQueue::ClaimedExecution
+      module ClaimedExecutionPatch : SolidQueue::ClaimedExecution
+        private
+
+        # :  () -> SolidQueue::ClaimedExecution
+        def finished: () -> SolidQueue::ClaimedExecution
+      end
 
       module SchedulingPatch
         private

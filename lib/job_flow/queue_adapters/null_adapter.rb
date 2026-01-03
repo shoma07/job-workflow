@@ -4,6 +4,9 @@ module JobFlow
   module QueueAdapters
     # rubocop:disable Naming/PredicateMethod
     class NullAdapter < Abstract
+      #:  () -> void
+      def initialize_adapter!; end
+
       def initialize # rubocop:disable Lint/MissingSuper
         @paused_queues = Set.new #: Set[String]
         @queue_jobs = {} #: Hash[String, Array[untyped]]
@@ -85,6 +88,11 @@ module JobFlow
       #:  (String) -> Hash[String, untyped]?
       def find_job(job_id)
         @stored_jobs[job_id]
+      end
+
+      #:  (DSL, Numeric) -> bool
+      def reschedule_job(_job, _wait)
+        false
       end
 
       # @note Test helpers

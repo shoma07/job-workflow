@@ -1,0 +1,42 @@
+# Generated from lib/job_flow/task_dependency_wait.rb with RBS::Inline
+
+module JobFlow
+  # TaskDependencyWait holds configuration for waiting on dependent tasks.
+  #
+  # When a task has dependencies (depends_on:), the runner waits for those tasks to complete.
+  # This class configures how long to poll before rescheduling the job.
+  #
+  # @example Default behavior (polling only, no reschedule)
+  #   task :process, depends_on: [:fetch]
+  #
+  # @example Wait up to 30 seconds with polling, then reschedule
+  #   task :process, depends_on: [:fetch], dependency_wait: { poll_timeout: 30 }
+  #
+  # @example Wait 60 seconds total, poll every 10 seconds, reschedule after 5 seconds
+  #   task :process, depends_on: [:fetch], dependency_wait: { poll_timeout: 60, poll_interval: 10, reschedule_delay: 5 }
+  class TaskDependencyWait
+    DEFAULT_POLL_TIMEOUT: Integer
+
+    DEFAULT_POLL_INTERVAL: Integer
+
+    DEFAULT_RESCHEDULE_DELAY: Integer
+
+    attr_reader poll_timeout: Integer
+
+    attr_reader poll_interval: Integer
+
+    attr_reader reschedule_delay: Integer
+
+    # :  (Integer | Hash[Symbol, untyped] | nil) -> TaskDependencyWait
+    def self.from_primitive_value: (Integer | Hash[Symbol, untyped] | nil) -> TaskDependencyWait
+
+    # :  (?poll_timeout: Integer, ?poll_interval: Integer, ?reschedule_delay: Integer) -> void
+    def initialize: (?poll_timeout: Integer, ?poll_interval: Integer, ?reschedule_delay: Integer) -> void
+
+    # :  () -> bool
+    def polling_only?: () -> bool
+
+    # :  (Time) -> bool
+    def polling_keep?: (Time) -> bool
+  end
+end

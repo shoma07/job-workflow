@@ -2,7 +2,11 @@
 
 module JobFlow
   module QueueAdapters
+    # rubocop:disable Naming/PredicateMethod
     class Abstract
+      #:  () -> void
+      def initialize_adapter!; end
+
       #:  () -> bool
       def semaphore_available?
         raise NotImplementedError, "#{self.class}#semaphore_available? must be implemented"
@@ -32,9 +36,6 @@ module JobFlow
       def supports_concurrency_limits?
         raise NotImplementedError, "#{self.class}#supports_concurrency_limits? must be implemented"
       end
-
-      #:  () -> void
-      def install_scheduling_hook!; end
 
       #:  (String) -> bool
       def pause_queue(_queue_name)
@@ -75,6 +76,12 @@ module JobFlow
       def find_job(_job_id)
         raise NotImplementedError, "#{self.class}#find_job must be implemented"
       end
+
+      #:  (DSL, Numeric) -> bool
+      def reschedule_job(_job, _wait)
+        false
+      end
     end
+    # rubocop:enable Naming/PredicateMethod
   end
 end

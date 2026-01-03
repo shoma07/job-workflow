@@ -43,4 +43,45 @@ RSpec.describe JobFlow::QueueAdapter do
         .from(true).to(false)
     end
   end
+
+  describe JobFlow::QueueAdapters::SolidQueueAdapter::ClaimedExecutionPatch do
+    subject(:claimed_execution) { klass.new(record_id) }
+
+    let(:record_id) { 123 }
+    let(:klass) do
+      patch = described_class
+      Class.new do
+        define_method(:initialize) { |id| @id = id }
+        attr_reader :id
+
+        define_method(:finished) { :original_finished_called }
+
+        class << self
+          attr_accessor :existing_ids
+
+          def exists?(id)
+            existing_ids&.include?(id)
+          end
+        end
+
+        prepend patch
+      end
+    end
+
+    context "when record exists in database" do
+      before { klass.existing_ids = [record_id] }
+
+      it "calls original finished method" do
+        expect(claimed_execution.send(:finished)).to eq(:original_finished_called)
+      end
+    end
+
+    context "when record does not exist in database (rescheduled)" do
+      before { klass.existing_ids = [] }
+
+      it "returns self without calling original finished" do
+        expect(claimed_execution.send(:finished)).to eq(claimed_execution)
+      end
+    end
+  end
 end

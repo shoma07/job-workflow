@@ -76,8 +76,9 @@ module JobFlow
       #     ?condition: ^(Context) -> bool,
       #     ?throttle: Integer | Hash[Symbol, untyped],
       #     ?timeout: Numeric?,
+      #     ?dependency_wait: Hash[Symbol, untyped]
       #   ) { (untyped) -> void } -> void
-      def task: (Symbol task_name, ?each: ^(Context) -> untyped, ?enqueue: true | false | ^(Context) -> bool | Hash[Symbol, untyped], ?retry: Integer | Hash[Symbol, untyped], ?output: Hash[Symbol, String], ?depends_on: Array[Symbol], ?condition: ^(Context) -> bool, ?throttle: Integer | Hash[Symbol, untyped], ?timeout: Numeric?) { (untyped) -> void } -> void
+      def task: (Symbol task_name, ?each: ^(Context) -> untyped, ?enqueue: true | false | ^(Context) -> bool | Hash[Symbol, untyped], ?retry: Integer | Hash[Symbol, untyped], ?output: Hash[Symbol, String], ?depends_on: Array[Symbol], ?condition: ^(Context) -> bool, ?throttle: Integer | Hash[Symbol, untyped], ?timeout: Numeric?, ?dependency_wait: Hash[Symbol, untyped]) { (untyped) -> void } -> void
 
       # :  (*Symbol) { (Context) -> void } -> void
       def before: (*Symbol) { (Context) -> void } -> void
