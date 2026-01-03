@@ -1,15 +1,17 @@
 plugins:
   - rubocop-performance
-  - rubocop-rspec
+  - rubocop-rails
   - rubocop-rbs_inline
+  - rubocop-rspec
+  - rubocop-rspec_rails
   - rubocop-thread_safety
 
 AllCops:
-  TargetRubyVersion: 3.1
+  TargetRubyVersion: 3.4
   NewCops: enable
   SuggestExtensions: false
   Exclude:
-    - examples/**/*
+    - bin/**/*
 
 Layout/LeadingCommentSpace:
   Enabled: true
@@ -64,10 +66,6 @@ Metrics/ModuleLength:
     - hash
     - heredoc
 
-Naming/FileName:
-  Exclude:
-    - lib/job-flow.rb
-
 RSpec/ExampleLength:
   Enabled: true
   Max: 5
@@ -87,4 +85,3 @@ Style/StringLiteralsInInterpolation:
 
 ThreadSafety/ClassAndModuleAttributes:
   Enabled: false
-
