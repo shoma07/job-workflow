@@ -4,6 +4,9 @@ module JobFlow
   module QueueAdapters
     # rubocop:disable Naming/PredicateMethod
     class NullAdapter < Abstract
+      # :  () -> void
+      def initialize_adapter!: () -> void
+
       def initialize: () -> untyped
 
       # :  () -> bool
@@ -47,6 +50,9 @@ module JobFlow
 
       # :  (String) -> Hash[String, untyped]?
       def find_job: (String) -> Hash[String, untyped]?
+
+      # :  (DSL, Numeric) -> bool
+      def reschedule_job: (DSL, Numeric) -> bool
 
       # @note Test helpers
       #

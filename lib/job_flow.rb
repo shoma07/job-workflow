@@ -19,6 +19,7 @@ require_relative "job_flow/queue_adapter"
 require_relative "job_flow/task_retry"
 require_relative "job_flow/task_throttle"
 require_relative "job_flow/task_enqueue"
+require_relative "job_flow/task_dependency_wait"
 require_relative "job_flow/semaphore"
 require_relative "job_flow/namespace"
 require_relative "job_flow/hook"
@@ -51,6 +52,6 @@ module JobFlow
 
   Instrumentation::LogSubscriber.attach!
 
-  ActiveSupport.on_load(:solid_queue) { QueueAdapter.current.install_scheduling_hook! }
-  QueueAdapter.current.install_scheduling_hook!
+  ActiveSupport.on_load(:solid_queue) { QueueAdapter.current.initialize_adapter! }
+  QueueAdapter.current.initialize_adapter!
 end

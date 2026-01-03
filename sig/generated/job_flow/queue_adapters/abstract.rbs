@@ -2,7 +2,11 @@
 
 module JobFlow
   module QueueAdapters
+    # rubocop:disable Naming/PredicateMethod
     class Abstract
+      # :  () -> void
+      def initialize_adapter!: () -> void
+
       # :  () -> bool
       def semaphore_available?: () -> bool
 
@@ -20,9 +24,6 @@ module JobFlow
 
       # :  () -> bool
       def supports_concurrency_limits?: () -> bool
-
-      # :  () -> void
-      def install_scheduling_hook!: () -> void
 
       # :  (String) -> bool
       def pause_queue: (String) -> bool
@@ -47,6 +48,9 @@ module JobFlow
 
       # :  (String) -> Hash[String, untyped]?
       def find_job: (String) -> Hash[String, untyped]?
+
+      # :  (DSL, Numeric) -> bool
+      def reschedule_job: (DSL, Numeric) -> bool
     end
   end
 end

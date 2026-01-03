@@ -43,8 +43,8 @@ RSpec.describe JobFlow::QueueAdapters::NullAdapter do
     it { expect(adapter.supports_concurrency_limits?).to be(false) }
   end
 
-  describe "#install_scheduling_hook!" do
-    it { expect(adapter.install_scheduling_hook!).to be_nil }
+  describe "#initialize_adapter!" do
+    it { expect(adapter.initialize_adapter!).to be_nil }
   end
 
   describe "#pause_queue" do
@@ -220,5 +220,18 @@ RSpec.describe JobFlow::QueueAdapters::NullAdapter do
       store_job
       expect(adapter.find_job("job-456")).to eq(job_data)
     end
+  end
+
+  describe "#reschedule_job" do
+    subject(:reschedule_job) { adapter.reschedule_job(job, 10) }
+
+    let(:job) do
+      klass = Class.new(ActiveJob::Base) do
+        include JobFlow::DSL
+      end
+      klass.new
+    end
+
+    it { is_expected.to be false }
   end
 end

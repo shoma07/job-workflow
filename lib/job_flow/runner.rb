@@ -15,7 +15,7 @@ module JobFlow
       task = context._task_context.task
       return run_task(task) if !task.nil? && context.sub_job?
 
-      run_workflow
+      catch(:rescheduled) { run_workflow }
     end
 
     private
@@ -112,38 +112,56 @@ module JobFlow
       Instrumentation.notify_task_enqueue(job, task, sub_jobs.size)
     end
 
+    #:  (Task, ActiveJob::Continuation::Step) -> void
+    def wait_for_dependent_tasks(waiting_task, step)
+      waiting_task.depends_on.each do |dependent_task_name|
+        dependent_task = workflow.fetch_task(dependent_task_name)
+        next if dependent_task.nil? || context.job_status.needs_waiting?(dependent_task.task_name)
+
+        Instrumentation.instrument_dependent_wait(job, dependent_task) do
+          poll_until_complete_or_reschedule(waiting_task, dependent_task, step)
+        end
+
+        update_task_outputs(dependent_task)
+      end
+    end
+
+    #:  (Task, Task, ActiveJob::Continuation::Step) -> void
+    def poll_until_complete_or_reschedule(waiting_task, dependent_task, step)
+      poll_state = { count: 0, started_at: Time.current }
+      dependency_wait = waiting_task.dependency_wait
+
+      loop do
+        step.checkpoint!
+        context.job_status.update_task_job_statuses_from_db(dependent_task.task_name)
+        break if context.job_status.needs_waiting?(dependent_task.task_name)
+
+        poll_state[:count] += 1
+        reschedule_if_needed(dependent_task, dependency_wait, poll_state)
+        sleep dependency_wait.poll_interval
+      end
+    end
+
+    #:  (Task, TaskDependencyWait, Hash[Symbol, untyped]) -> void
+    def reschedule_if_needed(dependent_task, dependency_wait, poll_state)
+      return if dependency_wait.polling_only?
+      return if dependency_wait.polling_keep?(poll_state[:started_at])
+      return unless QueueAdapter.current.reschedule_job(job, dependency_wait.reschedule_delay)
+
+      Instrumentation.notify_dependent_reschedule(
+        job,
+        dependent_task,
+        dependency_wait.reschedule_delay,
+        poll_state[:count]
+      )
+      throw :rescheduled
+    end
+
     #:  (ctx: Context, task: Task, each_index: Integer, data: untyped) -> void
     def add_task_output(ctx:, task:, data:, each_index:)
       return if task.output.empty?
 
       ctx._add_task_output(TaskOutput.from_task(task:, each_index:, data:))
-    end
-
-    #:  (Task, ActiveJob::Continuation::Step) -> void
-    def wait_for_dependent_tasks(task, step)
-      task.depends_on.each do |dependent_task_name|
-        dependent_task = workflow.fetch_task(dependent_task_name)
-        next if dependent_task.nil? || context.job_status.needs_waiting?(dependent_task.task_name)
-
-        wait_for_map_task_completion(dependent_task, step)
-      end
-    end
-
-    #:  (Task, ActiveJob::Continuation::Step) -> void
-    def wait_for_map_task_completion(task, step)
-      Instrumentation.instrument_dependent_wait(job, task) do
-        loop do
-          # Checkpoint for resumable execution
-          step.checkpoint!
-
-          context.job_status.update_task_job_statuses_from_db(task.task_name)
-          break if context.job_status.needs_waiting?(task.task_name)
-
-          sleep 5
-        end
-      end
-
-      update_task_outputs(task)
     end
 
     #:  (Task) -> void

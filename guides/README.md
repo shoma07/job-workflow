@@ -58,6 +58,12 @@ Advanced workflow patterns and features:
 
 Power features for complex workflows:
 
+- **[DEPENDENCY_WAIT.md](DEPENDENCY_WAIT.md)** - Efficient dependency waiting
+  - The thread occupation problem
+  - Automatic job rescheduling
+  - Configuration options (poll_timeout, poll_interval, reschedule_delay)
+  - SolidQueue integration
+
 - **[NAMESPACES.md](NAMESPACES.md)** - Organizing large workflows
   - Basic namespace usage
   - Nested namespaces

@@ -1901,4 +1901,101 @@ RSpec.describe JobFlow::Runner do
       end
     end
   end
+
+  describe "dependency wait with reschedule" do
+    let(:adapter) { JobFlow::QueueAdapter.current }
+    let(:poll_config) { { poll_timeout: 0.1, poll_interval: 0.05 } }
+    let(:job) do
+      config = poll_config
+      klass = Class.new(ActiveJob::Base) do
+        include JobFlow::DSL
+
+        task :producer, output: { value: "Integer" } do |_ctx|
+          { value: 1 }
+        end
+
+        task :consumer, depends_on: [:producer], dependency_wait: config do |_ctx|
+          nil
+        end
+      end
+      klass.new
+    end
+
+    let(:ctx) do
+      sub_job = Class.new(ActiveJob::Base) { include JobFlow::DSL }.new
+      ctx = JobFlow::Context.from_hash({ job:, workflow: job.class._workflow })._update_arguments({})
+      ctx.job_status.update_task_job_statuses_from_jobs(task_name: :producer, jobs: [sub_job])
+      ctx
+    end
+
+    let(:runner) { described_class.new(context: ctx) }
+
+    before do
+      allow(adapter).to receive(:fetch_job_statuses).and_return({})
+    end
+
+    context "when adapter supports reschedule and succeeds" do
+      before { allow(adapter).to receive_messages(reschedule_job: true) }
+
+      it "completes without raising error (throw caught internally)" do
+        expect { runner.run }.not_to raise_error
+      end
+
+      it "calls reschedule_job on adapter" do
+        runner.run
+        expect(adapter).to have_received(:reschedule_job)
+      end
+    end
+
+    shared_context "with poll timeout exceeded" do
+      before do
+        start_time = Time.current
+        time_call_count = 0
+        allow(Time).to receive(:current) do
+          time_call_count += 1
+          time_call_count == 1 ? start_time : start_time + 0.2.seconds
+        end
+        wait_call_count = 0
+        allow(ctx.job_status).to receive(:needs_waiting?).with(:producer) { (wait_call_count += 1) >= 3 }
+      end
+    end
+
+    context "when adapter reschedule_job fails" do
+      include_context "with poll timeout exceeded"
+
+      before do
+        allow(adapter).to receive_messages(reschedule_job: false)
+        allow(ctx.output).to receive(:update_task_outputs_from_db)
+      end
+
+      it "continues polling without raising error" do
+        expect { runner.run }.not_to raise_error
+      end
+
+      it "calls reschedule_job on adapter" do
+        runner.run
+        expect(adapter).to have_received(:reschedule_job)
+      end
+    end
+
+    context "when poll_timeout is 0 (polling_only)" do
+      let(:poll_config) { { poll_timeout: 0 } }
+
+      before do
+        allow(ctx.output).to receive(:update_task_outputs_from_db)
+        allow(adapter).to receive(:reschedule_job).and_return(true)
+        call_count = 0
+        allow(ctx.job_status).to receive(:needs_waiting?).with(:producer) { (call_count += 1) > 1 }
+      end
+
+      it "does not raise error" do
+        expect { runner.run }.not_to raise_error
+      end
+
+      it "does not call reschedule_job" do
+        runner.run
+        expect(adapter).not_to have_received(:reschedule_job)
+      end
+    end
+  end
 end

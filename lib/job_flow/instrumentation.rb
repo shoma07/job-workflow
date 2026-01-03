@@ -30,6 +30,7 @@ module JobFlow
       DEPENDENT_WAIT = "dependent.wait.#{NAMESPACE}".freeze
       DEPENDENT_WAIT_START = "dependent.wait.start.#{NAMESPACE}".freeze
       DEPENDENT_WAIT_COMPLETE = "dependent.wait.complete.#{NAMESPACE}".freeze
+      DEPENDENT_RESCHEDULE = "dependent.reschedule.#{NAMESPACE}".freeze
       QUEUE_PAUSE = "queue.pause.#{NAMESPACE}".freeze
       QUEUE_RESUME = "queue.resume.#{NAMESPACE}".freeze
       CUSTOM = "custom.#{NAMESPACE}".freeze
@@ -76,6 +77,14 @@ module JobFlow
         instrument(Events::DEPENDENT_WAIT, payload, &)
       ensure
         instrument(Events::DEPENDENT_WAIT_COMPLETE, payload)
+      end
+
+      #:  (DSL, Task, Numeric, Integer) -> void
+      def notify_dependent_reschedule(job, task, reschedule_delay, poll_count)
+        instrument(
+          Events::DEPENDENT_RESCHEDULE,
+          build_dependent_reschedule_payload(job, task, reschedule_delay, poll_count)
+        )
       end
 
       #:  (Semaphore) { () -> untyped } -> untyped
@@ -188,6 +197,19 @@ module JobFlow
           job_name: job.class.name,
           task:,
           dependent_task_name: task.task_name
+        }
+      end
+
+      #:  (DSL, Task, Numeric, Integer) -> Hash[Symbol, untyped]
+      def build_dependent_reschedule_payload(job, task, reschedule_delay, poll_count)
+        {
+          job:,
+          job_id: job.job_id,
+          job_name: job.class.name,
+          task:,
+          dependent_task_name: task.task_name,
+          reschedule_delay:,
+          poll_count:
         }
       end
 

@@ -151,21 +151,41 @@ RSpec.describe JobFlow::QueueAdapters::SolidQueueAdapter do
     end
   end
 
-  describe "#install_scheduling_hook!" do
-    context "when SolidQueue::Configuration is not defined" do
-      before { hide_const("SolidQueue::Configuration") }
+  describe "#initialize_adapter!" do
+    context "when SolidQueue is not defined" do
+      before do
+        hide_const("SolidQueue::Configuration")
+        hide_const("SolidQueue::ClaimedExecution")
+      end
 
-      it { expect(adapter.install_scheduling_hook!).to be_nil }
+      it { expect(adapter.initialize_adapter!).to be_nil }
     end
 
     context "when SolidQueue::Configuration is defined" do
       let(:configuration_class) { Class.new }
 
-      before { stub_const("SolidQueue::Configuration", configuration_class) }
+      before do
+        stub_const("SolidQueue::Configuration", configuration_class)
+        hide_const("SolidQueue::ClaimedExecution")
+      end
 
-      it do
-        adapter.install_scheduling_hook!
+      it "prepends SchedulingPatch" do
+        adapter.initialize_adapter!
         expect(SolidQueue::Configuration.ancestors).to include(described_class::SchedulingPatch)
+      end
+    end
+
+    context "when SolidQueue::ClaimedExecution is defined" do
+      let(:claimed_execution_class) { Class.new }
+
+      before do
+        hide_const("SolidQueue::Configuration")
+        stub_const("SolidQueue::ClaimedExecution", claimed_execution_class)
+      end
+
+      it "prepends ClaimedExecutionPatch" do
+        adapter.initialize_adapter!
+        expect(SolidQueue::ClaimedExecution.ancestors).to include(described_class::ClaimedExecutionPatch)
       end
     end
   end
@@ -438,6 +458,112 @@ RSpec.describe JobFlow::QueueAdapters::SolidQueueAdapter do
       end
 
       it { is_expected.to be_nil }
+    end
+  end
+
+  describe "#reschedule_job" do
+    subject(:reschedule_job) { adapter.reschedule_job(active_job, 10) }
+
+    let(:active_job) do
+      klass = Class.new(ActiveJob::Base) do
+        include JobFlow::DSL
+      end
+      job = klass.new
+      allow(job).to receive(:serialize).and_return({ "arguments" => [{ "_job_flow_context" => {} }] })
+      job
+    end
+
+    let(:sq_job) { Class.new.new }
+    let(:claimed_execution) { Class.new.new }
+
+    context "when SolidQueue::Job is not defined" do
+      before { hide_const("SolidQueue::Job") }
+
+      it { is_expected.to be false }
+    end
+
+    context "when SolidQueue::Job is defined and job is not claimed" do
+      before do
+        stub_const("SolidQueue::Job", sq_job.class)
+        allow(sq_job.class).to receive(:find_by).with(active_job_id: active_job.job_id).and_return(sq_job)
+        allow(sq_job).to receive(:claimed?).and_return(false)
+      end
+
+      it { is_expected.to be false }
+    end
+
+    context "when SolidQueue::Job is defined and job is not found" do
+      before do
+        stub_const("SolidQueue::Job", sq_job.class)
+        allow(sq_job.class).to receive(:find_by).with(active_job_id: active_job.job_id).and_return(nil)
+      end
+
+      it { is_expected.to be false }
+    end
+
+    context "when SolidQueue::Job is defined and job is claimed" do
+      before do
+        stub_const("SolidQueue::Job", sq_job.class)
+        allow(sq_job.class).to receive(:find_by).with(active_job_id: active_job.job_id).and_return(sq_job)
+        allow(sq_job).to receive_messages(
+          claimed?: true,
+          claimed_execution:,
+          with_lock: nil,
+          update!: true,
+          prepare_for_execution: nil
+        )
+        allow(sq_job).to receive(:with_lock).and_yield
+        allow(claimed_execution).to receive(:destroy!)
+      end
+
+      it { is_expected.to be true }
+
+      it "destroys claimed_execution" do
+        reschedule_job
+        expect(claimed_execution).to have_received(:destroy!)
+      end
+
+      it "updates scheduled_at" do
+        reschedule_job
+        expect(sq_job).to have_received(:update!).with(hash_including(:scheduled_at, :arguments))
+      end
+
+      it "prepares for execution" do
+        reschedule_job
+        expect(sq_job).to have_received(:prepare_for_execution)
+      end
+    end
+
+    context "when SolidQueue::Job is defined and job is claimed but claimed_execution is nil" do
+      before do
+        stub_const("SolidQueue::Job", sq_job.class)
+        allow(sq_job.class).to receive(:find_by).with(active_job_id: active_job.job_id).and_return(sq_job)
+        allow(sq_job).to receive_messages(
+          claimed?: true,
+          claimed_execution: nil,
+          with_lock: nil,
+          update!: true,
+          prepare_for_execution: nil
+        )
+        allow(sq_job).to receive(:with_lock).and_yield
+      end
+
+      it { is_expected.to be true }
+
+      it "does not raise when claimed_execution is nil" do
+        expect { reschedule_job }.not_to raise_error
+      end
+    end
+
+    context "when SolidQueue::Job is defined and ActiveRecord::RecordNotFound is raised" do
+      before do
+        stub_const("SolidQueue::Job", sq_job.class)
+        stub_const("ActiveRecord::RecordNotFound", Class.new(StandardError))
+        allow(sq_job.class).to receive(:find_by).with(active_job_id: active_job.job_id).and_return(sq_job)
+        allow(sq_job).to receive(:claimed?).and_raise(ActiveRecord::RecordNotFound)
+      end
+
+      it { is_expected.to be false }
     end
   end
 end

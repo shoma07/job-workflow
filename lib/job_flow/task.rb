@@ -13,6 +13,7 @@ module JobFlow
     attr_reader :task_retry #: TaskRetry
     attr_reader :throttle #: TaskThrottle
     attr_reader :timeout #: Numeric?
+    attr_reader :dependency_wait #: TaskDependencyWait
 
     # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength
     #:  (
@@ -27,7 +28,8 @@ module JobFlow
     #     condition: ^(Context) -> bool,
     #     ?task_retry: Integer | Hash[Symbol, untyped],
     #     ?throttle: Integer | Hash[Symbol, untyped],
-    #     ?timeout: Numeric?
+    #     ?timeout: Numeric?,
+    #     ?dependency_wait: Hash[Symbol, untyped]
     #   ) -> void
     def initialize(
       job_name:,
@@ -41,7 +43,8 @@ module JobFlow
       condition: ->(_ctx) { true },
       task_retry: 0,
       throttle: {},
-      timeout: nil
+      timeout: nil,
+      dependency_wait: {}
     )
       @job_name = job_name
       @name = name
@@ -55,6 +58,7 @@ module JobFlow
       @task_retry = TaskRetry.from_primitive_value(task_retry)
       @throttle = TaskThrottle.from_primitive_value_with_task(value: throttle, task: self)
       @timeout = timeout
+      @dependency_wait = TaskDependencyWait.from_primitive_value(dependency_wait)
     end
     # rubocop:enable Metrics/ParameterLists, Metrics/MethodLength
 

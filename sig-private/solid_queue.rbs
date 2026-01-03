@@ -59,6 +59,29 @@ module SolidQueue
     def queue_name: () -> String
 
     def arguments: () -> Hash[String, untyped]
+
+    def claimed_execution: () -> ClaimedExecution?
+
+    def prepare_for_execution: () -> void
+  end
+
+  class ClaimedExecution < Record
+    class Result
+      attr_reader success: bool
+      attr_reader error: Exception?
+
+      def success?: () -> bool
+    end
+
+    def self.exists?: (Integer) -> bool
+
+    def job: () -> Job
+
+    def destroy!: () -> bool
+
+    private
+
+    def finished: () -> self
   end
 
   class Semaphore < Record
