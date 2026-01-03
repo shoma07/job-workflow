@@ -27,7 +27,7 @@ This directory contains a minimal Rails 8.1 application intended for running acc
 examples/rails_8_1/
 ├── app/
 │   ├── jobs/          # ActiveJob classes
-│   └── models/        # ActiveRecord models and workflow definitions
+│   └── models/        # ActiveRecord models
 ├── config/            # Rails configuration
 ├── db/                # database schema and migrations
 ├── spec/              # RSpec acceptance tests
