@@ -25,5 +25,6 @@ RSpec.configure do |config|
   # Reset QueueAdapter after each test to ensure isolation
   config.after do
     JobFlow::QueueAdapter.reset!
+    JobFlow::CacheStoreAdapters.reset!
   end
 end

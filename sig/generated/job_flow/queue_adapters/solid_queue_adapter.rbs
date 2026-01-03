@@ -11,6 +11,7 @@ module JobFlow
       #   - Cleanup: The adapter relies on SolidQueue::Worker lifecycle hooks to clean up
       #     active semaphores when the worker stops. If a worker crashes, semaphores will
       #     leak until the underlying database records expire or are manually cleaned.
+      #
       # :  () -> void
       def initialize: () -> void
 
@@ -29,6 +30,7 @@ module JobFlow
       #     (e.g., due to retry or requeue), the second call returns false and does not
       #     re-register the hook. This is a fail-fast contract: the semaphore is already
       #     being waited and will signal the registered hook.
+      #
       # :  (Semaphore) -> bool
       def semaphore_wait: (Semaphore) -> bool
 
@@ -39,6 +41,7 @@ module JobFlow
       #     signal calls after the semaphore has already been signaled.
       #   - Hook deletion order: The hook is deleted before calling signal to ensure the
       #     hook lambda is no longer invoked even if the signal triggers a worker stop.
+      #
       # :  (Semaphore) -> bool
       def semaphore_signal: (Semaphore) -> bool
 

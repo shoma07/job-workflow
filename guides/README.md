@@ -114,6 +114,10 @@ Production deployment and operations:
   - Finding workflows by queue
   - Production best practices
 
+- **[CACHE_STORE_INTEGRATION.md](CACHE_STORE_INTEGRATION.md)** - Using cache store backends
+  - Automatic cache detection (SolidCache, MemoryStore)
+  - Cache operations and integration
+
 - **[WORKFLOW_STATUS_QUERY.md](WORKFLOW_STATUS_QUERY.md)** - Monitoring workflow execution
   - Finding and inspecting workflows
   - Accessing arguments, outputs, and job status
