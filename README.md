@@ -1,5 +1,7 @@
 # JobFlow
 
+> ⚠️ **Early Stage (v0.1.0):** This library is in active development. APIs and features may change in breaking ways without notice. Use in production at your own risk and expect potential breaking changes in future releases.
+
 ## Overview
 
 JobFlow is a declarative workflow orchestration engine for Ruby on Rails applications, built on top of ActiveJob. It provides a simple DSL for defining workflows.

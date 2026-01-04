@@ -59,7 +59,7 @@ JobFlow is a declarative workflow orchestration engine for Ruby on Rails applica
 - **Parallel Processing**: Efficient parallel execution using map tasks
 - **Built-in Error Handling**: Retry functionality with exponential backoff
 - **JSON Serialization**: Schema-tolerant context persistence
-- **Production Ready**: Battle-tested features for robust workflows
+- **Flexible Design**: A foundation for building production-style workflows
 
 ### When to Use JobFlow
 
