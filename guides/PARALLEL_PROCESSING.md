@@ -158,3 +158,145 @@ task :map_task,
   ctx.each_value  # ✅ OK: Returns current element
 end
 ```
+
+## Matrix Processing (Multi-Axis Parallelization)
+
+### Cartesian Product Execution
+
+For scenarios where you need to process all combinations of multiple dimensions (e.g., all regions × all data types), use nested `each:` options to create a Cartesian product pattern:
+
+```ruby
+class DataProcessingJob < ApplicationJob
+  include JobFlow::DSL
+  
+  argument :regions, "Array[String]"
+  argument :data_types, "Array[String]"
+  
+  # First axis: process each region
+  task :process_by_region,
+       each: ->(ctx) { ctx.arguments.regions },
+       output: { region: "String", results: "Array[Hash]" },
+       enqueue: { concurrency: 5 } do |ctx|
+    region = ctx.each_value
+    # This will create sub-tasks for each region
+    { region: region, results: [] }
+  end
+  
+  # Second axis: for each region result, process each data type
+  # This creates a nested loop: 3 regions × 3 data types = 9 combinations
+  task :process_matrix,
+       each: ->(ctx) {
+         # Create combinations from first task's output
+         regions_data = ctx.output[:process_by_region]
+         data_types = ctx.arguments.data_types
+         
+         # Generate all combinations
+         regions_data.flat_map do |region_result|
+           data_types.map do |data_type|
+             { region: region_result[:region], data_type: data_type }
+           end
+         end
+       },
+       depends_on: [:process_by_region],
+       output: { region: "String", data_type: "String", result: "Hash" },
+       enqueue: { concurrency: 10 } do |ctx|
+    item = ctx.each_value
+    region = item[:region]
+    data_type = item[:data_type]
+    
+    # Process specific region + data_type combination
+    processed = process_data(region, data_type)
+    
+    {
+      region: region,
+      data_type: data_type,
+      result: processed
+    }
+  end
+  
+  # Aggregate all results
+  task :aggregate_matrix_results, depends_on: [:process_matrix] do |ctx|
+    results = ctx.output[:process_matrix]
+    # results is an array of 9 hashes, one per combination
+    summary = results.group_by { |r| r[:region] }
+    { summary: summary }
+  end
+end
+
+# Execution example
+DataProcessingJob.perform_later(
+  regions: ["us-east-1", "us-west-1", "eu-west-1"],
+  data_types: ["user", "order", "product"]
+)
+# => 3 regions × 3 data types = 9 parallel iterations (with concurrency limits)
+```
+
+### Advanced Matrix with Filtering
+
+When certain combinations should be excluded (e.g., avoid processing "legacy" data in "us-west-1"), filter the combinations:
+
+```ruby
+argument :regions, "Array[String]"
+argument :data_types, "Array[String]"
+
+task :process_filtered_matrix,
+     each: ->(ctx) {
+       regions = ctx.arguments.regions
+       data_types = ctx.arguments.data_types
+       
+       # Create combinations with explicit filtering
+       combinations = regions.flat_map do |region|
+         data_types.map { |data_type| { region: region, data_type: data_type } }
+       end
+       
+       # Exclude specific combinations
+       combinations.reject do |combo|
+         (combo[:region] == "us-west-1" && combo[:data_type] == "legacy") ||
+         (combo[:region] == "eu-west-1" && combo[:data_type] == "beta")
+       end
+     },
+     output: { region: "String", data_type: "String", status: "Symbol" },
+     enqueue: { concurrency: 10 } do |ctx|
+  combo = ctx.each_value
+  region = combo[:region]
+  data_type = combo[:data_type]
+  
+  {
+    region: region,
+    data_type: data_type,
+    status: process(region, data_type)
+  }
+end
+```
+
+### Performance Considerations
+
+When implementing matrix processing:
+
+1. **Concurrency Control**: Set appropriate `concurrency:` limits to avoid overwhelming workers
+   - High concurrency (20+): Suitable for I/O-bound operations (API calls, database queries)
+   - Low concurrency (2-5): Better for CPU-bound operations or rate-limited APIs
+
+2. **Output Size**: Watch out for large output collections
+   - With N×M combinations, the output array will have N×M elements
+   - Consider using a storage adapter (see [TASK_OUTPUTS.md](TASK_OUTPUTS.md#storage-adapters)) for large datasets
+
+3. **Timeout Settings**: Increase timeout for complex matrix operations
+   ```ruby
+   task :process_matrix,
+        each: ->(_ctx) { combinations },
+        timeout: 300.seconds,  # 5 minutes per iteration
+        enqueue: { concurrency: 5 } do |ctx|
+     # ...
+   end
+   ```
+
+4. **Error Handling**: Consider retry strategies for flaky matrix operations
+   ```ruby
+   task :process_matrix,
+        each: ->(_ctx) { combinations },
+        retry: { count: 3, strategy: :exponential },
+        enqueue: { concurrency: 5 } do |ctx|
+     # ...
+   end
+   ```
