@@ -75,6 +75,12 @@ Power features for complex workflows:
   - Runtime throttling
   - Sharing throttle keys across jobs
 
+- **[WORKFLOW_COMPOSITION.md](WORKFLOW_COMPOSITION.md)** - Composing and reusing workflows
+  - Invoking child workflows (sync/async)
+  - Accessing child workflow outputs
+  - Map tasks with child workflows
+  - Best practices and limitations
+
 - **[SCHEDULED_JOBS.md](SCHEDULED_JOBS.md)** - Cron-like job scheduling
   - Schedule DSL basics
   - Schedule expressions (cron and natural language)
