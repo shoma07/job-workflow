@@ -115,6 +115,21 @@ module JobFlow
         log_event(event, :info)
       end
 
+      #:  (ActiveSupport::Notifications::Event) -> void
+      def dry_run(event)
+        # Tracing only - no log output (skip/execute events handle logging)
+      end
+
+      #:  (ActiveSupport::Notifications::Event) -> void
+      def dry_run_skip(event)
+        log_event(event, :info)
+      end
+
+      #:  (ActiveSupport::Notifications::Event) -> void
+      def dry_run_execute(event)
+        log_event(event, :debug)
+      end
+
       private
 
       #:  (ActiveSupport::Notifications::Event, log_level) -> void
@@ -146,6 +161,9 @@ module JobFlow
           concurrency_limit
           dependent_task_name
           queue_name
+          dry_run_name
+          dry_run_index
+          dry_run
         ]
         result = payload.slice(*payload_keys)
         add_error_attributes(result, payload)

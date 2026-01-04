@@ -1998,4 +1998,68 @@ RSpec.describe JobFlow::Runner do
       end
     end
   end
+
+  describe "dry_run mode integration" do
+    subject(:run) { runner.run }
+
+    let(:runner) { described_class.new(context: ctx) }
+    let(:call_log) { [] }
+
+    context "when dry_run mode is enabled and multiple tasks use dry_run?" do
+      let(:log) { call_log }
+      let(:job) do
+        captured_log = log
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          dry_run ->(context) { true } # rubocop:disable Lint/UnusedBlockArgument
+
+          task :task_one do |ctx|
+            captured_log << { task: :task_one, dry_run: ctx.dry_run? }
+          end
+
+          task :task_two, depends_on: [:task_one] do |ctx|
+            captured_log << { task: :task_two, dry_run: ctx.dry_run? }
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ job:, workflow: job.class._workflow })._update_arguments(job.arguments[0] || {})
+      end
+
+      it "resets dry_run_mode between tasks" do
+        run
+        expect(call_log).to eq([{ task: :task_one, dry_run: true }, { task: :task_two, dry_run: true }])
+      end
+    end
+
+    context "when dry_run mode is enabled with each task iterations" do
+      let(:log) { call_log }
+      let(:job) do
+        captured_log = log
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          argument :items, "Array[Integer]", default: [1, 2, 3]
+
+          dry_run ->(context) { true } # rubocop:disable Lint/UnusedBlockArgument
+
+          task :process_each, each: ->(ctx) { ctx.arguments.items } do |ctx|
+            captured_log << { value: ctx.each_value, dry_run: ctx.dry_run? }
+          end
+        end
+        klass.new(items: [1, 2, 3])
+      end
+      let(:ctx) do
+        JobFlow::Context.from_hash({ job:, workflow: job.class._workflow })._update_arguments(job.arguments[0] || {})
+      end
+
+      it "resets dry_run_mode between iterations" do
+        run
+        expected = [{ value: 1, dry_run: true }, { value: 2, dry_run: true }, { value: 3, dry_run: true }]
+        expect(call_log).to eq(expected)
+      end
+    end
+  end
 end

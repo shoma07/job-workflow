@@ -9,7 +9,7 @@ module JobFlow
   #     puts "Task #{payload[:task_name]} started"
   #   end
   #   ```
-  module Instrumentation
+  module Instrumentation # rubocop:disable Metrics/ModuleLength
     NAMESPACE = "job_flow"
 
     module Events
@@ -34,6 +34,9 @@ module JobFlow
       QUEUE_PAUSE = "queue.pause.#{NAMESPACE}".freeze
       QUEUE_RESUME = "queue.resume.#{NAMESPACE}".freeze
       CUSTOM = "custom.#{NAMESPACE}".freeze
+      DRY_RUN = "dry_run.#{NAMESPACE}".freeze
+      DRY_RUN_SKIP = "dry_run.skip.#{NAMESPACE}".freeze
+      DRY_RUN_EXECUTE = "dry_run.execute.#{NAMESPACE}".freeze
     end
 
     class << self
@@ -115,6 +118,14 @@ module JobFlow
       def instrument_custom(operation, payload = {}, &)
         event_name = "#{operation}.#{NAMESPACE}"
         instrument(event_name, payload, &)
+      end
+
+      #:  (DSL, Context, Symbol?, Integer, bool) { () -> untyped } -> untyped
+      def instrument_dry_run(job, ctx, dry_run_name, skip_in_dry_run_index, dry_run, &)
+        start_event = dry_run ? Events::DRY_RUN_SKIP : Events::DRY_RUN_EXECUTE
+        payload = build_skip_in_dry_run_payload(job, ctx, dry_run_name, skip_in_dry_run_index, dry_run)
+        instrument(start_event, payload)
+        instrument(Events::DRY_RUN, payload, &)
       end
 
       private
@@ -226,6 +237,19 @@ module JobFlow
       def build_queue_payload(queue_name)
         {
           queue_name:
+        }
+      end
+
+      #:  (DSL, Context, Symbol?, Integer, bool) -> Hash[Symbol, untyped]
+      def build_skip_in_dry_run_payload(job, ctx, dry_run_name, dry_run_index, dry_run)
+        {
+          job_id: job.job_id,
+          job_name: job.class.name,
+          task_name: ctx._task_context.task&.task_name,
+          each_index: ctx._task_context.index,
+          dry_run_name:,
+          dry_run_index:,
+          dry_run:
         }
       end
     end

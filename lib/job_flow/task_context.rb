@@ -10,6 +10,7 @@ module JobFlow
     attr_reader :index #: Integer
     attr_reader :value #: untyped
     attr_reader :retry_count #: Integer
+    attr_reader :dry_run #: bool
 
     class << self
       #:  (Hash[String, untyped]) -> TaskContext
@@ -24,13 +25,21 @@ module JobFlow
       end
     end
 
-    #:  (?task: Task?, ?parent_job_id: String?, ?index: Integer, ?value: untyped, ?retry_count: Integer) -> void
-    def initialize(task: nil, parent_job_id: nil, index: 0, value: nil, retry_count: 0)
+    #:  (
+    #     ?task: Task?,
+    #     ?parent_job_id: String?,
+    #     ?index: Integer,
+    #     ?value: untyped,
+    #     ?retry_count: Integer,
+    #     ?dry_run: bool
+    #   ) -> void
+    def initialize(task: nil, parent_job_id: nil, index: 0, value: nil, retry_count: 0, dry_run: false) # rubocop:disable Metrics/ParameterLists
       self.task = task
       self.parent_job_id = parent_job_id
       self.index = index
       self.value = value
       self.retry_count = retry_count
+      self.dry_run = dry_run
     end
 
     #:  () -> bool
@@ -56,5 +65,6 @@ module JobFlow
     attr_writer :index #: Integer
     attr_writer :value #: untyped
     attr_writer :retry_count #: Integer
+    attr_writer :dry_run #: bool
   end
 end
