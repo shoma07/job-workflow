@@ -1,6 +1,6 @@
 # JobFlow Guides
 
-> ⚠️ **Early Stage (v0.1.0):** JobFlow is in active development. APIs and features may change. The following guides provide patterns and examples for building workflows, but be aware that implementations may need adjustment as the library evolves.
+> ⚠️ **Early Stage (v0.1.1):** JobFlow is in active development. APIs and features may change. The following guides provide patterns and examples for building workflows, but be aware that implementations may need adjustment as the library evolves.
 
 Welcome to the JobFlow documentation! This directory contains comprehensive guides to help you build robust workflows with JobFlow.
 

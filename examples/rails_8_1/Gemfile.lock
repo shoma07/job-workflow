@@ -1,11 +1,8 @@
 PATH
   remote: ../..
   specs:
-    job-flow (0.1.0)
+    job-flow (0.1.1)
       activejob (>= 8.1)
-      activerecord (>= 8.1)
-      solid_cache (>= 1.0)
-      solid_queue (>= 1.2)
 
 GEM
   remote: https://rubygems.org/
