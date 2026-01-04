@@ -63,3 +63,133 @@ task :exponential_retry,
   # Retry intervals: 2±1s, 4±2s, 8±4s, 16±8s, 32±16s
 end
 ```
+
+## Workflow-Level Retry
+
+### Using ActiveJob's `retry_on`
+
+To retry the entire workflow (all tasks from the beginning) when an error occurs, use ActiveJob's standard `retry_on` method. This automatically requeues the complete job, ensuring all tasks are re-executed:
+
+```ruby
+class DataPipelineJob < ApplicationJob
+  include JobFlow::DSL
+  
+  argument :data_source, "String"
+  
+  # Retry the entire workflow on StandardError (e.g., API timeouts)
+  retry_on StandardError, wait: :exponentially_longer, attempts: 5
+  
+  task :fetch_data, output: { raw_data: "String" } do |ctx|
+    source = ctx.arguments.data_source
+    { raw_data: ExternalAPI.fetch(source) }
+  end
+  
+  task :validate_data, depends_on: [:fetch_data], output: { valid: "Boolean" } do |ctx|
+    data = ctx.output[:fetch_data][:raw_data]
+    { valid: validate(data) }
+  end
+  
+  task :process_data, depends_on: [:validate_data] do |ctx|
+    # ... process data
+  end
+end
+```
+
+### Combining Task-Level and Workflow-Level Retries
+
+You can combine task-level retries (for handling transient errors) with workflow-level retries (for catastrophic failures):
+
+```ruby
+class RobustDataPipelineJob < ApplicationJob
+  include JobFlow::DSL
+  
+  # Workflow-level: Handle catastrophic failures (e.g., database connection loss)
+  retry_on DatabaseConnectionError, wait: :exponentially_longer, attempts: 3
+  
+  argument :batch_id, "String"
+  
+  # Task-level: Handle transient API errors
+  task :fetch_data, 
+    retry: { count: 3, strategy: :exponential, base_delay: 2 },
+    output: { raw_data: "String" } do |ctx|
+    { raw_data: ExternalAPI.fetch(ctx.arguments.batch_id) }
+  end
+  
+  task :validate_data, 
+    depends_on: [:fetch_data],
+    retry: { count: 2, strategy: :linear, base_delay: 1 },
+    output: { valid: "Boolean" } do |ctx|
+    data = ctx.output[:fetch_data][:raw_data]
+    { valid: validate(data) }
+  end
+  
+  task :store_results, depends_on: [:validate_data] do |ctx|
+    # If this succeeds, the entire workflow is complete
+    # If a database connection error occurs here, the entire job is retried
+    Database.store(ctx.output[:validate_data])
+  end
+end
+```
+
+### Retry Options
+
+The `retry_on` method supports several options from ActiveJob:
+
+```ruby
+class MyWorkflowJob < ApplicationJob
+  include JobFlow::DSL
+  
+  # Wait with exponential backoff (2, 4, 8, 16, 32 seconds...)
+  retry_on TimeoutError, 
+    wait: :exponentially_longer, 
+    attempts: 5
+  
+  # Wait with a fixed interval
+  retry_on APIError, 
+    wait: 30.seconds, 
+    attempts: 3
+  
+  # Custom wait logic
+  retry_on CustomError,
+    wait: ->(executions) { (executions + 1) * 10.seconds },
+    attempts: 4
+  
+  # Multiple error types
+  retry_on TimeoutError, APIError,
+    wait: :exponentially_longer,
+    attempts: 3
+  
+  # ... task definitions
+end
+```
+
+### Key Differences: Task-Level vs Workflow-Level Retry
+
+| Aspect | Task-Level (`retry:`) | Workflow-Level (`retry_on`) |
+|--------|------------------------|------------------------------|
+| **Scope** | Single task only | Entire workflow |
+| **Re-execution** | Only the failed task retries | All tasks restart from the beginning |
+| **Use Case** | Transient errors in one task (API timeouts, etc.) | Catastrophic failures affecting the whole workflow |
+| **Output Preservation** | Previous outputs still available | Context reset on workflow retry |
+| **Example** | API call times out | Database connection lost |
+
+### Best Practices for Retry Strategy
+
+1. **Task-level retries** for transient, recoverable errors:
+   ```ruby
+   task :api_call, 
+     retry: { count: 3, strategy: :exponential, base_delay: 2 }
+   ```
+
+2. **Workflow-level retries** for environment issues (database, network):
+   ```ruby
+   retry_on DatabaseConnectionError, wait: :exponentially_longer, attempts: 3
+   ```
+
+3. **Avoid infinite retries**:
+   - Always set a maximum `attempts` limit
+   - Use exponential backoff to avoid overwhelming systems
+
+4. **Monitor retry patterns**:
+   - Use instrumentation hooks to track retry occurrences
+   - Alert on repeated failures to identify systemic issues

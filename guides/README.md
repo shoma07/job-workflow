@@ -42,7 +42,8 @@ Advanced workflow patterns and features:
 - **[ERROR_HANDLING.md](ERROR_HANDLING.md)** - Robust error handling
   - Retry configuration (simple and advanced)
   - Retry strategies (linear, exponential, jitter)
-  - Task-level retry settings
+  - Task-level and workflow-level retry settings
+  - Combining multiple retry layers
 
 - **[CONDITIONAL_EXECUTION.md](CONDITIONAL_EXECUTION.md)** - Dynamic workflow control
   - Basic conditional execution
