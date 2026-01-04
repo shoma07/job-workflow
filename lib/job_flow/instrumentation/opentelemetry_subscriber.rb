@@ -82,22 +82,34 @@ module JobFlow
         span = start_span(name, payload)
         token = attach_span_context(span)
         store_span_info(payload, span, token)
+      rescue StandardError => e
+        handle_error(e)
       end
 
       #:  (String, String, Hash[Symbol, untyped]) -> void
       def finish(_name, _id, payload)
         return unless self.class.opentelemetry_available?
 
-        span, token = extract_span_info(payload)
+        span, token = extract_otel_info(payload)
         return if span.nil? || token.nil?
 
         handle_exception(payload, span)
-        finish_span(span, token)
+      rescue StandardError => e
+        handle_error(e)
+      ensure
+        finish_span(span, token) if span || token
       end
 
       private
 
-      #:  (String, Hash[Symbol, untyped]) -> untyped
+      #:  (Hash[Symbol, untyped]) -> Array[untyped?]
+      def extract_otel_info(payload)
+        otel = payload.delete(:__otel)
+        span = otel&.fetch(:span)
+        token = otel&.fetch(:ctx_token)
+        [span, token]
+      end
+
       def start_span(name, payload)
         span_name = build_span_name(name, payload)
         attributes = build_attributes(payload)
@@ -113,15 +125,7 @@ module JobFlow
 
       #:  (Hash[Symbol, untyped], untyped, untyped) -> void
       def store_span_info(payload, span, token)
-        payload[:__otel_span] = span
-        payload[:__otel_ctx_token] = token
-      end
-
-      #:  (Hash[Symbol, untyped]) -> Array[untyped?]
-      def extract_span_info(payload)
-        span = payload.delete(:__otel_span)
-        token = payload.delete(:__otel_ctx_token)
-        [span, token]
+        payload[:__otel] = { span: span, ctx_token: token }
       end
 
       #:  (Hash[Symbol, untyped], untyped) -> void
@@ -135,19 +139,25 @@ module JobFlow
 
       #:  (untyped, untyped) -> void
       def finish_span(span, token)
-        assign_span_status_ok(span)
-        span.finish
-        OpenTelemetry::Context.detach(token)
+        finish_span_safe(span)
+        detach_context_safe(token)
+      end
+
+      #:  (untyped) -> void
+      def finish_span_safe(span)
+        if span&.recording?
+          span.status = OpenTelemetry::Trace::Status.ok if span.status.code == OpenTelemetry::Trace::Status::UNSET
+          span.finish
+        end
       rescue StandardError => e
         handle_error(e)
       end
 
       #:  (untyped) -> void
-      def assign_span_status_ok(span)
-        return unless span.respond_to?(:status) && span.status.respond_to?(:code)
-        return unless span.status.code == OpenTelemetry::Trace::Status::UNSET
-
-        span.status = OpenTelemetry::Trace::Status.ok
+      def detach_context_safe(token)
+        OpenTelemetry::Context.detach(token) if token
+      rescue StandardError => e
+        handle_error(e)
       end
 
       #:  (String, Hash[Symbol, untyped]) -> String
