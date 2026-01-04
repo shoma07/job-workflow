@@ -487,6 +487,77 @@ RSpec.describe JobFlow::Instrumentation::OpenTelemetrySubscriber do
         expect { subscriber.finish("workflow.job_flow", "id", payload) }.not_to raise_error
       end
     end
+
+    context "when extract_otel_info raises error" do
+      include_context "with OpenTelemetry stubs"
+
+      before do
+        allow(described_class).to receive(:opentelemetry_available?).and_return(true)
+      end
+
+      it "rescues error in finish and still ensures cleanup" do
+        payload = { job_name: "TestJob", job_id: "123", error: StandardError.new("test") }
+        subscriber.start("workflow.job_flow", "id", payload)
+
+        # Create a new subscriber to avoid subject stubbing
+        new_subscriber = described_class.new
+        allow(new_subscriber).to receive(:extract_otel_info).and_raise(StandardError, "extraction failed")
+
+        expect { new_subscriber.finish("workflow.job_flow", "id", payload) }.not_to raise_error
+      end
+    end
+  end
+
+  describe "#finish_span_safe" do
+    subject(:subscriber) { described_class.new }
+
+    include_context "with OpenTelemetry stubs"
+
+    before do
+      allow(described_class).to receive(:opentelemetry_available?).and_return(true)
+    end
+
+    context "when span is nil" do
+      it "does not attempt to finish" do
+        expect { subscriber.send(:finish_span_safe, nil) }.not_to raise_error
+      end
+    end
+
+    context "when span status is already set" do
+      it "does not override non-UNSET status" do
+        span = Object.new.tap do |s|
+          called_status_assign = false
+          s.define_singleton_method(:recording?) { true }
+          s.define_singleton_method(:finish) { nil }
+          s.define_singleton_method(:status=) { called_status_assign = true }
+          s.define_singleton_method(:status) do
+            Object.new.tap do |status|
+              status.define_singleton_method(:code) { 2 } # Non-UNSET
+            end
+          end
+        end
+
+        subscriber.send(:finish_span_safe, span)
+
+        expect(span).not_to be_instance_variable_defined(:@called_status_assign)
+      end
+    end
+  end
+
+  describe "#detach_context_safe" do
+    subject(:subscriber) { described_class.new }
+
+    include_context "with OpenTelemetry stubs"
+
+    before do
+      allow(described_class).to receive(:opentelemetry_available?).and_return(true)
+    end
+
+    context "when token is nil" do
+      it "does not attempt to detach" do
+        expect { subscriber.send(:detach_context_safe, nil) }.not_to raise_error
+      end
+    end
   end
 
   describe "build_attributes" do
