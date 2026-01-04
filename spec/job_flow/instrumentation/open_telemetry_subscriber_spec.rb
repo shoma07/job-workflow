@@ -82,6 +82,7 @@ RSpec.describe JobFlow::Instrumentation::OpenTelemetrySubscriber do
       span.define_singleton_method(:finish) { nil }
       span.define_singleton_method(:record_exception) { |_error| nil }
       span.define_singleton_method(:status=) { |_status| nil }
+      span.define_singleton_method(:recording?) { true }
       span.define_singleton_method(:status) do
         Object.new.tap do |status|
           status.define_singleton_method(:code) { 0 } # UNSET
@@ -207,7 +208,7 @@ RSpec.describe JobFlow::Instrumentation::OpenTelemetrySubscriber do
       it "does not modify payload" do
         payload = { job_name: "TestJob", job_id: "123" }
         subscriber.start("workflow.job_flow", "id", payload)
-        expect(payload).not_to have_key(:__otel_span)
+        expect(payload).not_to have_key(:__otel)
       end
     end
 
@@ -221,13 +222,15 @@ RSpec.describe JobFlow::Instrumentation::OpenTelemetrySubscriber do
       it "stores span in payload" do
         payload = { job_name: "TestJob", job_id: "123" }
         subscriber.start("workflow.job_flow", "id", payload)
-        expect(payload[:__otel_span]).not_to be_nil
+        expect(payload[:__otel]).not_to be_nil
+        expect(payload[:__otel][:span]).not_to be_nil
       end
 
       it "stores context token in payload" do
         payload = { job_name: "TestJob", job_id: "123" }
         subscriber.start("workflow.job_flow", "id", payload)
-        expect(payload[:__otel_ctx_token]).not_to be_nil
+        expect(payload[:__otel]).not_to be_nil
+        expect(payload[:__otel][:ctx_token]).not_to be_nil
       end
 
       it "builds span name with job_name for workflow events" do
@@ -302,15 +305,7 @@ RSpec.describe JobFlow::Instrumentation::OpenTelemetrySubscriber do
         subscriber.start("workflow.job_flow", "id", payload)
         subscriber.finish("workflow.job_flow", "id", payload)
 
-        expect(payload).not_to have_key(:__otel_span)
-      end
-
-      it "removes context token from payload" do
-        payload = { job_name: "TestJob", job_id: "123" }
-        subscriber.start("workflow.job_flow", "id", payload)
-        subscriber.finish("workflow.job_flow", "id", payload)
-
-        expect(payload).not_to have_key(:__otel_ctx_token)
+        expect(payload).not_to have_key(:__otel)
       end
 
       it "records exception when error is present" do
@@ -429,6 +424,63 @@ RSpec.describe JobFlow::Instrumentation::OpenTelemetrySubscriber do
       end
 
       it "handles error gracefully" do
+        payload = { job_name: "TestJob", job_id: "123" }
+        subscriber.start("workflow.job_flow", "id", payload)
+
+        expect { subscriber.finish("workflow.job_flow", "id", payload) }.not_to raise_error
+      end
+    end
+
+    context "when start raises error (graceful degradation)" do
+      include_context "with OpenTelemetry stubs"
+
+      before do
+        allow(described_class).to receive(:opentelemetry_available?).and_return(true)
+      end
+
+      it "handles error gracefully without affecting workflow" do
+        payload = { job_name: "TestJob", job_id: "123" }
+        subscriber.instance_eval { define_singleton_method(:tracer) { raise StandardError, "tracer error" } }
+        expect { subscriber.start("workflow.job_flow", "id", payload) }.not_to raise_error
+      end
+
+      it "does not store span in payload when error occurs" do
+        payload = { job_name: "TestJob", job_id: "123" }
+        subscriber.instance_eval { define_singleton_method(:tracer) { raise StandardError, "tracer error" } }
+        subscriber.start("workflow.job_flow", "id", payload)
+        expect(payload).not_to have_key(:__otel)
+      end
+    end
+
+    context "when span.finish fails (independent error handling)" do
+      include_context "with OpenTelemetry stubs"
+
+      before do
+        allow(described_class).to receive(:opentelemetry_available?).and_return(true)
+        allow(mock_span).to receive(:finish).and_raise(StandardError, "span finish error")
+      end
+
+      it "continues to detach context even if span.finish fails" do
+        payload = { job_name: "TestJob", job_id: "123" }
+        subscriber.start("workflow.job_flow", "id", payload)
+
+        # Expect detach to be called despite span.finish failing
+        allow(OpenTelemetry::Context).to receive(:detach).and_return(nil)
+
+        expect { subscriber.finish("workflow.job_flow", "id", payload) }.not_to raise_error
+        expect(OpenTelemetry::Context).to have_received(:detach)
+      end
+    end
+
+    context "when context.detach fails (independent error handling)" do
+      include_context "with OpenTelemetry stubs"
+
+      before do
+        allow(described_class).to receive(:opentelemetry_available?).and_return(true)
+        allow(OpenTelemetry::Context).to receive(:detach).and_raise(StandardError, "detach error")
+      end
+
+      it "handles error gracefully when detach fails" do
         payload = { job_name: "TestJob", job_id: "123" }
         subscriber.start("workflow.job_flow", "id", payload)
 

@@ -68,17 +68,16 @@ module JobFlow
 
       private
 
-      # :  (String, Hash[Symbol, untyped]) -> untyped
-      def start_span: (String, Hash[Symbol, untyped]) -> untyped
+      # :  (Hash[Symbol, untyped]) -> Array[untyped?]
+      def extract_otel_info: (Hash[Symbol, untyped]) -> Array[untyped?]
+
+      def start_span: (untyped name, untyped payload) -> untyped
 
       # :  (untyped) -> untyped
       def attach_span_context: (untyped) -> untyped
 
       # :  (Hash[Symbol, untyped], untyped, untyped) -> void
       def store_span_info: (Hash[Symbol, untyped], untyped, untyped) -> void
-
-      # :  (Hash[Symbol, untyped]) -> Array[untyped?]
-      def extract_span_info: (Hash[Symbol, untyped]) -> Array[untyped?]
 
       # :  (Hash[Symbol, untyped], untyped) -> void
       def handle_exception: (Hash[Symbol, untyped], untyped) -> void
@@ -87,7 +86,10 @@ module JobFlow
       def finish_span: (untyped, untyped) -> void
 
       # :  (untyped) -> void
-      def assign_span_status_ok: (untyped) -> void
+      def finish_span_safe: (untyped) -> void
+
+      # :  (untyped) -> void
+      def detach_context_safe: (untyped) -> void
 
       # :  (String, Hash[Symbol, untyped]) -> String
       def build_span_name: (String, Hash[Symbol, untyped]) -> String
