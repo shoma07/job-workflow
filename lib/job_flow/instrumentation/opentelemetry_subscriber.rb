@@ -145,10 +145,10 @@ module JobFlow
 
       #:  (untyped) -> void
       def finish_span_safe(span)
-        if span&.recording?
-          span.status = OpenTelemetry::Trace::Status.ok if span.status.code == OpenTelemetry::Trace::Status::UNSET
-          span.finish
-        end
+        return unless span&.recording?
+
+        span.status = OpenTelemetry::Trace::Status.ok if span.status.code == OpenTelemetry::Trace::Status::UNSET
+        span.finish
       rescue StandardError => e
         handle_error(e)
       end
