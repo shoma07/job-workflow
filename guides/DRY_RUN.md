@@ -38,7 +38,7 @@ Use a Proc to dynamically determine dry-run mode based on context:
 class MyWorkflowJob < ActiveJob::Base
   include JobFlow::DSL
 
-  argument :dry_run_mode, "TrueClass | FalseClass", default: false
+  argument :dry_run_mode, "bool", default: false
 
   # Enable dry-run based on argument
   dry_run { |context| context.arguments.dry_run_mode }
@@ -163,6 +163,26 @@ task :complex_operation do |ctx|
 end
 ```
 
+### Named Operations with Fallback Values
+
+Combine operation names with fallback values for comprehensive testing:
+
+```ruby
+task :process_payment do |ctx|
+  payment_result = ctx.skip_in_dry_run(
+    :payment_processing,
+    fallback: { success: true, transaction_id: "dry_run_#{Time.current.to_i}", amount: ctx.arguments.amount }
+  ) do
+    PaymentService.process(
+      amount: ctx.arguments.amount,
+      customer_id: ctx.arguments.customer_id
+    )
+  end
+
+  ctx.output[:payment_result] = payment_result
+end
+```
+
 ## Instrumentation
 
 Dry-run operations emit ActiveSupport::Notifications events for monitoring:
@@ -197,13 +217,52 @@ When using the default log subscriber, dry-run events are automatically logged:
 [DRY-RUN] MyWorkflowJob#process_payment skip: payment (index: 0, skipped: true)
 ```
 
+## Dry-Run vs Condition
+
+Dry-run mode and task conditions serve different purposes:
+
+| Feature | Dry-Run | Condition |
+|---------|---------|-----------|
+| **Purpose** | Skip side effects for safe testing | Control workflow logic flow |
+| **Scope** | Test/debug toggle for entire workflow or task | Control individual task execution |
+| **Usage** | Validate structure without external calls | Branch workflow based on data |
+| **With side effect** | Skips block execution (returns fallback) | Prevents task execution entirely |
+| **Instrumentation** | Emits `dry_run.skip/execute` events | Emits `task.skip` event |
+
+**When to use dry-run:**
+```ruby
+# Safe testing of workflow logic
+ctx.skip_in_dry_run do
+  PaymentGateway.charge(amount)
+end
+```
+
+**When to use condition:**
+```ruby
+# Control workflow flow based on data
+task :send_email, condition: ->(ctx) { ctx.arguments.email_enabled } do |ctx|
+  Mailer.send_email(ctx.arguments.email)
+end
+```
+
+You can combine both for comprehensive control:
+```ruby
+task :process_order, condition: ->(ctx) { ctx.arguments.order_id } do |ctx|
+  # Only runs if condition is true
+  # Within this task, you can still use skip_in_dry_run for side effects
+  ctx.skip_in_dry_run do
+    ExternalService.process(ctx.arguments.order_id)
+  end
+end
+```
+
 ## Best Practices
 
 ### 1. Use Meaningful Operation Names
 
 ```ruby
 # Good - descriptive names help with debugging
-ctx.skip_in_dry_run(:stripe_charge) { ... }
+ctx.skip_in_dry_run(:payment_processing) { ... }
 ctx.skip_in_dry_run(:send_welcome_email) { ... }
 
 # Avoid - unnamed operations are harder to trace
@@ -279,7 +338,7 @@ class OrderProcessingJob < ActiveJob::Base
   include JobFlow::DSL
 
   argument :order_id, "Integer"
-  argument :dry_run_mode, "TrueClass | FalseClass", default: false
+  argument :dry_run_mode, "bool", default: false
 
   # Dynamic dry-run based on argument
   dry_run { |ctx| ctx.arguments.dry_run_mode }
@@ -292,8 +351,8 @@ class OrderProcessingJob < ActiveJob::Base
   task :charge_payment, depends_on: [:validate_order] do |ctx|
     order = ctx.output(:validate_order).order
 
-    result = ctx.skip_in_dry_run(:stripe_charge, fallback: { success: true, charge_id: "dry_run" }) do
-      StripeService.charge(
+    result = ctx.skip_in_dry_run(:payment_processing, fallback: { success: true, transaction_id: "dry_run" }) do
+      PaymentService.process(
         amount: order[:total],
         customer_id: order[:customer_id]
       )
