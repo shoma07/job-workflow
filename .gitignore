@@ -1,5 +1,6 @@
 /.bundle/
 /.gem_rbs_collection/
+/.github/copilot-instructions.md
 /.yardoc
 /_yardoc/
 /coverage/
