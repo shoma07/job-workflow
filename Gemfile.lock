@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    job-flow (0.1.1)
+    job-flow (0.1.2)
       activejob (>= 8.1)
 
 GEM

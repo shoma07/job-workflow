@@ -1,6 +1,6 @@
 # Production Deployment
 
-> ⚠️ **Early Stage (v0.1.1):** JobFlow is still in early development. While this section outlines potential deployment patterns, please thoroughly test in your specific environment and monitor for any issues before relying on JobFlow in critical production systems.
+> ⚠️ **Early Stage (v0.1.2):** JobFlow is still in early development. While this section outlines potential deployment patterns, please thoroughly test in your specific environment and monitor for any issues before relying on JobFlow in critical production systems.
 
 This section covers suggested settings and patterns for running JobFlow in production-like environments.
 
