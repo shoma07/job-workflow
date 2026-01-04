@@ -63,6 +63,7 @@ module JobFlow
       self.job_status = job_status
       self.enabled_with_each_value = false
       self.throttle_index = 0
+      self.skip_in_dry_run_index = 0
     end
 
     #:  () -> Hash[String, untyped]
@@ -176,6 +177,26 @@ module JobFlow
       Instrumentation.instrument_custom(operation, full_payload, &)
     end
 
+    #:  () -> bool
+    def dry_run?
+      task_context.dry_run
+    end
+
+    #:  (?Symbol?, ?fallback: untyped) { () -> untyped } -> untyped
+    def skip_in_dry_run(dry_run_name = nil, fallback: nil)
+      local_job = job
+      task = task_context.task
+
+      raise "job is not set" if local_job.nil?
+      raise "skip_in_dry_run can be called only within with_task_context" if task.nil?
+
+      current_index = skip_in_dry_run_index
+      self.skip_in_dry_run_index += 1
+      Instrumentation.instrument_dry_run(local_job, self, dry_run_name, current_index, dry_run?) do
+        dry_run? ? fallback : yield
+      end
+    end
+
     #:  () -> untyped
     def each_value
       raise "each_value can be called only within each_values block" unless task_context.enabled?
@@ -223,6 +244,7 @@ module JobFlow
     attr_accessor :task_context #: TaskContext
     attr_accessor :enabled_with_each_value #: bool
     attr_accessor :throttle_index #: Integer
+    attr_accessor :skip_in_dry_run_index #: Integer
 
     #:  () -> String
     def parent_job_id
@@ -253,14 +275,15 @@ module JobFlow
       reset_task_context_if_task_changed(task)
 
       with_each_index_and_value(task) do |value, index|
+        dry_run = calculate_dry_run(task)
         with_retry(task) do |retry_count|
-          self.task_context = TaskContext.new(task:, parent_job_id:, index:, value:, retry_count:)
+          self.task_context = TaskContext.new(task:, parent_job_id:, index:, value:, retry_count:, dry_run:)
           with_task_timeout do
             yielder << self
           end
         end
       ensure
-        self.throttle_index = 0
+        clear_after_each_index_and_value
       end
     end
 
@@ -280,6 +303,12 @@ module JobFlow
 
         break if sub_job?
       end
+    end
+
+    #:  () -> void
+    def clear_after_each_index_and_value
+      self.throttle_index = 0
+      self.skip_in_dry_run_index = 0
     end
 
     #:  () { () -> void } -> void
@@ -313,6 +342,11 @@ module JobFlow
       delay = task_retry.delay_for(next_retry_count)
       Instrumentation.notify_task_retry(task, self, job_id, next_retry_count, delay, error)
       sleep(delay)
+    end
+
+    #:  (Task) -> bool
+    def calculate_dry_run(task)
+      workflow.dry_run_config.evaluate(self) || task.dry_run_config.evaluate(self)
     end
   end
 end

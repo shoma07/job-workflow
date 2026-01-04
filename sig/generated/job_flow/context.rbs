@@ -78,6 +78,12 @@ module JobFlow
     # :  (?String, **untyped) { () -> untyped } -> untyped
     def instrument: (?String, **untyped) { () -> untyped } -> untyped
 
+    # :  () -> bool
+    def dry_run?: () -> bool
+
+    # :  (?Symbol?, ?fallback: untyped) { () -> untyped } -> untyped
+    def skip_in_dry_run: (?Symbol?, ?fallback: untyped) { () -> untyped } -> untyped
+
     # :  () -> untyped
     def each_value: () -> untyped
 
@@ -111,6 +117,8 @@ module JobFlow
 
     attr_accessor throttle_index: Integer
 
+    attr_accessor skip_in_dry_run_index: Integer
+
     # :  () -> String
     def parent_job_id: () -> String
 
@@ -129,6 +137,9 @@ module JobFlow
     # :  (Task) { (untyped, Integer) -> void } -> void
     def with_each_index_and_value: (Task) { (untyped, Integer) -> void } -> void
 
+    # :  () -> void
+    def clear_after_each_index_and_value: () -> void
+
     # :  () { () -> void } -> void
     def with_task_timeout: () { () -> void } -> void
 
@@ -137,5 +148,8 @@ module JobFlow
 
     # :  (Task, TaskRetry, Integer, StandardError) -> void
     def wait_next_retry: (Task, TaskRetry, Integer, StandardError) -> void
+
+    # :  (Task) -> bool
+    def calculate_dry_run: (Task) -> bool
   end
 end

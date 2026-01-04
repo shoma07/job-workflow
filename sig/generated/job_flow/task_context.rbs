@@ -14,11 +14,20 @@ module JobFlow
 
     attr_reader retry_count: Integer
 
+    attr_reader dry_run: bool
+
     # :  (Hash[String, untyped]) -> TaskContext
     def self.deserialize: (Hash[String, untyped]) -> TaskContext
 
-    # :  (?task: Task?, ?parent_job_id: String?, ?index: Integer, ?value: untyped, ?retry_count: Integer) -> void
-    def initialize: (?task: Task?, ?parent_job_id: String?, ?index: Integer, ?value: untyped, ?retry_count: Integer) -> void
+    # :  (
+    #      ?task: Task?,
+    #      ?parent_job_id: String?,
+    #      ?index: Integer,
+    #      ?value: untyped,
+    #      ?retry_count: Integer,
+    #      ?dry_run: bool
+    #    ) -> void
+    def initialize: (?task: Task?, ?parent_job_id: String?, ?index: Integer, ?value: untyped, ?retry_count: Integer, ?dry_run: bool) -> void
 
     # :  () -> bool
     def enabled?: () -> bool
@@ -37,5 +46,7 @@ module JobFlow
     attr_writer value: untyped
 
     attr_writer retry_count: Integer
+
+    attr_writer dry_run: bool
   end
 end

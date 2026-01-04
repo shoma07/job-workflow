@@ -904,6 +904,39 @@ RSpec.describe JobFlow::Context do
         expect(ctx._task_context.task).to eq(first_call_task)
       end
     end
+
+    context "when dry_run? is called in each iteration" do
+      let(:ctx_with_dry_run) do
+        job_klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          argument :items, "Array[Integer]", default: [1, 2, 3]
+          dry_run true
+        end
+        job_instance = job_klass.new(items: [1, 2, 3])
+        ctx = described_class.new(
+          workflow: job_instance.class._workflow,
+          arguments: JobFlow::Arguments.new(data: { items: [1, 2, 3] }),
+          task_context: JobFlow::TaskContext.new,
+          output: JobFlow::Output.new,
+          job_status: JobFlow::JobStatus.new
+        )
+        ctx._job = job_instance
+        ctx
+      end
+
+      it "resets dry_run between iterations" do
+        dry_run_task = JobFlow::Task.new(
+          job_name: "TestJob",
+          name: :process_items,
+          namespace: JobFlow::Namespace.default,
+          each: ->(ctx) { ctx.arguments.items },
+          block: ->(_ctx) {}
+        )
+        dry_run_values = ctx_with_dry_run._with_each_value(dry_run_task).map(&:dry_run?)
+        expect(dry_run_values).to eq([true, true, true])
+      end
+    end
   end
 
   describe "#each_value" do
@@ -1668,6 +1701,238 @@ RSpec.describe JobFlow::Context do
 
       it "does not raise an error" do
         expect { ctx._load_parent_task_output }.to raise_error(JobFlow::WorkflowStatus::NotFoundError)
+      end
+    end
+  end
+
+  describe "#dry_run?" do
+    context "when task_context.dry_run is true" do
+      subject(:ctx) do
+        described_class.new(
+          job:,
+          workflow:,
+          arguments: JobFlow::Arguments.new(data: {}),
+          task_context: JobFlow::TaskContext.new(dry_run: true),
+          output: JobFlow::Output.new,
+          job_status: JobFlow::JobStatus.new
+        )
+      end
+
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          def self.name = "TestJob"
+        end
+        klass.new
+      end
+
+      it { expect(ctx.dry_run?).to be true }
+    end
+
+    context "when task_context.dry_run is false" do
+      subject(:ctx) do
+        described_class.new(
+          job:,
+          workflow:,
+          arguments: JobFlow::Arguments.new(data: {}),
+          task_context: JobFlow::TaskContext.new(dry_run: false),
+          output: JobFlow::Output.new,
+          job_status: JobFlow::JobStatus.new
+        )
+      end
+
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobFlow::DSL
+
+          def self.name = "TestJob"
+        end
+        klass.new
+      end
+
+      it { expect(ctx.dry_run?).to be false }
+    end
+  end
+
+  describe "#skip_in_dry_run" do
+    let(:job) do
+      klass = Class.new(ActiveJob::Base) do
+        include JobFlow::DSL
+
+        task :test_task do |_ctx|
+          # task body
+        end
+        def self.name = "SkipInDryRunJob"
+      end
+      klass.new
+    end
+    let(:task) { workflow.fetch_task(:test_task) }
+
+    context "when not in dry-run mode" do
+      subject(:ctx) do
+        described_class.new(
+          job:,
+          workflow:,
+          arguments: JobFlow::Arguments.new(data: {}),
+          task_context: JobFlow::TaskContext.new(task:, dry_run: false),
+          output: JobFlow::Output.new,
+          job_status: JobFlow::JobStatus.new
+        )
+      end
+
+      let(:events) { [] }
+
+      around do |example|
+        sub = ActiveSupport::Notifications.subscribe("dry_run.execute.job_flow") { |*args| events << args }
+        example.run
+        ActiveSupport::Notifications.unsubscribe(sub)
+      end
+
+      it "executes the block and returns result" do
+        expect(ctx.skip_in_dry_run { "executed" }).to eq("executed")
+      end
+
+      it "instruments the execute event" do
+        ctx.skip_in_dry_run { "executed" }
+        expect(events.size).to eq(1)
+      end
+    end
+
+    context "when in dry-run mode" do
+      subject(:ctx) do
+        described_class.new(
+          job:,
+          workflow:,
+          arguments: JobFlow::Arguments.new(data: {}),
+          task_context: JobFlow::TaskContext.new(task:, dry_run: true),
+          output: JobFlow::Output.new,
+          job_status: JobFlow::JobStatus.new
+        )
+      end
+
+      let(:events) { [] }
+
+      around do |example|
+        sub = ActiveSupport::Notifications.subscribe("dry_run.skip.job_flow") { |*args| events << args }
+        example.run
+        ActiveSupport::Notifications.unsubscribe(sub)
+      end
+
+      it "does not execute the block" do
+        executed = false
+        ctx.skip_in_dry_run { executed = true }
+        expect(executed).to be false
+      end
+
+      it "returns nil when block is not executed" do
+        expect(ctx.skip_in_dry_run { "executed" }).to be_nil
+      end
+
+      it "returns fallback value when specified" do
+        expect(ctx.skip_in_dry_run(fallback: "skipped") { "executed" }).to eq("skipped")
+      end
+
+      it "instruments the skip event" do
+        ctx.skip_in_dry_run { "executed" }
+        expect(events.size).to eq(1)
+      end
+    end
+
+    context "when called without block" do
+      subject(:ctx) do
+        described_class.from_hash(job:, workflow:, task_context: {}, task_outputs: [], task_job_statuses: [])
+      end
+
+      it "raises RuntimeError about task context" do
+        expect { ctx.skip_in_dry_run }.to raise_error(
+          RuntimeError,
+          "skip_in_dry_run can be called only within with_task_context"
+        )
+      end
+    end
+
+    context "when job is nil" do
+      subject(:ctx) do
+        ctx = described_class.new(
+          job:,
+          workflow:,
+          arguments: JobFlow::Arguments.new(data: {}),
+          task_context: JobFlow::TaskContext.new(task:, dry_run: true),
+          output: JobFlow::Output.new,
+          job_status: JobFlow::JobStatus.new
+        )
+        ctx._job = nil
+        ctx
+      end
+
+      it "raises an error" do
+        expect { ctx.skip_in_dry_run { "executed" } }.to raise_error(RuntimeError, "job is not set")
+      end
+    end
+
+    context "with named dry_run" do
+      subject(:ctx) do
+        described_class.new(
+          job:,
+          workflow:,
+          arguments: JobFlow::Arguments.new(data: {}),
+          task_context: JobFlow::TaskContext.new(task:, dry_run: true),
+          output: JobFlow::Output.new,
+          job_status: JobFlow::JobStatus.new
+        )
+      end
+
+      let(:payload) { {} }
+
+      around do |example|
+        sub = ActiveSupport::Notifications.subscribe("dry_run.skip.job_flow") { |*, p| payload.merge!(p) }
+        example.run
+        ActiveSupport::Notifications.unsubscribe(sub)
+      end
+
+      it "includes name in instrumentation payload" do
+        ctx.skip_in_dry_run(:payment_processing) { "executed" }
+        expect(payload[:dry_run_name]).to eq(:payment_processing)
+      end
+    end
+
+    context "with multiple calls" do
+      subject(:ctx) do
+        described_class.new(
+          job:,
+          workflow:,
+          arguments: JobFlow::Arguments.new(data: {}),
+          task_context: JobFlow::TaskContext.new(task:, dry_run: true),
+          output: JobFlow::Output.new,
+          job_status: JobFlow::JobStatus.new
+        )
+      end
+
+      let(:indices) { [] }
+
+      around do |example|
+        sub = ActiveSupport::Notifications.subscribe("dry_run.skip.job_flow") { |*, p| indices << p[:dry_run_index] }
+        example.run
+        ActiveSupport::Notifications.unsubscribe(sub)
+      end
+
+      it "increments dry_run_index for each call" do
+        3.times { ctx.skip_in_dry_run { "call" } }
+        expect(indices).to eq([0, 1, 2])
+      end
+    end
+
+    context "when task is nil" do
+      subject(:ctx) do
+        described_class.from_hash(job:, workflow:, task_context: { task: nil }, task_outputs: [], task_job_statuses: [])
+      end
+
+      it "raises an error" do
+        expect { ctx.skip_in_dry_run { "executed" } }.to raise_error(
+          RuntimeError,
+          "skip_in_dry_run can be called only within with_task_context"
+        )
       end
     end
   end

@@ -128,6 +128,12 @@ Production deployment and operations:
   - Integration testing workflows
   - Test best practices
 
+- **[DRY_RUN.md](DRY_RUN.md)** - Dry-run mode for safe testing
+  - Workflow-level and task-level dry-run
+  - Dynamic dry-run with Proc
+  - skip_in_dry_run for conditional execution
+  - Instrumentation and logging
+
 - **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Common issues and solutions
   - CircularDependencyError
   - UnknownTaskError

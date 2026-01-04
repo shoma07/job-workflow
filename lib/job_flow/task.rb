@@ -14,8 +14,9 @@ module JobFlow
     attr_reader :throttle #: TaskThrottle
     attr_reader :timeout #: Numeric?
     attr_reader :dependency_wait #: TaskDependencyWait
+    attr_reader :dry_run_config #: DryRunConfig
 
-    # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength
+    # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength, Metrics/AbcSize
     #:  (
     #     job_name: String,
     #     name: Symbol,
@@ -29,7 +30,8 @@ module JobFlow
     #     ?task_retry: Integer | Hash[Symbol, untyped],
     #     ?throttle: Integer | Hash[Symbol, untyped],
     #     ?timeout: Numeric?,
-    #     ?dependency_wait: Hash[Symbol, untyped]
+    #     ?dependency_wait: Hash[Symbol, untyped],
+    #     ?dry_run: bool | ^(Context) -> bool
     #   ) -> void
     def initialize(
       job_name:,
@@ -44,7 +46,8 @@ module JobFlow
       task_retry: 0,
       throttle: {},
       timeout: nil,
-      dependency_wait: {}
+      dependency_wait: {},
+      dry_run: false
     )
       @job_name = job_name
       @name = name
@@ -59,8 +62,9 @@ module JobFlow
       @throttle = TaskThrottle.from_primitive_value_with_task(value: throttle, task: self)
       @timeout = timeout
       @dependency_wait = TaskDependencyWait.from_primitive_value(dependency_wait)
+      @dry_run_config = DryRunConfig.from_primitive_value(dry_run)
     end
-    # rubocop:enable Metrics/ParameterLists, Metrics/MethodLength
+    # rubocop:enable Metrics/ParameterLists, Metrics/MethodLength, Metrics/AbcSize
 
     #:  () -> Symbol
     def task_name
