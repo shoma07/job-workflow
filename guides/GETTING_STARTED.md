@@ -499,7 +499,7 @@ Test workflows in development using `perform_now`:
 result = DataPipelineJob.perform_now(source_id: 123)
 ```
 
-For automated testing, see the [TESTING-STRATEGY.md](TESTING-STRATEGY.md) guide.
+For automated testing, see the [TESTING_STRATEGY.md](TESTING_STRATEGY.md) guide.
 
 ---
 
@@ -507,11 +507,11 @@ For automated testing, see the [TESTING-STRATEGY.md](TESTING-STRATEGY.md) guide.
 
 Now that you have a basic understanding of JobFlow, here are some recommended next steps:
 
-1. **[DSL-BASICS.md](DSL-BASICS.md)** - Learn the full DSL syntax and task options
-2. **[TASK-OUTPUTS.md](TASK-OUTPUTS.md)** - Master task outputs and data passing
-3. **[PARALLEL-PROCESSING.md](PARALLEL-PROCESSING.md)** - Build efficient parallel workflows
-4. **[ERROR-HANDLING.md](ERROR-HANDLING.md)** - Implement robust error handling
-5. **[PRODUCTION-DEPLOYMENT.md](PRODUCTION-DEPLOYMENT.md)** - Deploy to production safely
+1. **[DSL_BASICS.md](DSL_BASICS.md)** - Learn the full DSL syntax and task options
+2. **[TASK_OUTPUTS.md](TASK_OUTPUTS.md)** - Master task outputs and data passing
+3. **[PARALLEL_PROCESSING.md](PARALLEL_PROCESSING.md)** - Build efficient parallel workflows
+4. **[ERROR_HANDLING.md](ERROR_HANDLING.md)** - Implement robust error handling
+5. **[PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md)** - Deploy to production safely
 
 ---
 
