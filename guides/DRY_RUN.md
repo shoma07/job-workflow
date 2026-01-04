@@ -349,7 +349,7 @@ class OrderProcessingJob < ActiveJob::Base
   end
 
   task :charge_payment, depends_on: [:validate_order] do |ctx|
-    order = ctx.output(:validate_order).order
+    order = ctx.output[:validate_order].first.order
 
     result = ctx.skip_in_dry_run(:payment_processing, fallback: { success: true, transaction_id: "dry_run" }) do
       PaymentService.process(
@@ -362,7 +362,7 @@ class OrderProcessingJob < ActiveJob::Base
   end
 
   task :send_confirmation, depends_on: [:charge_payment] do |ctx|
-    order = ctx.output(:validate_order).order
+    order = ctx.output[:validate_order].first.order
 
     ctx.skip_in_dry_run(:email_notification) do
       OrderMailer.confirmation(order[:id]).deliver_later
@@ -370,7 +370,7 @@ class OrderProcessingJob < ActiveJob::Base
   end
 
   task :update_inventory, depends_on: [:charge_payment] do |ctx|
-    order = ctx.output(:validate_order).order
+    order = ctx.output[:validate_order].first.order
 
     ctx.skip_in_dry_run(:inventory_update) do
       InventoryService.decrement(order[:items])
