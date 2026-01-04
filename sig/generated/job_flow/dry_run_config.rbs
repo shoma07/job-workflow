@@ -1,0 +1,16 @@
+# Generated from lib/job_flow/dry_run_config.rb with RBS::Inline
+
+module JobFlow
+  class DryRunConfig
+    attr_reader evaluator: ^(Context) -> bool
+
+    # :  (bool | ^(Context) -> bool | nil) -> DryRunConfig
+    def self.from_primitive_value: (bool | ^(Context) -> bool | nil) -> DryRunConfig
+
+    # :  (?evaluator: ^(Context) -> bool) -> void
+    def initialize: (?evaluator: ^(Context) -> bool) -> void
+
+    # :  (Context) -> bool
+    def evaluate: (Context) -> bool
+  end
+end

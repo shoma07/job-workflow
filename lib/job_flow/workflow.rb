@@ -3,6 +3,7 @@
 module JobFlow
   class Workflow
     attr_reader :namespace #: Namespace
+    attr_reader :dry_run_config #: DryRunConfig
 
     #:  () -> void
     def initialize
@@ -11,6 +12,12 @@ module JobFlow
       @hook_registry = HookRegistry.new
       @namespace = Namespace.default #: Namespace
       @schedules = {} #: Hash[Symbol, Schedule]
+      @dry_run_config = DryRunConfig.new
+    end
+
+    #:  (bool | ^(Context) -> bool) -> void
+    def dry_run_config=(value)
+      @dry_run_config = DryRunConfig.from_primitive_value(value)
     end
 
     #:  (Namespace) { () -> void } -> void

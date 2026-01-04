@@ -418,4 +418,61 @@ RSpec.describe JobFlow::Instrumentation::LogSubscriber do
       end
     end
   end
+
+  describe "#dry_run" do
+    subject(:call) { subscriber.dry_run(event) }
+
+    let(:event) do
+      ActiveSupport::Notifications::Event.new(
+        "dry_run.job_flow",
+        Time.current,
+        Time.current,
+        "transaction_id",
+        { job_id: "job-123", dry_run_name: :payment, dry_run_index: 0, dry_run: true }
+      )
+    end
+
+    it "does not log (tracing only)" do
+      call
+      expect(logger).not_to have_received(:info)
+    end
+  end
+
+  describe "#dry_run_skip" do
+    subject(:call) { subscriber.dry_run_skip(event) }
+
+    let(:event) do
+      ActiveSupport::Notifications::Event.new(
+        "dry_run.skip.job_flow",
+        Time.current,
+        Time.current,
+        "transaction_id",
+        { job_id: "job-123", dry_run_name: :payment, dry_run_index: 0, dry_run: true }
+      )
+    end
+
+    it "logs at info level" do
+      call
+      expect(logger).to have_received(:info).with(hash_including(event: "dry_run.skip.job_flow"))
+    end
+  end
+
+  describe "#dry_run_execute" do
+    subject(:call) { subscriber.dry_run_execute(event) }
+
+    let(:event) do
+      ActiveSupport::Notifications::Event.new(
+        "dry_run.execute.job_flow",
+        Time.current,
+        Time.current,
+        "transaction_id",
+        { job_id: "job-123", dry_run_name: nil, dry_run_index: 0, dry_run: false }
+      )
+    end
+
+    it "logs at debug level" do
+      call
+      expect(logger).to have_received(:debug).with(hash_including(event: "dry_run.execute.job_flow"))
+    end
+  end
 end

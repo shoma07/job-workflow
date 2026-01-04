@@ -72,6 +72,15 @@ module JobFlow
       # :  (ActiveSupport::Notifications::Event) -> void
       def queue_resume: (ActiveSupport::Notifications::Event) -> void
 
+      # :  (ActiveSupport::Notifications::Event) -> void
+      def dry_run: (ActiveSupport::Notifications::Event) -> void
+
+      # :  (ActiveSupport::Notifications::Event) -> void
+      def dry_run_skip: (ActiveSupport::Notifications::Event) -> void
+
+      # :  (ActiveSupport::Notifications::Event) -> void
+      def dry_run_execute: (ActiveSupport::Notifications::Event) -> void
+
       private
 
       # :  (ActiveSupport::Notifications::Event, log_level) -> void

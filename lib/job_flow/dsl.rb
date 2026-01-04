@@ -123,7 +123,8 @@ module JobFlow
       #     ?condition: ^(Context) -> bool,
       #     ?throttle: Integer | Hash[Symbol, untyped],
       #     ?timeout: Numeric?,
-      #     ?dependency_wait: Hash[Symbol, untyped]
+      #     ?dependency_wait: Hash[Symbol, untyped],
+      #     ?dry_run: bool | ^(Context) -> bool
       #   ) { (untyped) -> void } -> void
       def task(
         task_name,
@@ -136,6 +137,7 @@ module JobFlow
         throttle: {},
         timeout: nil,
         dependency_wait: {},
+        dry_run: false,
         &block
       )
         new_task = Task.new(
@@ -151,7 +153,8 @@ module JobFlow
           condition:,
           throttle:,
           timeout:,
-          dependency_wait:
+          dependency_wait:,
+          dry_run:
         )
         _workflow.add_task(new_task)
         if new_task.enqueue.should_limits_concurrency? # rubocop:disable Style/GuardClause
@@ -183,6 +186,12 @@ module JobFlow
       def on_error(*task_names, &block)
         validate_namespace!
         _workflow.add_hook(:error, task_names:, block:)
+      end
+
+      #:  (?bool) ?{ (Context) -> bool } -> void
+      def dry_run(value = nil, &block)
+        validate_namespace!
+        _workflow.dry_run_config = block || value
       end
 
       # rubocop:disable Metrics/ParameterLists

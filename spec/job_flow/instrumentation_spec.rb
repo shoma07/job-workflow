@@ -267,4 +267,69 @@ RSpec.describe JobFlow::Instrumentation do
       expect(capture_events).to have_attributes(size: 1)
     end
   end
+
+  describe ".instrument_dry_run" do
+    include_context "with job double"
+
+    context "when dry_run is true" do
+      subject(:call) do
+        ctx = instance_double(JobFlow::Context, _task_context: task_context)
+        described_class.instrument_dry_run(job, ctx, :payment_processing, 0, true) { "result" }
+      end
+
+      let(:task_context) { instance_double(JobFlow::TaskContext, task:, index: 0) }
+      let(:task) { instance_double(JobFlow::Task, task_name: :my_task) }
+      let(:event_name) { described_class::Events::DRY_RUN_SKIP }
+
+      it "returns the block result" do
+        expect(call).to eq "result"
+      end
+
+      it "fires dry_run.skip.job_flow event" do
+        expect(capture_events).to have_attributes(size: 1)
+      end
+    end
+
+    context "when dry_run is false" do
+      subject(:call) do
+        ctx = instance_double(JobFlow::Context, _task_context: task_context)
+        described_class.instrument_dry_run(job, ctx, :payment_processing, 0, false) { "result" }
+      end
+
+      let(:task_context) { instance_double(JobFlow::TaskContext, task:, index: 0) }
+      let(:task) { instance_double(JobFlow::Task, task_name: :my_task) }
+      let(:event_name) { described_class::Events::DRY_RUN_EXECUTE }
+
+      it "fires dry_run.execute.job_flow event" do
+        expect(capture_events).to have_attributes(size: 1)
+      end
+    end
+
+    context "when task is nil" do
+      subject(:call) do
+        ctx = instance_double(JobFlow::Context, _task_context: task_context)
+        described_class.instrument_dry_run(job, ctx, :payment_processing, 0, true) { "result" }
+      end
+
+      let(:task_context) { instance_double(JobFlow::TaskContext, task: nil, index: 0) }
+      let(:event_name) { described_class::Events::DRY_RUN }
+      let(:payload) { {} }
+
+      around do |example|
+        sub = ActiveSupport::Notifications.subscribe(event_name) { |*, p| payload.merge!(p) }
+        example.run
+        ActiveSupport::Notifications.unsubscribe(sub)
+      end
+
+      it "fires event" do
+        call
+        expect(payload).not_to be_empty
+      end
+
+      it "includes nil task_name in payload" do
+        call
+        expect(payload[:task_name]).to be_nil
+      end
+    end
+  end
 end

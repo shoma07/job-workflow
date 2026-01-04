@@ -26,7 +26,9 @@ module JobFlow
 
     attr_reader dependency_wait: TaskDependencyWait
 
-    # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength
+    attr_reader dry_run_config: DryRunConfig
+
+    # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength, Metrics/AbcSize
     # :  (
     #     job_name: String,
     #     name: Symbol,
@@ -40,9 +42,10 @@ module JobFlow
     #     ?task_retry: Integer | Hash[Symbol, untyped],
     #     ?throttle: Integer | Hash[Symbol, untyped],
     #     ?timeout: Numeric?,
-    #     ?dependency_wait: Hash[Symbol, untyped]
+    #     ?dependency_wait: Hash[Symbol, untyped],
+    #     ?dry_run: bool | ^(Context) -> bool
     #   ) -> void
-    def initialize: (job_name: String, name: Symbol, namespace: Namespace, block: ^(untyped) -> void, condition: ^(Context) -> bool, ?each: ^(Context) -> untyped, ?enqueue: true | false | ^(Context) -> bool | Hash[Symbol, untyped], ?output: Hash[Symbol, String], ?depends_on: Array[Symbol], ?task_retry: Integer | Hash[Symbol, untyped], ?throttle: Integer | Hash[Symbol, untyped], ?timeout: Numeric?, ?dependency_wait: Hash[Symbol, untyped]) -> void
+    def initialize: (job_name: String, name: Symbol, namespace: Namespace, block: ^(untyped) -> void, condition: ^(Context) -> bool, ?each: ^(Context) -> untyped, ?enqueue: true | false | ^(Context) -> bool | Hash[Symbol, untyped], ?output: Hash[Symbol, String], ?depends_on: Array[Symbol], ?task_retry: Integer | Hash[Symbol, untyped], ?throttle: Integer | Hash[Symbol, untyped], ?timeout: Numeric?, ?dependency_wait: Hash[Symbol, untyped], ?dry_run: bool | ^(Context) -> bool) -> void
 
     # :  () -> Symbol
     def task_name: () -> Symbol

@@ -10,6 +10,7 @@ module JobFlow
   #   end
   #   ```
   module Instrumentation
+    # rubocop:disable Metrics/ModuleLength
     NAMESPACE: ::String
 
     module Events
@@ -54,6 +55,12 @@ module JobFlow
       QUEUE_RESUME: untyped
 
       CUSTOM: untyped
+
+      DRY_RUN: untyped
+
+      DRY_RUN_SKIP: untyped
+
+      DRY_RUN_EXECUTE: untyped
     end
 
     # :  (DSL) { () -> untyped } -> untyped
@@ -92,6 +99,9 @@ module JobFlow
     # :  (String, Hash[Symbol, untyped]) { () -> untyped } -> untyped
     def self.instrument_custom: (String, Hash[Symbol, untyped]) { () -> untyped } -> untyped
 
+    # :  (DSL, Context, Symbol?, Integer, bool) { () -> untyped } -> untyped
+    def self.instrument_dry_run: (DSL, Context, Symbol?, Integer, bool) { () -> untyped } -> untyped
+
     # :  (String, Hash[Symbol, untyped]) ?{ () -> untyped } -> untyped
     private def self.instrument: (String, Hash[Symbol, untyped]) ?{ () -> untyped } -> untyped
 
@@ -121,5 +131,8 @@ module JobFlow
 
     # :  (String) -> Hash[Symbol, untyped]
     private def self.build_queue_payload: (String) -> Hash[Symbol, untyped]
+
+    # :  (DSL, Context, Symbol?, Integer, bool) -> Hash[Symbol, untyped]
+    private def self.build_skip_in_dry_run_payload: (DSL, Context, Symbol?, Integer, bool) -> Hash[Symbol, untyped]
   end
 end
