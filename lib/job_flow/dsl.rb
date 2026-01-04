@@ -81,8 +81,6 @@ module JobFlow
       #
       #   def name: () -> String
       #
-      #   def perform_all_later: (Array[DSL]) -> void
-      #
       #   def enqueue: (Hash[untyped, untyped]) -> void
       #
       #   def queue_name: () -> String

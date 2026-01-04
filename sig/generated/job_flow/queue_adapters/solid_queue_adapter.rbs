@@ -75,6 +75,10 @@ module JobFlow
       # :  (String) -> bool
       def clear_queue: (String) -> bool
 
+      # @note
+      #   - SolidQueue stores the full ActiveJob serialization in job.arguments
+      #   - We need to extract the actual arguments array for consistency
+      #
       # :  (String) -> Hash[String, untyped]?
       def find_job: (String) -> Hash[String, untyped]?
 
