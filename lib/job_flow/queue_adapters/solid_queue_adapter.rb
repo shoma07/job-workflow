@@ -47,7 +47,7 @@ module JobFlow
 
         hook = ->(_) { SolidQueue::Semaphore.signal(semaphore) }
         semaphore_registry[semaphore] = hook
-        SolidQueue::Worker.on_worker_stop(hook)
+        SolidQueue::Worker.on_stop(&hook)
         true
       end
 
@@ -145,6 +145,10 @@ module JobFlow
         true
       end
 
+      # @note
+      #   - SolidQueue stores the full ActiveJob serialization in job.arguments
+      #   - We need to extract the actual arguments array for consistency
+      #
       #:  (String) -> Hash[String, untyped]?
       def find_job(job_id)
         return unless defined?(SolidQueue::Job)
@@ -156,7 +160,7 @@ module JobFlow
           "job_id" => job.active_job_id,
           "class_name" => job.class_name,
           "queue_name" => job.queue_name,
-          "arguments" => job.arguments,
+          "arguments" => job.arguments.is_a?(Hash) ? job.arguments["arguments"] : job.arguments,
           "status" => job_status(job)
         }
       end

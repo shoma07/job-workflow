@@ -107,7 +107,7 @@ module JobFlow
     #:  (Task) -> void
     def enqueue_task(task)
       sub_jobs = context._with_each_value(task).map { |ctx| job.class.from_context(ctx) }
-      job.class.perform_all_later(sub_jobs)
+      ActiveJob.perform_all_later(sub_jobs)
       context.job_status.update_task_job_statuses_from_jobs(task_name: task.task_name, jobs: sub_jobs)
       Instrumentation.notify_task_enqueue(job, task, sub_jobs.size)
     end

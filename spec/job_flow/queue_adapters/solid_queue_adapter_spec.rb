@@ -27,7 +27,7 @@ RSpec.describe JobFlow::QueueAdapters::SolidQueueAdapter do
       stub_const("SolidQueue::Worker", Class.new do
         mattr_accessor :lifecycle_hooks, default: { stop: [] }
 
-        def self.on_worker_stop(_proc)
+        def self.on_stop(&)
           # no-op for tests
         end
       end)
@@ -76,8 +76,8 @@ RSpec.describe JobFlow::QueueAdapters::SolidQueueAdapter do
       stub_const("SolidQueue::Worker", Class.new do
         mattr_accessor :lifecycle_hooks, default: { stop: [] }
 
-        def self.on_worker_stop(hook_proc)
-          lifecycle_hooks[:stop] << hook_proc
+        def self.on_stop(&block)
+          lifecycle_hooks[:stop] << block
         end
       end)
     end
@@ -465,7 +465,8 @@ RSpec.describe JobFlow::QueueAdapters::SolidQueueAdapter do
           active_job_id: "job-123",
           class_name: "TestJob",
           queue_name: "default",
-          arguments: { "value" => 42 },
+          # SolidQueue stores the full ActiveJob serialization with arguments array
+          arguments: { "arguments" => [{ "value" => 42 }] },
           failed?: false,
           finished?: false,
           claimed?: true
@@ -480,8 +481,42 @@ RSpec.describe JobFlow::QueueAdapters::SolidQueueAdapter do
               "job_id" => "job-123",
               "class_name" => "TestJob",
               "queue_name" => "default",
-              "arguments" => { "value" => 42 },
+              "arguments" => [{ "value" => 42 }],
               "status" => :running
+            }
+          )
+        )
+      end
+    end
+
+    context "when arguments is not a Hash" do
+      let(:job) { Class.new.new }
+
+      before do
+        stub_const("SolidQueue::Job", job.class)
+        allow(job.class).to receive(:find_by).with(active_job_id: "job-456").and_return(job)
+        allow(job).to receive_messages(
+          active_job_id: "job-456",
+          class_name: "LegacyJob",
+          queue_name: "legacy",
+          # Non-Hash arguments (e.g., nil or raw array) are returned as-is
+          arguments: nil,
+          failed?: false,
+          finished?: true,
+          claimed?: false
+        )
+      end
+
+      it do
+        expect(adapter.find_job("job-456")).to have_attributes(
+          class: Hash,
+          to_h: eq(
+            {
+              "job_id" => "job-456",
+              "class_name" => "LegacyJob",
+              "queue_name" => "legacy",
+              "arguments" => nil,
+              "status" => :succeeded
             }
           )
         )

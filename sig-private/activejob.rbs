@@ -1,4 +1,6 @@
 module ActiveJob
+  def self.perform_all_later: (*ActiveJob::Base) -> void
+
   module Continuable
     def step: (Symbol, ?start: ActiveJob::Continuation::_Succ, ?isolated: bool) -> void
             | (Symbol, ?start: ActiveJob::Continuation::_Succ, ?isolated: bool) { (ActiveJob::Continuation::Step) -> void } -> void

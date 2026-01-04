@@ -300,15 +300,15 @@ RSpec.describe JobFlow::Runner do
       end
 
       it "calls perform_all_later" do
-        allow(job.class).to receive(:perform_all_later).and_return(nil)
+        allow(ActiveJob).to receive(:perform_all_later).and_return(nil)
 
         run
 
-        expect(job.class).to have_received(:perform_all_later)
+        expect(ActiveJob).to have_received(:perform_all_later)
       end
 
       it "records job status with namespace task name" do
-        allow(job.class).to receive(:perform_all_later).and_return(nil)
+        allow(ActiveJob).to receive(:perform_all_later).and_return(nil)
 
         run
 
@@ -587,11 +587,11 @@ RSpec.describe JobFlow::Runner do
                         ._update_arguments({ items: [1, 2, 3], results: [] })
       end
 
-      before { allow(job.class).to receive(:perform_all_later).and_return(nil) }
+      before { allow(ActiveJob).to receive(:perform_all_later).and_return(nil) }
 
       it "calls perform_all_later with sub jobs" do
         run
-        expect(job.class).to have_received(:perform_all_later).with(
+        expect(ActiveJob).to have_received(:perform_all_later).with(
           an_instance_of(Array).and(have_attributes(size: 3))
         )
       end
@@ -741,7 +741,7 @@ RSpec.describe JobFlow::Runner do
         JobFlow::Context.from_hash({ job:, workflow: job.class._workflow })._update_arguments({ items: [1, 2, 3] })
       end
 
-      before { allow(job.class).to receive(:perform_all_later).and_return(nil) }
+      before { allow(ActiveJob).to receive(:perform_all_later).and_return(nil) }
 
       it "does not collect output (future enhancement)" do
         run
@@ -813,7 +813,7 @@ RSpec.describe JobFlow::Runner do
 
         # Track sub jobs created by perform_all_later
         sub_job_ids = []
-        allow(job.class).to receive(:perform_all_later) do |jobs|
+        allow(ActiveJob).to receive(:perform_all_later) do |jobs|
           sub_job_ids.concat(jobs.map(&:job_id))
           nil
         end
@@ -985,7 +985,7 @@ RSpec.describe JobFlow::Runner do
         stub_const("SolidQueue::Job", Class.new)
 
         # Capture job IDs when perform_all_later is called
-        allow(job.class).to receive(:perform_all_later) do |jobs|
+        allow(ActiveJob).to receive(:perform_all_later) do |jobs|
           created_job_ids.concat(jobs.map(&:job_id))
           # Immediately mark as finished to simulate fast execution
           jobs.each_with_index do |sub_job, idx|
@@ -1091,7 +1091,7 @@ RSpec.describe JobFlow::Runner do
         stub_const("SolidQueue", Module.new)
         stub_const("SolidQueue::Job", Class.new)
 
-        allow(job.class).to receive(:perform_all_later) do |jobs|
+        allow(ActiveJob).to receive(:perform_all_later) do |jobs|
           created_jobs.concat(jobs)
           # Immediately mark as finished
           jobs.each_with_index do |sub_job, idx|
@@ -1216,7 +1216,7 @@ RSpec.describe JobFlow::Runner do
         stub_const("SolidQueue::Job", Class.new)
 
         # Ensure perform_all_later is not called
-        allow(job.class).to receive(:perform_all_later) do |_jobs|
+        allow(ActiveJob).to receive(:perform_all_later) do |_jobs|
           raise "perform_all_later should not be called when task condition is false"
         end
 
@@ -1725,11 +1725,11 @@ RSpec.describe JobFlow::Runner do
                         ._update_arguments({ items: [1, 2, 3] })
       end
 
-      before { allow(job.class).to receive(:perform_all_later).and_return(nil) }
+      before { allow(ActiveJob).to receive(:perform_all_later).and_return(nil) }
 
       it "sets queue name on sub jobs" do
         run
-        expect(job.class).to have_received(:perform_all_later) do |sub_jobs|
+        expect(ActiveJob).to have_received(:perform_all_later) do |sub_jobs|
           verify_sub_jobs_queue(sub_jobs, "critical", 3)
         end
       end
@@ -1762,11 +1762,11 @@ RSpec.describe JobFlow::Runner do
                         ._update_arguments({ items: [1, 2, 3] })
       end
 
-      before { allow(job.class).to receive(:perform_all_later).and_return(nil) }
+      before { allow(ActiveJob).to receive(:perform_all_later).and_return(nil) }
 
       it "enqueues with queue name when condition is true" do
         run
-        expect(job.class).to have_received(:perform_all_later) do |sub_jobs|
+        expect(ActiveJob).to have_received(:perform_all_later) do |sub_jobs|
           verify_sub_jobs_queue(sub_jobs, "batch", 3)
         end
       end
@@ -1799,11 +1799,11 @@ RSpec.describe JobFlow::Runner do
                         ._update_arguments({ items: [1, 2, 3] })
       end
 
-      before { allow(job.class).to receive(:perform_all_later).and_return(nil) }
+      before { allow(ActiveJob).to receive(:perform_all_later).and_return(nil) }
 
       it "does not enqueue" do
         run
-        expect(job.class).not_to have_received(:perform_all_later)
+        expect(ActiveJob).not_to have_received(:perform_all_later)
       end
 
       it "executes task synchronously" do
