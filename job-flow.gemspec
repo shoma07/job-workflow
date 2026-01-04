@@ -11,6 +11,7 @@ Gem::Specification.new do |spec|
   spec.summary = "Declarative workflow orchestration engine for Ruby on Rails"
   spec.description = "Workflow orchestration on ActiveJob with declarative DSL and parallel processing."
   spec.homepage = "https://github.com/shoma07/job-flow"
+  spec.license = "MIT"
   spec.required_ruby_version = ">= 3.1.0"
 
   spec.metadata["allowed_push_host"] = "https://rubygems.org"
