@@ -364,6 +364,49 @@ RSpec.describe JobFlow::DSL do
     end
   end
 
+  describe "#output" do
+    subject(:output) { job.output }
+
+    let(:job) do
+      klass = Class.new(ActiveJob::Base) do
+        include JobFlow::DSL
+
+        task :example_task, output: { result: "Integer" } do |_ctx|
+          { result: 42 }
+        end
+
+        def self.name
+          "TestJob"
+        end
+      end
+      klass.new
+    end
+
+    context "when context is not set" do
+      it do
+        expect { output }.to raise_error("context is not set.")
+      end
+    end
+
+    context "when context is set" do
+      before do
+        job._context = JobFlow::Context.from_hash(
+          job:,
+          workflow: job.class._workflow,
+          task_outputs: [
+            { task_name: :example_task, each_index: 0, data: { result: 100 } }
+          ]
+        )
+      end
+
+      it do
+        expect(output[:example_task]).to contain_exactly(
+          have_attributes(result: 100)
+        )
+      end
+    end
+  end
+
   describe "#serialize" do
     subject(:serialize) { job.serialize }
 

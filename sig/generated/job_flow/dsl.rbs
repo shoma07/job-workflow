@@ -24,6 +24,9 @@ module JobFlow
     # :  (Hash[untyped, untyped]) -> void
     def perform: (Hash[untyped, untyped]) -> void
 
+    # :  () -> Output
+    def output: () -> Output
+
     # :  (Context) -> void
     def _context=: (Context) -> void
 

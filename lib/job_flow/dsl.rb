@@ -37,6 +37,14 @@ module JobFlow
       Runner.new(context: context._update_arguments(arguments)).run
     end
 
+    #:  () -> Output
+    def output
+      context = self._context
+      raise "context is not set." if context.nil?
+
+      context.output
+    end
+
     #:  (Context) -> void
     def _context=(context)
       @_context = context
