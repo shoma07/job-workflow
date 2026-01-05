@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+## [0.1.3] - 2026-01-06
+
+### Changed
+
+- Rename library from `job-flow` to `job-workflow`
+
 ## [0.1.2] - 2026-01-05
 
 ### Fixed

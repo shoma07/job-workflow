@@ -1,6 +1,6 @@
 # Production Deployment
 
-> ⚠️ **Early Stage (v0.1.2):** JobWorkflow is still in early development. While this section outlines potential deployment patterns, please thoroughly test in your specific environment and monitor for any issues before relying on JobWorkflow in critical production systems.
+> ⚠️ **Early Stage (v0.1.3):** JobWorkflow is still in early development. While this section outlines potential deployment patterns, please thoroughly test in your specific environment and monitor for any issues before relying on JobWorkflow in critical production systems.
 
 This section covers suggested settings and patterns for running JobWorkflow in production-like environments.
 
