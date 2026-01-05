@@ -326,7 +326,7 @@ RSpec.describe JobWorkflow::Runner do
         klass = Class.new(ActiveJob::Base) do
           include JobWorkflow::DSL
 
-          argument :should_fail, "Boolean", default: false
+          argument :should_fail, "bool", default: false
 
           namespace :error_test do
             task :failing_task do |ctx|
@@ -547,7 +547,7 @@ RSpec.describe JobWorkflow::Runner do
 
           argument :items, "Array[Integer]", default: []
           argument :sum, "Integer", default: 0
-          argument :enabled, "Boolean", default: false
+          argument :enabled, "bool", default: false
 
           task :process_items,
                each: ->(ctx) { ctx.arguments.items },
@@ -1171,7 +1171,7 @@ RSpec.describe JobWorkflow::Runner do
 
           argument :items, "Array[Integer]", default: []
           argument :sum, "Integer", default: 0
-          argument :skip_parallel, "Boolean", default: false
+          argument :skip_parallel, "bool", default: false
 
           task :pre_task, output: { sum: "Integer" } do |ctx|
             { sum: ctx.arguments.sum }

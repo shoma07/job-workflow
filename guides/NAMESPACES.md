@@ -40,7 +40,7 @@ class ECommerceOrderJob < ApplicationJob
       InventoryService.check(order.items)
     end
     
-    task :reserve, depends_on: [:"inventory:check_availability"], output: { reserved: "Boolean" } do |ctx|
+    task :reserve, depends_on: [:"inventory:check_availability"], output: { reserved: "bool" } do |ctx|
       order = ctx.arguments.order
       { reserved: InventoryService.reserve(order.items) }
     end

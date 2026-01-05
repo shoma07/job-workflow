@@ -41,7 +41,7 @@ The `dependency_wait` option enables efficient waiting by:
 
 ### Basic Usage
 
-**Important:** Boolean values for `dependency_wait` (e.g. `dependency_wait: true` or `dependency_wait: false`) are **not supported**. Use an Integer (shorthand for `poll_timeout`) or a Hash for explicit configuration.
+**Important:** bool values for `dependency_wait` (e.g. `dependency_wait: true` or `dependency_wait: false`) are **not supported**. Use an Integer (shorthand for `poll_timeout`) or a Hash for explicit configuration.
 
 - Polling-only (default): omit `dependency_wait` or pass an empty Hash; this uses `poll_timeout = 0` (polling-only, no reschedule)
 
@@ -249,7 +249,7 @@ dependency_wait: { poll_timeout: 30, reschedule_delay: 15 }
 dependency_wait: { poll_timeout: 60, reschedule_delay: 30 }
 ```
 
-**Note**: Boolean shorthand for `dependency_wait` is not supported. To enable rescheduling use a positive `poll_timeout` (via integer shorthand or as a Hash option); otherwise omit `dependency_wait` or pass an empty Hash to use polling-only behavior (poll_timeout = 0).
+**Note**: bool shorthand for `dependency_wait` is not supported. To enable rescheduling use a positive `poll_timeout` (via integer shorthand or as a Hash option); otherwise omit `dependency_wait` or pass an empty Hash to use polling-only behavior (poll_timeout = 0).
 ### 2. Consider Worker Pool Size
 
 If you have many workers, a longer `poll_timeout` is acceptable:

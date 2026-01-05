@@ -94,17 +94,17 @@ RSpec.describe "DSL Basics" do
         stub_const("OrderIndependentJob", Class.new(ApplicationJob) do
           include JobWorkflow::DSL
 
-          task :step3, depends_on: [:step2], output: { final: "Boolean" } do |_ctx|
+          task :step3, depends_on: [:step2], output: { final: "bool" } do |_ctx|
             execution_tracker << :step3
             { final: true }
           end
 
-          task :step1, output: { initial: "Boolean" } do |_ctx|
+          task :step1, output: { initial: "bool" } do |_ctx|
             execution_tracker << :step1
             { initial: true }
           end
 
-          task :step2, depends_on: [:step1], output: { middle: "Boolean" } do |_ctx|
+          task :step2, depends_on: [:step1], output: { middle: "bool" } do |_ctx|
             execution_tracker << :step2
             { middle: true }
           end

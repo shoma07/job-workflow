@@ -207,7 +207,7 @@ Payload includes:
 - `each_index` - Index in collection (for `each:` tasks)
 - `dry_run_name` - Operation name (if provided)
 - `dry_run_index` - Sequential index of skip_in_dry_run calls within the task
-- `dry_run` - Boolean indicating if operation was skipped
+- `dry_run` - bool indicating if operation was skipped
 
 ## Logging
 

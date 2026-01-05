@@ -57,15 +57,15 @@ JobWorkflow automatically topologically sorts dependencies.
 
 ```ruby
 # Correct order is executed regardless of definition order
-task :step3, depends_on: [:step2], output: { final: "Boolean" } do |ctx|
+task :step3, depends_on: [:step2], output: { final: "bool" } do |ctx|
   { final: true }
 end
 
-task :step1, output: { initial: "Boolean" } do |ctx|
+task :step1, output: { initial: "bool" } do |ctx|
   { initial: true }
 end
 
-task :step2, depends_on: [:step1], output: { middle: "Boolean" } do |ctx|
+task :step2, depends_on: [:step1], output: { middle: "bool" } do |ctx|
   { middle: true }
 end
 
@@ -165,7 +165,7 @@ end
 ```ruby
 argument :user, "User"
 argument :amount, "Integer"
-argument :verified, "Boolean"
+argument :verified, "bool"
 
 # condition: Execute only if condition returns true
 task :premium_feature, 
@@ -184,7 +184,7 @@ end
 # Complex condition
 task :complex, 
   condition: ->(ctx) { ctx.arguments.amount > 1000 && ctx.arguments.verified },
-  output: { vip_process: "Boolean" } do |ctx|
+  output: { vip_process: "bool" } do |ctx|
   { vip_process: true }
 end
 ```

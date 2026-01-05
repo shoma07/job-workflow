@@ -84,7 +84,7 @@ class DataPipelineJob < ApplicationJob
     { raw_data: ExternalAPI.fetch(source) }
   end
   
-  task :validate_data, depends_on: [:fetch_data], output: { valid: "Boolean" } do |ctx|
+  task :validate_data, depends_on: [:fetch_data], output: { valid: "bool" } do |ctx|
     data = ctx.output[:fetch_data][:raw_data]
     { valid: validate(data) }
   end
@@ -118,7 +118,7 @@ class RobustDataPipelineJob < ApplicationJob
   task :validate_data, 
     depends_on: [:fetch_data],
     retry: { count: 2, strategy: :linear, base_delay: 1 },
-    output: { valid: "Boolean" } do |ctx|
+    output: { valid: "bool" } do |ctx|
     data = ctx.output[:fetch_data][:raw_data]
     { valid: validate(data) }
   end
