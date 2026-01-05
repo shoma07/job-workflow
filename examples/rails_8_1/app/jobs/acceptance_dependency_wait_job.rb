@@ -2,7 +2,7 @@
 
 # Job for acceptance testing - dependency wait feature
 class AcceptanceDependencyWaitJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
 
   argument :items, "Array[Integer]"
 

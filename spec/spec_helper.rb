@@ -9,7 +9,7 @@ SimpleCov.start do
   add_filter "/spec/"
 end
 
-require "job-flow"
+require "job-workflow"
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure
@@ -24,7 +24,7 @@ RSpec.configure do |config|
 
   # Reset QueueAdapter after each test to ensure isolation
   config.after do
-    JobFlow::QueueAdapter.reset!
-    JobFlow::CacheStoreAdapters.reset!
+    JobWorkflow::QueueAdapter.reset!
+    JobWorkflow::CacheStoreAdapters.reset!
   end
 end

@@ -1,6 +1,6 @@
 # Lifecycle Hooks
 
-JobFlow provides lifecycle hooks to insert processing before and after task execution. Use `before`, `after`, `around`, and `on_error` hooks to implement cross-cutting concerns such as logging, validation, metrics collection, error notification, and external monitoring integration.
+JobWorkflow provides lifecycle hooks to insert processing before and after task execution. Use `before`, `after`, `around`, and `on_error` hooks to implement cross-cutting concerns such as logging, validation, metrics collection, error notification, and external monitoring integration.
 
 ## Hook Scope
 
@@ -12,7 +12,7 @@ When no task names are specified, the hook applies to all tasks:
 
 ```ruby
 class GlobalLoggingJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   # This hook runs before EVERY task
   before do |ctx|
@@ -68,7 +68,7 @@ Execute processing before task execution.
 
 ```ruby
 class ValidationWorkflowJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :order_id, "Integer"
   
@@ -97,7 +97,7 @@ Execute processing after task execution.
 
 ```ruby
 class NotificationWorkflowJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :user_id, "Integer"
   
@@ -131,7 +131,7 @@ Execute processing that wraps task execution. **Important:** You must call `task
 
 ```ruby
 class MetricsWorkflowJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   # Measure execution time
   around :expensive_task do |ctx, task|
@@ -163,7 +163,7 @@ Hooks are executed in definition order. When multiple hooks apply to a task, the
 
 ```ruby
 class OrderedHooksJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   before do |ctx|
     puts "1. Global before"
@@ -212,7 +212,7 @@ end
 
 ## around Hook: task.call is Required
 
-In around hooks, you **must** call `task.call` to execute the task. If you forget to call it, JobFlow raises `TaskCallable::NotCalledError`:
+In around hooks, you **must** call `task.call` to execute the task. If you forget to call it, JobWorkflow raises `TaskCallable::NotCalledError`:
 
 ```ruby
 # ❌ BAD: Missing task.call
@@ -221,7 +221,7 @@ around :my_task do |ctx, task|
   # Forgot task.call!
   puts "After task"
 end
-# => Raises: JobFlow::TaskCallable::NotCalledError:
+# => Raises: JobWorkflow::TaskCallable::NotCalledError:
 #    around hook for 'my_task' did not call task.call
 
 # ✅ GOOD: Properly calling task.call
@@ -238,7 +238,7 @@ Additionally, `task.call` can only be called once. Calling it multiple times rai
 # ❌ BAD: Calling task.call multiple times
 around :my_task do |ctx, task|
   task.call
-  task.call  # => Raises: JobFlow::TaskCallable::AlreadyCalledError
+  task.call  # => Raises: JobWorkflow::TaskCallable::AlreadyCalledError
 end
 ```
 
@@ -250,7 +250,7 @@ Execute processing when a task raises an exception. This hook is ideal for error
 
 ```ruby
 class ErrorNotificationWorkflowJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :user_id, "Integer"
   
@@ -305,7 +305,7 @@ When a task fails, error hooks execute in definition order (global first, then t
 
 ```ruby
 class MultipleErrorHooksJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   on_error do |ctx, error, task|
     puts "1. Global error handler"
@@ -374,7 +374,7 @@ end
 
 ```ruby
 class ErrorHandlingJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   # If before hook raises, task won't execute
   before :process_order do |ctx|
@@ -395,7 +395,7 @@ When using hooks with map tasks (`each` or `concurrency`), the hooks execute for
 
 ```ruby
 class BatchWithHooksJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :user_ids, "Array[Integer]"
   

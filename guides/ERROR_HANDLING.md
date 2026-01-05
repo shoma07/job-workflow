@@ -1,6 +1,6 @@
 # Error Handling
 
-JobFlow provides robust error handling features. With retry strategies and custom error handling, you can build reliable workflows.
+JobWorkflow provides robust error handling features. With retry strategies and custom error handling, you can build reliable workflows.
 
 ## Retry Configuration
 
@@ -23,14 +23,14 @@ end
 Use a Hash for detailed retry configuration with exponential backoff.
 
 ```ruby
-task :advanced_retry, 
-  retry: {
-    count: 5,                # Maximum retry attempts
-    strategy: :exponential,  # :linear or :exponential
-    base_delay: 2,           # Initial wait time in seconds
-    jitter: true             # Add ±randomness to prevent thundering herd
-  },
-  output: { result: "String" } do |ctx|
+task :advanced_retry,
+     retry: {
+       count: 5,                # Maximum retry attempts
+       strategy: :exponential,  # :linear or :exponential
+       base_delay: 2,           # Initial wait time in seconds
+       jitter: true             # Add ±randomness to prevent thundering herd
+     },
+     output: { result: "String" } do |ctx|
   { result: unreliable_operation }
   # Retry intervals: 2±1s, 4±2s, 8±4s, 16±8s, 32±16s
 end
@@ -43,9 +43,9 @@ end
 Retries at fixed intervals.
 
 ```ruby
-task :linear_retry, 
-  retry: { count: 5, strategy: :linear, base_delay: 10 },
-  output: { result: "String" } do |ctx|
+task :linear_retry,
+     retry: { count: 5, strategy: :linear, base_delay: 10 },
+     output: { result: "String" } do |ctx|
   { result: operation }
   # Retry intervals: 10s, 10s, 10s, 10s, 10s
 end
@@ -56,9 +56,9 @@ end
 Doubles wait time with each retry.
 
 ```ruby
-task :exponential_retry, 
-  retry: { count: 5, strategy: :exponential, base_delay: 2, jitter: true },
-  output: { result: "String" } do |ctx|
+task :exponential_retry,
+     retry: { count: 5, strategy: :exponential, base_delay: 2, jitter: true },
+     output: { result: "String" } do |ctx|
   { result: operation }
   # Retry intervals: 2±1s, 4±2s, 8±4s, 16±8s, 32±16s
 end
@@ -72,23 +72,23 @@ To retry the entire workflow (all tasks from the beginning) when an error occurs
 
 ```ruby
 class DataPipelineJob < ApplicationJob
-  include JobFlow::DSL
-  
+  include JobWorkflow::DSL
+
   argument :data_source, "String"
-  
+
   # Retry the entire workflow on StandardError (e.g., API timeouts)
   retry_on StandardError, wait: :exponentially_longer, attempts: 5
-  
+
   task :fetch_data, output: { raw_data: "String" } do |ctx|
     source = ctx.arguments.data_source
     { raw_data: ExternalAPI.fetch(source) }
   end
-  
-  task :validate_data, depends_on: [:fetch_data], output: { valid: "Boolean" } do |ctx|
+
+  task :validate_data, depends_on: [:fetch_data], output: { valid: "bool" } do |ctx|
     data = ctx.output[:fetch_data][:raw_data]
     { valid: validate(data) }
   end
-  
+
   task :process_data, depends_on: [:validate_data] do |ctx|
     # ... process data
   end
@@ -101,28 +101,28 @@ You can combine task-level retries (for handling transient errors) with workflow
 
 ```ruby
 class RobustDataPipelineJob < ApplicationJob
-  include JobFlow::DSL
-  
+  include JobWorkflow::DSL
+
   # Workflow-level: Handle catastrophic failures (e.g., database connection loss)
   retry_on DatabaseConnectionError, wait: :exponentially_longer, attempts: 3
-  
+
   argument :batch_id, "String"
-  
+
   # Task-level: Handle transient API errors
-  task :fetch_data, 
-    retry: { count: 3, strategy: :exponential, base_delay: 2 },
-    output: { raw_data: "String" } do |ctx|
+  task :fetch_data,
+       retry: { count: 3, strategy: :exponential, base_delay: 2 },
+       output: { raw_data: "String" } do |ctx|
     { raw_data: ExternalAPI.fetch(ctx.arguments.batch_id) }
   end
-  
-  task :validate_data, 
-    depends_on: [:fetch_data],
-    retry: { count: 2, strategy: :linear, base_delay: 1 },
-    output: { valid: "Boolean" } do |ctx|
+
+  task :validate_data,
+       depends_on: [:fetch_data],
+       retry: { count: 2, strategy: :linear, base_delay: 1 },
+       output: { valid: "bool" } do |ctx|
     data = ctx.output[:fetch_data][:raw_data]
     { valid: validate(data) }
   end
-  
+
   task :store_results, depends_on: [:validate_data] do |ctx|
     # If this succeeds, the entire workflow is complete
     # If a database connection error occurs here, the entire job is retried
@@ -137,28 +137,20 @@ The `retry_on` method supports several options from ActiveJob:
 
 ```ruby
 class MyWorkflowJob < ApplicationJob
-  include JobFlow::DSL
-  
+  include JobWorkflow::DSL
+
   # Wait with exponential backoff (2, 4, 8, 16, 32 seconds...)
-  retry_on TimeoutError, 
-    wait: :exponentially_longer, 
-    attempts: 5
-  
+  retry_on TimeoutError, wait: :exponentially_longer, attempts: 5
+
   # Wait with a fixed interval
-  retry_on APIError, 
-    wait: 30.seconds, 
-    attempts: 3
-  
+  retry_on APIError, wait: 30.seconds, attempts: 3
+
   # Custom wait logic
-  retry_on CustomError,
-    wait: ->(executions) { (executions + 1) * 10.seconds },
-    attempts: 4
-  
+  retry_on CustomError, wait: ->(executions) { (executions + 1) * 10.seconds }, attempts: 4
+
   # Multiple error types
-  retry_on TimeoutError, APIError,
-    wait: :exponentially_longer,
-    attempts: 3
-  
+  retry_on TimeoutError, APIError, wait: :exponentially_longer, attempts: 3
+
   # ... task definitions
 end
 ```
@@ -177,8 +169,8 @@ end
 
 1. **Task-level retries** for transient, recoverable errors:
    ```ruby
-   task :api_call, 
-     retry: { count: 3, strategy: :exponential, base_delay: 2 }
+   task :api_call,
+        retry: { count: 3, strategy: :exponential, base_delay: 2 }
    ```
 
 2. **Workflow-level retries** for environment issues (database, network):

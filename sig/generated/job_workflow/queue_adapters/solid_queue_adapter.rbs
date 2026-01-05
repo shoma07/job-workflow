@@ -1,0 +1,111 @@
+# Generated from lib/job_workflow/queue_adapters/solid_queue_adapter.rb with RBS::Inline
+
+module JobWorkflow
+  module QueueAdapters
+    # rubocop:disable Naming/PredicateMethod
+    class SolidQueueAdapter < Abstract
+      # @note
+      #   - Registry scope: @semaphore_registry is process-scoped (shared across fibers/threads
+      #     in the same process) and lives for the lifetime of the worker process. It is not
+      #     serialized to persistent storage; semaphores are transient per worker instance.
+      #   - Cleanup: The adapter relies on SolidQueue::Worker lifecycle hooks to clean up
+      #     active semaphores when the worker stops. If a worker crashes, semaphores will
+      #     leak until the underlying database records expire or are manually cleaned.
+      #
+      # :  () -> void
+      def initialize: () -> void
+
+      # :  () -> void
+      def initialize_adapter!: () -> void
+
+      # :  () -> bool
+      def semaphore_available?: () -> bool
+
+      # @note
+      #   - Thread safety: @semaphore_registry is a non-thread-safe Hash. In multi-threaded workers,
+      #     concurrent calls to semaphore_wait or semaphore_signal may cause race conditions.
+      #     Mitigation: SolidQueue workers typically run in single-threaded Fiber mode; verify
+      #     worker configuration does not enable raw multithreading.
+      #   - Double-wait behavior: If semaphore_wait is called twice for the same Semaphore
+      #     (e.g., due to retry or requeue), the second call returns false and does not
+      #     re-register the hook. This is a fail-fast contract: the semaphore is already
+      #     being waited and will signal the registered hook.
+      #
+      # :  (Semaphore) -> bool
+      def semaphore_wait: (Semaphore) -> bool
+
+      # @note
+      #   - Lifecycle management: The adapter is responsible for removing the hook from
+      #     SolidQueue::Worker.lifecycle_hooks[:stop] before calling signal. The hook must
+      #     be deleted from the registry and the global lifecycle_hooks to prevent redundant
+      #     signal calls after the semaphore has already been signaled.
+      #   - Hook deletion order: The hook is deleted before calling signal to ensure the
+      #     hook lambda is no longer invoked even if the signal triggers a worker stop.
+      #
+      # :  (Semaphore) -> bool
+      def semaphore_signal: (Semaphore) -> bool
+
+      # :  (Array[String]) -> Hash[String, untyped]
+      def fetch_job_statuses: (Array[String]) -> Hash[String, untyped]
+
+      # :  (untyped) -> Symbol
+      def job_status: (untyped) -> Symbol
+
+      # :  () -> bool
+      def supports_concurrency_limits?: () -> bool
+
+      # :  (String) -> bool
+      def pause_queue: (String) -> bool
+
+      # :  (String) -> bool
+      def resume_queue: (String) -> bool
+
+      # :  (String) -> bool
+      def queue_paused?: (String) -> bool
+
+      # :  () -> Array[String]
+      def paused_queues: () -> Array[String]
+
+      # :  (String) -> Integer?
+      def queue_latency: (String) -> Integer?
+
+      # :  (String) -> Integer
+      def queue_size: (String) -> Integer
+
+      # :  (String) -> bool
+      def clear_queue: (String) -> bool
+
+      # @note
+      #   - SolidQueue stores the full ActiveJob serialization in job.arguments
+      #   - We need to extract the actual arguments array for consistency
+      #
+      # :  (String) -> Hash[String, untyped]?
+      def find_job: (String) -> Hash[String, untyped]?
+
+      # :  (DSL, Numeric) -> bool
+      def reschedule_job: (DSL, Numeric) -> bool
+
+      private
+
+      attr_reader semaphore_registry: Hash[Object, ^(SolidQueue::Worker) -> void]
+
+      # :  (SolidQueue::Job, DSL, Numeric) -> bool
+      def reschedule_solid_queue_job: (SolidQueue::Job, DSL, Numeric) -> bool
+
+      # @rbs module-self SolidQueue::ClaimedExecution
+      module ClaimedExecutionPatch : SolidQueue::ClaimedExecution
+        private
+
+        # :  () -> SolidQueue::ClaimedExecution
+        def finished: () -> SolidQueue::ClaimedExecution
+      end
+
+      module SchedulingPatch
+        private
+
+        # :  () -> Hash[Symbol, Hash[Symbol, untyped]]
+        def recurring_tasks_config: () -> Hash[Symbol, Hash[Symbol, untyped]]
+      end
+    end
+  end
+end

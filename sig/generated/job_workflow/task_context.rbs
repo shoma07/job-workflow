@@ -1,0 +1,52 @@
+# Generated from lib/job_workflow/task_context.rb with RBS::Inline
+
+module JobWorkflow
+  class TaskContext
+    NULL_VALUE: nil
+
+    attr_reader task: Task?
+
+    attr_reader parent_job_id: String?
+
+    attr_reader index: Integer
+
+    attr_reader value: untyped
+
+    attr_reader retry_count: Integer
+
+    attr_reader dry_run: bool
+
+    # :  (Hash[String, untyped]) -> TaskContext
+    def self.deserialize: (Hash[String, untyped]) -> TaskContext
+
+    # :  (
+    #      ?task: Task?,
+    #      ?parent_job_id: String?,
+    #      ?index: Integer,
+    #      ?value: untyped,
+    #      ?retry_count: Integer,
+    #      ?dry_run: bool
+    #    ) -> void
+    def initialize: (?task: Task?, ?parent_job_id: String?, ?index: Integer, ?value: untyped, ?retry_count: Integer, ?dry_run: bool) -> void
+
+    # :  () -> bool
+    def enabled?: () -> bool
+
+    # :  () -> Hash[String, untyped]
+    def serialize: () -> Hash[String, untyped]
+
+    private
+
+    attr_writer task: Task?
+
+    attr_writer parent_job_id: String?
+
+    attr_writer index: Integer
+
+    attr_writer value: untyped
+
+    attr_writer retry_count: Integer
+
+    attr_writer dry_run: bool
+  end
+end

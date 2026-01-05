@@ -1,64 +1,64 @@
 # frozen_string_literal: true
 
 RSpec.describe "Queue Management" do
-  describe "JobFlow::Queue.pause and resume" do
+  describe "JobWorkflow::Queue.pause and resume" do
     let(:queue_name) { :test_queue }
 
     after do
       # Ensure queue is resumed after tests
-      JobFlow::Queue.resume(queue_name)
+      JobWorkflow::Queue.resume(queue_name)
     end
 
     context "when pausing a queue" do
       it "pauses the queue successfully" do
-        expect(JobFlow::Queue.pause(queue_name)).to be true
+        expect(JobWorkflow::Queue.pause(queue_name)).to be true
       end
 
       it "marks the queue as paused" do
-        JobFlow::Queue.pause(queue_name)
-        expect(JobFlow::Queue.paused?(queue_name)).to be true
+        JobWorkflow::Queue.pause(queue_name)
+        expect(JobWorkflow::Queue.paused?(queue_name)).to be true
       end
     end
 
     context "when resuming a paused queue" do
-      before { JobFlow::Queue.pause(queue_name) }
+      before { JobWorkflow::Queue.pause(queue_name) }
 
       it "resumes the queue successfully" do
-        expect(JobFlow::Queue.resume(queue_name)).to be true
+        expect(JobWorkflow::Queue.resume(queue_name)).to be true
       end
 
       it "marks the queue as not paused" do
-        JobFlow::Queue.resume(queue_name)
-        expect(JobFlow::Queue.paused?(queue_name)).to be false
+        JobWorkflow::Queue.resume(queue_name)
+        expect(JobWorkflow::Queue.paused?(queue_name)).to be false
       end
     end
   end
 
-  describe "JobFlow::Queue.paused_queues" do
+  describe "JobWorkflow::Queue.paused_queues" do
     let(:queue1) { :queue_mgmt_test_1 }
     let(:queue2) { :queue_mgmt_test_2 }
 
     after do
-      JobFlow::Queue.resume(queue1)
-      JobFlow::Queue.resume(queue2)
+      JobWorkflow::Queue.resume(queue1)
+      JobWorkflow::Queue.resume(queue2)
     end
 
     context "when multiple queues are paused" do
       before do
-        JobFlow::Queue.pause(queue1)
-        JobFlow::Queue.pause(queue2)
+        JobWorkflow::Queue.pause(queue1)
+        JobWorkflow::Queue.pause(queue2)
       end
 
       it "returns list of paused queues" do
-        paused = JobFlow::Queue.paused_queues
+        paused = JobWorkflow::Queue.paused_queues
         expect(paused).to include(queue1.to_s, queue2.to_s)
       end
     end
   end
 
-  describe "JobFlow::Queue.size" do
+  describe "JobWorkflow::Queue.size" do
     context "when queue exists" do
-      subject(:queue_size) { JobFlow::Queue.size(:default) }
+      subject(:queue_size) { JobWorkflow::Queue.size(:default) }
 
       it "returns a non-negative integer" do
         expect(queue_size).to be_a(Integer).and be >= 0
@@ -66,13 +66,13 @@ RSpec.describe "Queue Management" do
     end
   end
 
-  describe "JobFlow::Queue.latency" do
+  describe "JobWorkflow::Queue.latency" do
     context "when queue has waiting jobs" do
-      subject(:latency) { JobFlow::Queue.latency(:default) }
+      subject(:latency) { JobWorkflow::Queue.latency(:default) }
 
       before do
         stub_const("LatencyTestJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           task :simple, output: { result: "String" } do |_ctx|
             { result: "done" }
@@ -88,12 +88,12 @@ RSpec.describe "Queue Management" do
     end
   end
 
-  describe "JobFlow::Queue.clear" do
+  describe "JobWorkflow::Queue.clear" do
     let(:queue_name) { :clear_test_queue }
 
     before do
       stub_const("ClearTestJob", Class.new(ApplicationJob) do
-        include JobFlow::DSL
+        include JobWorkflow::DSL
 
         queue_as :clear_test_queue
 
@@ -106,15 +106,15 @@ RSpec.describe "Queue Management" do
     end
 
     it "clears all jobs from the queue" do
-      JobFlow::Queue.clear(queue_name)
-      expect(JobFlow::Queue.size(queue_name)).to eq(0)
+      JobWorkflow::Queue.clear(queue_name)
+      expect(JobWorkflow::Queue.size(queue_name)).to eq(0)
     end
   end
 
-  describe "JobFlow::Queue.workflows" do
+  describe "JobWorkflow::Queue.workflows" do
     before do
       stub_const("WorkflowAJob", Class.new(ApplicationJob) do
-        include JobFlow::DSL
+        include JobWorkflow::DSL
 
         queue_as :workflow_test_queue
 
@@ -124,7 +124,7 @@ RSpec.describe "Queue Management" do
       end)
 
       stub_const("WorkflowBJob", Class.new(ApplicationJob) do
-        include JobFlow::DSL
+        include JobWorkflow::DSL
 
         queue_as :workflow_test_queue
 
@@ -134,7 +134,7 @@ RSpec.describe "Queue Management" do
       end)
 
       stub_const("WorkflowCJob", Class.new(ApplicationJob) do
-        include JobFlow::DSL
+        include JobWorkflow::DSL
 
         queue_as :other_queue
 
@@ -145,7 +145,7 @@ RSpec.describe "Queue Management" do
     end
 
     it "returns workflow classes for specified queue" do
-      workflows = JobFlow::Queue.workflows(:workflow_test_queue)
+      workflows = JobWorkflow::Queue.workflows(:workflow_test_queue)
       expect(workflows).to include(WorkflowAJob, WorkflowBJob)
       expect(workflows).not_to include(WorkflowCJob)
     end
@@ -156,7 +156,7 @@ RSpec.describe "Queue Management" do
     let(:received_events) { [] }
 
     before do
-      %w[queue.pause.job_flow queue.resume.job_flow].each do |event_name|
+      %w[queue.pause.job_workflow queue.resume.job_workflow].each do |event_name|
         ActiveSupport::Notifications.subscribe(event_name) do |name, _start, _finish, _id, payload|
           received_events << { name: name, queue_name: payload[:queue_name] }
         end
@@ -164,22 +164,22 @@ RSpec.describe "Queue Management" do
     end
 
     after do
-      %w[queue.pause.job_flow queue.resume.job_flow].each do |event_name|
+      %w[queue.pause.job_workflow queue.resume.job_workflow].each do |event_name|
         ActiveSupport::Notifications.unsubscribe(event_name)
       end
-      JobFlow::Queue.resume(queue_name)
+      JobWorkflow::Queue.resume(queue_name)
     end
 
     it "emits pause event when queue is paused" do
-      JobFlow::Queue.pause(queue_name)
-      pause_events = received_events.select { |e| e[:name] == "queue.pause.job_flow" }
+      JobWorkflow::Queue.pause(queue_name)
+      pause_events = received_events.select { |e| e[:name] == "queue.pause.job_workflow" }
       expect(pause_events.first[:queue_name]).to eq(queue_name.to_s)
     end
 
     it "emits resume event when queue is resumed" do
-      JobFlow::Queue.pause(queue_name)
-      JobFlow::Queue.resume(queue_name)
-      resume_events = received_events.select { |e| e[:name] == "queue.resume.job_flow" }
+      JobWorkflow::Queue.pause(queue_name)
+      JobWorkflow::Queue.resume(queue_name)
+      resume_events = received_events.select { |e| e[:name] == "queue.resume.job_workflow" }
       expect(resume_events.first[:queue_name]).to eq(queue_name.to_s)
     end
   end

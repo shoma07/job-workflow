@@ -12,7 +12,7 @@ RSpec.describe "Dry-Run Mode" do
         tracker = execution_log
 
         stub_const("DryRunTrueJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           dry_run true
 
@@ -43,7 +43,7 @@ RSpec.describe "Dry-Run Mode" do
 
       before do
         stub_const("DryRunProcJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           argument :dry_run_mode, "TrueClass | FalseClass"
 
@@ -73,7 +73,7 @@ RSpec.describe "Dry-Run Mode" do
         tracker = executed_operations
 
         stub_const("SkipInDryRunJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           dry_run true
 
@@ -110,7 +110,7 @@ RSpec.describe "Dry-Run Mode" do
         tracker = executed_operations
 
         stub_const("NotDryRunJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           define_method(:tracker) { tracker }
 
@@ -142,7 +142,7 @@ RSpec.describe "Dry-Run Mode" do
 
       before do
         stub_const("DryRunWithFallbackJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           dry_run true
 
@@ -168,7 +168,7 @@ RSpec.describe "Dry-Run Mode" do
 
       before do
         stub_const("DryRunNamedOperationJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           dry_run true
 
@@ -203,7 +203,7 @@ RSpec.describe "Dry-Run Mode" do
 
       before do
         stub_const("TaskLevelDryRunJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           task :normal_task, output: { dry_run_status: "TrueClass | FalseClass" } do |ctx|
             { dry_run_status: ctx.dry_run? }

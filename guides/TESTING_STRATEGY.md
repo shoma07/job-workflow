@@ -1,6 +1,6 @@
 # Testing Strategy
 
-This section covers effective testing methods for workflows built with JobFlow.
+This section covers effective testing methods for workflows built with JobWorkflow.
 
 ## Unit Testing
 
@@ -14,8 +14,8 @@ RSpec.describe UserRegistrationJob do
   describe 'task: validate_email' do
     it 'validates correct email format' do
       job = described_class.new
-      arguments = JobFlow::Arguments.new(email: 'user@example.com')
-      ctx = JobFlow::Context.new(arguments: arguments)
+      arguments = JobWorkflow::Arguments.new(email: 'user@example.com')
+      ctx = JobWorkflow::Context.new(arguments: arguments)
       
       task = described_class._workflow_tasks[:validate_email]
       expect { job.instance_exec(ctx, &task[:block]) }.not_to raise_error
@@ -23,8 +23,8 @@ RSpec.describe UserRegistrationJob do
     
     it 'raises error for invalid email' do
       job = described_class.new
-      arguments = JobFlow::Arguments.new(email: 'invalid')
-      ctx = JobFlow::Context.new(arguments: arguments)
+      arguments = JobWorkflow::Arguments.new(email: 'invalid')
+      ctx = JobWorkflow::Context.new(arguments: arguments)
       
       task = described_class._workflow_tasks[:validate_email]
       expect { job.instance_exec(ctx, &task[:block]) }.to raise_error(/Invalid email/)
@@ -34,11 +34,11 @@ RSpec.describe UserRegistrationJob do
   describe 'task: create_user' do
     it 'creates a new user' do
       job = described_class.new
-      arguments = JobFlow::Arguments.new(
+      arguments = JobWorkflow::Arguments.new(
         email: 'user@example.com',
         password: 'password123'
       )
-      ctx = JobFlow::Context.new(arguments: arguments)
+      ctx = JobWorkflow::Context.new(arguments: arguments)
       
       task = described_class._workflow_tasks[:create_user]
       

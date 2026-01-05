@@ -2,7 +2,7 @@
 
 # Job for acceptance testing - status query feature
 class AcceptanceStatusQueryJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
 
   argument :input_value, "Integer"
 

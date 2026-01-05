@@ -1,6 +1,6 @@
-# Getting Started with JobFlow
+# Getting Started with JobWorkflow
 
-Welcome to JobFlow! This guide will help you get up and running quickly with JobFlow, from installation to creating your first workflow.
+Welcome to JobWorkflow! This guide will help you get up and running quickly with JobWorkflow, from installation to creating your first workflow.
 
 ---
 
@@ -8,11 +8,11 @@ Welcome to JobFlow! This guide will help you get up and running quickly with Job
 
 Want to get started immediately? Here's the absolute minimum you need:
 
-### 1. Install JobFlow
+### 1. Install JobWorkflow
 
 ```ruby
 # Gemfile
-gem 'job-flow'
+gem 'job-workflow'
 ```
 
 ```bash
@@ -24,7 +24,7 @@ bundle install
 ```ruby
 # app/jobs/hello_workflow_job.rb
 class HelloWorkflowJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   # Define input argument
   argument :name, "String"
@@ -44,15 +44,15 @@ end
 HelloWorkflowJob.perform_later(name: "World")
 ```
 
-**That's it!** You've just created and executed your first JobFlow workflow. 🎉
+**That's it!** You've just created and executed your first JobWorkflow workflow. 🎉
 
 ---
 
-## What is JobFlow?
+## What is JobWorkflow?
 
-JobFlow is a declarative workflow orchestration engine for Ruby on Rails applications. Built on top of ActiveJob, it allows you to write complex workflows using a concise DSL.
+JobWorkflow is a declarative workflow orchestration engine for Ruby on Rails applications. Built on top of ActiveJob, it allows you to write complex workflows using a concise DSL.
 
-### Why JobFlow?
+### Why JobWorkflow?
 
 - **Declarative DSL**: Familiar syntax similar to Rake and RSpec
 - **Automatic Dependency Management**: Tasks execute in the correct order automatically
@@ -61,9 +61,9 @@ JobFlow is a declarative workflow orchestration engine for Ruby on Rails applica
 - **JSON Serialization**: Schema-tolerant context persistence
 - **Flexible Design**: A foundation for building production-style workflows
 
-### When to Use JobFlow
+### When to Use JobWorkflow
 
-JobFlow is ideal for:
+JobWorkflow is ideal for:
 
 - **ETL Pipelines**: Extract, transform, and load data workflows
 - **Business Processes**: Multi-step business logic with dependencies
@@ -78,7 +78,7 @@ JobFlow is ideal for:
 
 ### Requirements
 
-Before installing JobFlow, ensure your environment meets these requirements:
+Before installing JobWorkflow, ensure your environment meets these requirements:
 
 - **Ruby** >= 3.1.0
 - **Rails** >= 7.1.0 (ActiveJob, ActiveSupport)
@@ -87,11 +87,11 @@ Before installing JobFlow, ensure your environment meets these requirements:
 
 ### Adding to Gemfile
 
-Add JobFlow to your application's Gemfile:
+Add JobWorkflow to your application's Gemfile:
 
 ```ruby
 # Gemfile
-gem 'job-flow'
+gem 'job-workflow'
 
 # Optional but recommended: SolidQueue and SolidCache
 gem 'solid_queue'
@@ -140,15 +140,15 @@ bin/rails db:migrate
 
 ## Core Concepts
 
-Understanding these core concepts will help you build effective workflows with JobFlow.
+Understanding these core concepts will help you build effective workflows with JobWorkflow.
 
 ### Workflow
 
-A workflow is a collection of tasks that execute in a defined order. Each workflow is represented as a job class that includes `JobFlow::DSL`.
+A workflow is a collection of tasks that execute in a defined order. Each workflow is represented as a job class that includes `JobWorkflow::DSL`.
 
 ```ruby
 class MyWorkflowJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   # Tasks defined here
 end
@@ -254,7 +254,7 @@ Create a new job file:
 ```ruby
 # app/jobs/data_pipeline_job.rb
 class DataPipelineJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   # Define arguments (immutable inputs)
   argument :source_id, "Integer"
@@ -300,11 +300,11 @@ DataPipelineJob.perform_now(source_id: 123)
 2. After `extract` completes, the `transform` task executes
 3. After `transform` completes, the `load` task executes
 
-JobFlow automatically determines the correct execution order based on dependencies using topological sorting.
+JobWorkflow automatically determines the correct execution order based on dependencies using topological sorting.
 
 ### Step 4: Monitor Execution
 
-JobFlow outputs workflow execution status to the Rails logger:
+JobWorkflow outputs workflow execution status to the Rails logger:
 
 ```ruby
 # config/environments/development.rb
@@ -472,7 +472,7 @@ end
 
 ### Viewing Logs
 
-JobFlow uses structured JSON logging. Configure your log level:
+JobWorkflow uses structured JSON logging. Configure your log level:
 
 ```ruby
 # config/environments/development.rb
@@ -505,7 +505,7 @@ For automated testing, see the [TESTING_STRATEGY.md](TESTING_STRATEGY.md) guide.
 
 ## Next Steps
 
-Now that you have a basic understanding of JobFlow, here are some recommended next steps:
+Now that you have a basic understanding of JobWorkflow, here are some recommended next steps:
 
 1. **[DSL_BASICS.md](DSL_BASICS.md)** - Learn the full DSL syntax and task options
 2. **[TASK_OUTPUTS.md](TASK_OUTPUTS.md)** - Master task outputs and data passing
@@ -518,7 +518,7 @@ Now that you have a basic understanding of JobFlow, here are some recommended ne
 ## Need Help?
 
 - **Documentation**: Browse the other guides in this directory
-- **Issues**: Report bugs or request features on [GitHub](https://github.com/shoma07/job-flow/issues)
+- **Issues**: Report bugs or request features on [GitHub](https://github.com/shoma07/job-workflow/issues)
 - **Examples**: Check out the example workflows in the repository
 
 Happy workflow building! 🚀

@@ -53,19 +53,19 @@ end
 
 ### Dependency Resolution Order
 
-JobFlow automatically topologically sorts dependencies.
+JobWorkflow automatically topologically sorts dependencies.
 
 ```ruby
 # Correct order is executed regardless of definition order
-task :step3, depends_on: [:step2], output: { final: "Boolean" } do |ctx|
+task :step3, depends_on: [:step2], output: { final: "bool" } do |ctx|
   { final: true }
 end
 
-task :step1, output: { initial: "Boolean" } do |ctx|
+task :step1, output: { initial: "bool" } do |ctx|
   { initial: true }
 end
 
-task :step2, depends_on: [:step1], output: { middle: "Boolean" } do |ctx|
+task :step2, depends_on: [:step1], output: { middle: "bool" } do |ctx|
   { middle: true }
 end
 
@@ -80,7 +80,7 @@ Type information is specified as **strings**. This is used for RBS generation an
 
 ```ruby
 class TypedWorkflowJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   # Type information specified as strings (for RBS generation)
   argument :user_id, "Integer"
@@ -147,14 +147,14 @@ task :flaky_api, retry: 3, output: { response: "Hash" } do |ctx|
 end
 
 # Advanced retry configuration with exponential backoff
-task :advanced_retry, 
-  retry: {
-    count: 5,                # Maximum retry attempts
-    strategy: :exponential,  # :linear or :exponential
-    base_delay: 2,           # Initial wait time in seconds
-    jitter: true             # Add ±randomness to prevent thundering herd
-  },
-  output: { result: "String" } do |ctx|
+task :advanced_retry,
+     retry: {
+       count: 5,                # Maximum retry attempts
+       strategy: :exponential,  # :linear or :exponential
+       base_delay: 2,           # Initial wait time in seconds
+       jitter: true             # Add ±randomness to prevent thundering herd
+     },
+     output: { result: "String" } do |ctx|
   { result: unreliable_operation }
   # Retry intervals: 2±1s, 4±2s, 8±4s, 16±8s, 32±16s
 end
@@ -165,26 +165,26 @@ end
 ```ruby
 argument :user, "User"
 argument :amount, "Integer"
-argument :verified, "Boolean"
+argument :verified, "bool"
 
 # condition: Execute only if condition returns true
-task :premium_feature, 
-  condition: ->(ctx) { ctx.arguments.user.premium? },
-  output: { premium_result: "String" } do |ctx|
+task :premium_feature,
+     condition: ->(ctx) { ctx.arguments.user.premium? },
+     output: { premium_result: "String" } do |ctx|
   { premium_result: premium_process }
 end
 
 # Inverse condition using negation
-task :free_tier_limit, 
-  condition: ->(ctx) { !ctx.arguments.user.premium? },
-  output: { limited_result: "String" } do |ctx|
+task :free_tier_limit,
+     condition: ->(ctx) { !ctx.arguments.user.premium? },
+     output: { limited_result: "String" } do |ctx|
   { limited_result: limited_process }
 end
 
 # Complex condition
-task :complex, 
-  condition: ->(ctx) { ctx.arguments.amount > 1000 && ctx.arguments.verified },
-  output: { vip_process: "Boolean" } do |ctx|
+task :complex,
+     condition: ->(ctx) { ctx.arguments.amount > 1000 && ctx.arguments.verified },
+     output: { vip_process: "bool" } do |ctx|
   { vip_process: true }
 end
 ```
@@ -195,21 +195,21 @@ end
 argument :api_params, "Hash"
 
 # Simple syntax: Integer (recommended)
-task :api_call, 
-  throttle: 10,  # Max 10 concurrent executions, default key
-  output: { response: "Hash" } do |ctx|
+task :api_call,
+     throttle: 10,  # Max 10 concurrent executions, default key
+     output: { response: "Hash" } do |ctx|
   params = ctx.arguments.api_params
   { response: RateLimitedAPI.call(params) }
 end
 
 # Advanced syntax: Hash
-task :api_call_advanced, 
-  throttle: {
-    key: "external_api",     # Custom semaphore key
-    limit: 10,               # Concurrency limit
-    ttl: 120                 # Lease TTL in seconds (default: 180)
-  },
-  output: { response: "Hash" } do |ctx|
+task :api_call_advanced,
+     throttle: {
+       key: "external_api",     # Custom semaphore key
+       limit: 10,               # Concurrency limit
+       ttl: 120                 # Lease TTL in seconds (default: 180)
+     },
+     output: { response: "Hash" } do |ctx|
   params = ctx.arguments.api_params
   { response: RateLimitedAPI.call(params) }
 end

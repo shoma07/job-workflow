@@ -1,0 +1,48 @@
+# Generated from lib/job_workflow/workflow.rb with RBS::Inline
+
+module JobWorkflow
+  class Workflow
+    attr_reader namespace: Namespace
+
+    attr_reader dry_run_config: DryRunConfig
+
+    # :  () -> void
+    def initialize: () -> void
+
+    # :  (bool | ^(Context) -> bool) -> void
+    def dry_run_config=: (bool | ^(Context) -> bool) -> void
+
+    # :  (Namespace) { () -> void } -> void
+    def add_namespace: (Namespace) { () -> void } -> void
+
+    # :  (Task) -> void
+    def add_task: (Task) -> void
+
+    # :  (ArgumentDef) -> void
+    def add_argument: (ArgumentDef) -> void
+
+    # :  (Schedule) -> void
+    def add_schedule: (Schedule) -> void
+
+    # :  (Symbol, task_names: Array[Symbol], block: untyped) -> void
+    def add_hook: (Symbol, task_names: Array[Symbol], block: untyped) -> void
+
+    # :  () -> HookRegistry
+    def hooks: () -> HookRegistry
+
+    # :  () -> Array[Task]
+    def tasks: () -> Array[Task]
+
+    # :  (Symbol?) -> Task?
+    def fetch_task: (Symbol?) -> Task?
+
+    # :  () -> Array[ArgumentDef]
+    def arguments: () -> Array[ArgumentDef]
+
+    # :  () -> Hash[Symbol, Hash[Symbol, untyped]]
+    def build_schedules_hash: () -> Hash[Symbol, Hash[Symbol, untyped]]
+
+    # :  () -> Hash[Symbol, untyped]
+    def build_arguments_hash: () -> Hash[Symbol, untyped]
+  end
+end

@@ -1,6 +1,6 @@
 # Throttling
 
-JobFlow provides semaphore-based throttling to handle external API rate limits and protect shared resources. Throttling works across multiple jobs and workers, ensuring system-wide rate limiting.
+JobWorkflow provides semaphore-based throttling to handle external API rate limits and protect shared resources. Throttling works across multiple jobs and workers, ensuring system-wide rate limiting.
 
 ## Task-Level Throttling
 
@@ -10,17 +10,14 @@ For most use cases, specify the concurrency limit as an integer:
 
 ```ruby
 class ExternalAPIJob < ApplicationJob
-  include JobFlow::DSL
-  
+  include JobWorkflow::DSL
+
   argument :user_ids, "Array[Integer]"
-  
+
   # Allow up to 10 concurrent executions of this task
   # Default key: "ExternalAPIJob:fetch_user_data"
   # Default TTL: 180 seconds
-  task :fetch_user_data,
-       throttle: 10,
-       each: ->(ctx) { ctx.arguments.user_ids },
-       output: { user_data: "Hash" } do |ctx|
+  task :fetch_user_data, throttle: 10, each: ->(ctx) { ctx.arguments.user_ids }, output: { user_data: "Hash" } do |ctx|
     { user_data: ExternalAPI.fetch_user(ctx.each_value) }
   end
 end
@@ -49,23 +46,21 @@ Use the same `key` to share rate limits across different jobs and tasks:
 ```ruby
 # Both jobs share the same "payment_api" throttle limit
 class CreateUserJob < ApplicationJob
-  include JobFlow::DSL
-  
+  include JobWorkflow::DSL
+
   argument :user_data, "Hash"
-  
-  task :create_customer,
-       throttle: { key: "payment_api", limit: 5 } do |ctx|
+
+  task :create_customer, throttle: { key: "payment_api", limit: 5 } do |ctx|
     PaymentService.create_customer(ctx.arguments.user_data)
   end
 end
 
 class UpdateBillingJob < ApplicationJob
-  include JobFlow::DSL
-  
+  include JobWorkflow::DSL
+
   argument :billing_id, "String"
-  
-  task :update_billing,
-       throttle: { key: "payment_api", limit: 5 } do |ctx|
+
+  task :update_billing, throttle: { key: "payment_api", limit: 5 } do |ctx|
     PaymentService.update_billing(ctx.arguments.billing_id)
   end
 end
@@ -85,9 +80,7 @@ end
 argument :data, "Hash"
 
 # Example: Task with max 3 concurrent executions
-task :limited_task,
-     throttle: 3,
-     output: { result: "String" } do |ctx|
+task :limited_task, throttle: 3, output: { result: "String" } do |ctx|
   data = ctx.arguments.data
   { result: SharedResource.use(data) }
 end
@@ -107,15 +100,12 @@ Throttling is especially useful with map tasks to limit API calls:
 
 ```ruby
 class BatchFetchJob < ApplicationJob
-  include JobFlow::DSL
-  
+  include JobWorkflow::DSL
+
   argument :ids, "Array[Integer]"
-  
+
   # Each iteration waits for a throttle slot
-  task :fetch_all,
-       throttle: 5,
-       each: ->(ctx) { ctx.arguments.ids },
-       output: { data: "Hash" } do |ctx|
+  task :fetch_all, throttle: 5, each: ->(ctx) { ctx.arguments.ids }, output: { data: "Hash" } do |ctx|
     { data: RateLimitedAPI.fetch(ctx.each_value) }
   end
 end
@@ -130,14 +120,14 @@ For fine-grained control within a task, use the `ctx.throttle` method to wrap sp
 
 ```ruby
 class ComplexProcessingJob < ApplicationJob
-  include JobFlow::DSL
-  
+  include JobWorkflow::DSL
+
   argument :data, "Hash"
-  
+
   task :process_and_save do |ctx|
     # Read operations - no throttle needed
     data = ExternalAPI.fetch(ctx.arguments.data[:id])
-    
+
     # Write operations - throttled
     ctx.throttle(limit: 3, key: "db_write") do
       Model.create!(data)
@@ -156,7 +146,7 @@ task :multi_api_task do |ctx|
   ctx.throttle(limit: 5, key: "payment_api") do
     PaymentService.process(ctx.arguments.payment_data)
   end
-  
+
   # Notification API: max 10 concurrent
   ctx.throttle(limit: 10, key: "notification_api") do
     NotificationService.send(ctx.arguments.message_params)
@@ -174,7 +164,7 @@ task :sequential_operations do |ctx|
   ctx.throttle(limit: 5) do
     first_operation
   end
-  
+
   # Key: "MyJob:sequential_operations:1"
   ctx.throttle(limit: 5) do
     second_operation
@@ -188,22 +178,20 @@ Use both approaches for comprehensive rate limiting:
 
 ```ruby
 class APIIntegrationJob < ApplicationJob
-  include JobFlow::DSL
-  
+  include JobWorkflow::DSL
+
   argument :ids, "Array[Integer]"
-  
+
   # Task-level throttle: limits overall task concurrency
-  task :process_items,
-       throttle: 10,
-       each: ->(ctx) { ctx.arguments.ids } do |ctx|
-    
+  task :process_items, throttle: 10, each: ->(ctx) { ctx.arguments.ids } do |ctx|
+
     data = ExternalAPI.fetch(ctx.each_value)
-    
+
     # Runtime throttle: limits specific write operations
     ctx.throttle(limit: 3, key: "cache_write") do
       CacheStorage.update(ctx.each_value, data)
     end
-    
+
     data
   end
 end

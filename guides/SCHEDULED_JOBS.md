@@ -1,6 +1,6 @@
 # Scheduled Jobs
 
-JobFlow integrates with SolidQueue's recurring tasks feature to enable scheduled job execution. You can define schedules directly in your job class using the DSL, and JobFlow automatically registers them with SolidQueue.
+JobWorkflow integrates with SolidQueue's recurring tasks feature to enable scheduled job execution. You can define schedules directly in your job class using the DSL, and JobWorkflow automatically registers them with SolidQueue.
 
 ## Overview
 
@@ -17,7 +17,7 @@ The `schedule` DSL method allows you to define cron-like schedules for your jobs
 
 ```ruby
 class DailyReportJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   # Run daily at 9:00 AM
   schedule "0 9 * * *"
@@ -30,7 +30,7 @@ end
 
 ## Schedule Expression Formats
 
-JobFlow supports both cron expressions and natural language via the Fugit gem:
+JobWorkflow supports both cron expressions and natural language via the Fugit gem:
 
 ```ruby
 # Cron expression
@@ -60,17 +60,17 @@ The `schedule` method accepts several options:
 
 ```ruby
 class DataSyncJob < ApplicationJob
-  include JobFlow::DSL
-  
+  include JobWorkflow::DSL
+
   schedule "0 */4 * * *",
-    key: "data_sync_every_4_hours",
-    queue: "high_priority",
-    priority: 10,
-    args: { source: "primary" },
-    description: "Sync data from primary source every 4 hours"
-  
+           key: "data_sync_every_4_hours",
+           queue: "high_priority",
+           priority: 10,
+           args: { source: "primary" },
+           description: "Sync data from primary source every 4 hours"
+
   argument :source, "String", default: "default"
-  
+
   task :sync do |ctx|
     source = ctx.arguments.source
     DataSynchronizer.sync(source)
@@ -84,18 +84,18 @@ You can define multiple schedules for the same job. When using multiple schedule
 
 ```ruby
 class ReportJob < ApplicationJob
-  include JobFlow::DSL
-  
+  include JobWorkflow::DSL
+
   # Morning report
   schedule "0 9 * * *", key: "morning_report"
-  
+
   # Evening report with different args
-  schedule "0 18 * * *", 
-    key: "evening_report",
-    args: { time_of_day: "evening" }
-  
+  schedule "0 18 * * *",
+           key: "evening_report",
+           args: { time_of_day: "evening" }
+
   argument :time_of_day, "String", default: "morning"
-  
+
   task :generate do |ctx|
     time = ctx.arguments.time_of_day
     ReportGenerator.generate(time)
@@ -105,16 +105,16 @@ end
 
 ## How It Works
 
-JobFlow's schedule integration works through SolidQueue's configuration system:
+JobWorkflow's schedule integration works through SolidQueue's configuration system:
 
 1. **Registration**: When a job class is loaded, schedules are stored in the `Workflow#schedules` hash
-2. **Tracking**: JobFlow tracks all loaded job classes via `JobFlow::DSL._included_classes`
-3. **Integration**: JobFlow patches `SolidQueue::Configuration#recurring_tasks_config` to merge registered schedules
+2. **Tracking**: JobWorkflow tracks all loaded job classes via `JobWorkflow::DSL._included_classes`
+3. **Integration**: JobWorkflow patches `SolidQueue::Configuration#recurring_tasks_config` to merge registered schedules
 4. **Execution**: SolidQueue's scheduler picks up the schedules and enqueues jobs at the specified times
 
 ### Configuration File Compatibility
 
-JobFlow schedules are merged with any existing SolidQueue YAML configuration:
+JobWorkflow schedules are merged with any existing SolidQueue YAML configuration:
 
 ```yaml
 # config/recurring.yml (SolidQueue's native config)
@@ -123,7 +123,7 @@ legacy_cleanup:
   schedule: "0 0 * * 0"
 ```
 
-Both the YAML-defined schedules and JobFlow DSL-defined schedules will be active. If there's a key conflict, the JobFlow schedule takes precedence.
+Both the YAML-defined schedules and JobWorkflow DSL-defined schedules will be active. If there's a key conflict, the JobWorkflow schedule takes precedence.
 
 ## Requirements
 

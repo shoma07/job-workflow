@@ -1,6 +1,6 @@
 # API Reference
 
-Detailed reference for all DSL methods and classes in JobFlow.
+Detailed reference for all DSL methods and classes in JobWorkflow.
 
 ## DSL Methods
 
@@ -15,15 +15,15 @@ task(name, **options, &block)
 **Parameters**:
 - `name` (Symbol): Task name
 - `options` (Hash): Task options
-  - `depends_on` (Symbol | Array<Symbol>): Dependent tasks
+  - `depends_on` (Symbol | Array[Symbol]): Dependent tasks
   - `each` (Proc): Proc that returns an enumerable for map task execution
-  - `enqueue` (Hash | Proc | Boolean): Controls whether task iterations are enqueued as sub-jobs
+  - `enqueue` (Hash | Proc | bool): Controls whether task iterations are enqueued as sub-jobs
     - Hash format (recommended): `{ condition: Proc, queue: String, concurrency: Integer }`
-      - `condition` (Proc | Boolean): Determines if task should be enqueued (default: true if Hash is not empty)
+      - `condition` (Proc | bool): Determines if task should be enqueued (default: true if Hash is not empty)
       - `queue` (String): Custom queue name for the task (optional)
       - `concurrency` (Integer): Concurrency limit for parallel processing (default: unlimited)
     - Proc format (legacy): Proc that returns boolean
-    - Boolean format: true/false for simple cases
+    - bool format: true/false for simple cases
     - Default: nil (synchronous execution)
   - `retry` (Integer | Hash): Retry configuration. Integer for simple retry count, Hash for advanced settings
     - `count` (Integer): Maximum retry attempts (default: 3 when Hash)
@@ -44,7 +44,7 @@ task(name, **options, &block)
 **Example**:
 
 ```ruby
-argument :enabled, "Boolean", default: false
+argument :enabled, "bool", default: false
 argument :data, "Hash"
 
 task :simple, output: { result: "String" } do |ctx|
@@ -75,7 +75,7 @@ end
 # Parallel processing with collection
 task :process_items,
      each: ->(ctx) { ctx.arguments.items },
-     concurrency: 5,
+     enqueue: { concurrency: 5 },
      output: { result: "String" } do |ctx|
   item = ctx.each_value
   { result: ProcessService.handle(item) }
@@ -91,7 +91,7 @@ argument :items, "Array[String]"
 
 task :process_items,
      each: ->(ctx) { ctx.arguments.items },
-     concurrency: 5,
+     enqueue: { concurrency: 5 },
      output: { result: "String", status: "Symbol" } do |ctx|
   item = ctx.each_value
   {
@@ -104,7 +104,7 @@ task :summarize, depends_on: [:process_items] do |ctx|
   # Access outputs as an array
   outputs = ctx.output[:process_items]
   puts "Processed #{outputs.size} items"
-  
+
   outputs.each do |output|
     puts "Result: #{output.result}, Status: #{output.status}"
   end

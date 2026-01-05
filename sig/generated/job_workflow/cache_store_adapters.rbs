@@ -1,0 +1,28 @@
+# Generated from lib/job_workflow/cache_store_adapters.rb with RBS::Inline
+
+module JobWorkflow
+  module CacheStoreAdapters
+    NAMESPACE: String
+
+    DEFAULT_OPTIONS: Hash[Symbol, untyped]
+
+    def self._current: () -> ActiveSupport::Cache::Store
+
+    def self._current=: (ActiveSupport::Cache::Store?) -> void
+
+    # :  () -> ActiveSupport::Cache::Store
+    def self.current: () -> ActiveSupport::Cache::Store
+
+    # :  () -> void
+    def self.reset!: () -> void
+
+    # @note
+    #   - Rails.cache is NOT used directly because JobWorkflow requires namespace isolation from the Rails application's cache store.
+    #   - JobWorkflow caches are namespaced with "job_workflow" prefix to prevent key collisions with application-level caches.
+    #   - Using Rails.cache would share namespace configuration with the Rails app, which could lead to conflicts or unintended cache invalidations.
+    #   - Instead, JobWorkflow creates dedicated ActiveSupport::Cache::Store instances with explicit namespace options.
+    #
+    # :  () -> ActiveSupport::Cache::Store
+    private def self.detect_adapter: () -> ActiveSupport::Cache::Store
+  end
+end

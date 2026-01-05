@@ -1,12 +1,12 @@
-# JobFlow Rails 8.1 Acceptance Test Environment
+# JobWorkflow Rails 8.1 Acceptance Test Environment
 
-This directory contains a minimal Rails 8.1 application intended for running acceptance tests against the JobFlow library.
+This directory contains a minimal Rails 8.1 application intended for running acceptance tests against the JobWorkflow library.
 
-**Note:** For detailed information about JobFlow (usage, design, and API), please refer to the repository's top-level `README.md` and `guides/README.md`.
+**Note:** For detailed information about JobWorkflow (usage, design, and API), please refer to the repository's top-level `README.md` and `guides/README.md`.
 
 ## Purpose
 
-- Verify that the JobFlow library works correctly in a real Rails environment
+- Verify that the JobWorkflow library works correctly in a real Rails environment
 - Validate integration with Rails 8.1 components (Solid Queue, Solid Cache, etc.)
 - Confirm integration with ActiveJob and ActiveRecord
 - Ensure compatibility with RBS/Steep type checking in a Rails app
@@ -19,7 +19,7 @@ This directory contains a minimal Rails 8.1 application intended for running acc
 - **ActiveJob**: Solid Queue (1.2.4) as the queue adapter
 - **ActiveRecord**: SQLite3 as the database
 - **Cache**: Solid Cache (1.0.10)
-- **JobFlow**: loaded from the local path (`gem "job-flow", path: "../../"`). See the top-level `README.md` and `guides/README.md` for details.
+- **JobWorkflow**: loaded from the local path (`gem "job-workflow", path: "../../"`). See the top-level `README.md` and `guides/README.md` for details.
 
 ### Directory structure
 
@@ -144,6 +144,6 @@ Use this environment to verify the following aspects:
 
 ## References
 
-- Top-level JobFlow documentation: `../../README.md` and `guides/README.md`
+- Top-level JobWorkflow documentation: `../../README.md` and `guides/README.md`
 - Rails 8.1 release notes: https://guides.rubyonrails.org/8_1_release_notes.html
 - Solid Queue: https://github.com/rails/solid_queue

@@ -2,7 +2,7 @@
 
 source "https://rubygems.org"
 
-# Specify your gem's dependencies in job-flow.gemspec
+# Specify your gem's dependencies in job-workflow.gemspec
 gemspec
 
 gem "irb", require: false

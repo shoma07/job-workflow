@@ -1,0 +1,47 @@
+# Generated from lib/job_workflow/auto_scaling.rb with RBS::Inline
+
+module JobWorkflow
+  # @example
+  #   ```ruby
+  #   class AutoScalingJob < ApplicationJob
+  #     include JobWorkflow::AutoScaling
+  #
+  #     target_queue_name "my_queue"
+  #     min_count 2
+  #     max_count 10
+  #     step_count 2
+  #     max_latency 1800
+  #   end
+  #   ```
+  module AutoScaling
+    extend ActiveSupport::Concern
+
+    extend ClassMethods
+
+    def class: () -> ClassMethods
+
+    # :  () -> void
+    def perform: () -> void
+
+    module ClassMethods
+      def class_attribute: (Symbol, default: untyped, ?instance_writer: bool) -> void
+
+      def _config: () -> Configuration
+
+      # :  (String) -> void
+      def target_queue_name: (String) -> void
+
+      # :  (Integer) -> void
+      def min_count: (Integer) -> void
+
+      # :  (Integer) -> void
+      def max_count: (Integer) -> void
+
+      # :  (Integer) -> void
+      def step_count: (Integer) -> void
+
+      # :  (Integer) -> void
+      def max_latency: (Integer) -> void
+    end
+  end
+end

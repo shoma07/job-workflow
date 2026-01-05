@@ -12,7 +12,7 @@ RSpec.describe "Error Handling" do
         tracker = attempt_count
 
         stub_const("SimpleRetryJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           define_method(:tracker) { tracker }
 
@@ -43,7 +43,7 @@ RSpec.describe "Error Handling" do
 
       before do
         stub_const("ExhaustedRetryJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           task :always_failing, retry: 2, output: { result: "String" } do |_ctx|
             raise "Permanent failure"
@@ -68,7 +68,7 @@ RSpec.describe "Error Handling" do
         tracker = attempt_count
 
         stub_const("ExponentialRetryJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           define_method(:tracker) { tracker }
 
@@ -99,7 +99,7 @@ RSpec.describe "Error Handling" do
         tracker = attempt_count
 
         stub_const("LinearRetryJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           define_method(:tracker) { tracker }
 

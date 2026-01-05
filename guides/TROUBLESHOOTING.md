@@ -1,12 +1,12 @@
 # Troubleshooting
 
-This section covers common issues encountered during JobFlow operation and their solutions.
+This section covers common issues encountered during JobWorkflow operation and their solutions.
 
 ## Common Issues
 
 ### CircularDependencyError
 
-**Symptom**: Workflow crashes with `JobFlow::CircularDependencyError`
+**Symptom**: Workflow crashes with `JobWorkflow::CircularDependencyError`
 
 ```ruby
 # ❌ Circular dependency
@@ -34,7 +34,7 @@ end
 
 ### UnknownTaskError
 
-**Symptom**: `JobFlow::UnknownTaskError: Unknown task: :typo_task`
+**Symptom**: `JobWorkflow::UnknownTaskError: Unknown task: :typo_task`
 
 ```ruby
 # ❌ Depending on non-existent task

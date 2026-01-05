@@ -1,0 +1,55 @@
+# Generated from lib/job_workflow/workflow_status.rb with RBS::Inline
+
+module JobWorkflow
+  class WorkflowStatus
+    class NotFoundError < StandardError
+    end
+
+    type status_type = :pending | :running | :completed | :failed
+
+    attr_reader context: Context
+
+    attr_reader job_class_name: String
+
+    attr_reader status: status_type
+
+    # :  (String) -> WorkflowStatus
+    def self.find: (String) -> WorkflowStatus
+
+    # :  (job_id: String) -> WorkflowStatus?
+    def self.find_by: (job_id: String) -> WorkflowStatus?
+
+    # :  (Hash[String, untyped]) -> WorkflowStatus
+    def self.from_job_data: (Hash[String, untyped]) -> WorkflowStatus
+
+    # :  (context: Context, job_class_name: String, status: status_type) -> void
+    def initialize: (context: Context, job_class_name: String, status: status_type) -> void
+
+    # :  () -> Symbol?
+    def current_task_name: () -> Symbol?
+
+    # :  () -> Arguments
+    def arguments: () -> Arguments
+
+    # :  () -> Output
+    def output: () -> Output
+
+    # :  () -> JobStatus
+    def job_status: () -> JobStatus
+
+    # :  () -> bool
+    def running?: () -> bool
+
+    # :  () -> bool
+    def completed?: () -> bool
+
+    # :  () -> bool
+    def failed?: () -> bool
+
+    # :  () -> bool
+    def pending?: () -> bool
+
+    # :  () -> Hash[Symbol, untyped]
+    def to_h: () -> Hash[Symbol, untyped]
+  end
+end

@@ -1,6 +1,6 @@
 # Namespaces
 
-Logically grouping tasks improves readability and maintainability of complex workflows. JobFlow provides namespace functionality.
+Logically grouping tasks improves readability and maintainability of complex workflows. JobWorkflow provides namespace functionality.
 
 ## Basic Namespaces
 
@@ -10,7 +10,7 @@ Group related tasks.
 
 ```ruby
 class ECommerceOrderJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :order, "Order"
   
@@ -40,7 +40,7 @@ class ECommerceOrderJob < ApplicationJob
       InventoryService.check(order.items)
     end
     
-    task :reserve, depends_on: [:"inventory:check_availability"], output: { reserved: "Boolean" } do |ctx|
+    task :reserve, depends_on: [:"inventory:check_availability"], output: { reserved: "bool" } do |ctx|
       order = ctx.arguments.order
       { reserved: InventoryService.reserve(order.items) }
     end

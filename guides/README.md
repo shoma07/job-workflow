@@ -1,17 +1,17 @@
-# JobFlow Guides
+# JobWorkflow Guides
 
-> ⚠️ **Early Stage (v0.1.2):** JobFlow is in active development. APIs and features may change. The following guides provide patterns and examples for building workflows, but be aware that implementations may need adjustment as the library evolves.
+> ⚠️ **Early Stage (v0.1.2):** JobWorkflow is in active development. APIs and features may change. The following guides provide patterns and examples for building workflows, but be aware that implementations may need adjustment as the library evolves.
 
-Welcome to the JobFlow documentation! This directory contains comprehensive guides to help you build robust workflows with JobFlow.
+Welcome to the JobWorkflow documentation! This directory contains comprehensive guides to help you build robust workflows with JobWorkflow.
 
 ## 📚 Documentation Structure
 
 ### 🚀 Getting Started
 
-Start here if you're new to JobFlow:
+Start here if you're new to JobWorkflow:
 
 - **[GETTING_STARTED.md](GETTING_STARTED.md)** - Quick 5-minute introduction and detailed getting started guide
-  - What is JobFlow and why use it
+  - What is JobWorkflow and why use it
   - Installation and setup
   - Your first workflow
   - Core concepts (Workflow, Task, Arguments, Context, Outputs)
@@ -20,7 +20,7 @@ Start here if you're new to JobFlow:
 
 Core concepts and features you'll use in every workflow:
 
-- **[DSL_BASICS.md](DSL_BASICS.md)** - Mastering the JobFlow DSL
+- **[DSL_BASICS.md](DSL_BASICS.md)** - Mastering the JobWorkflow DSL
   - Defining tasks
   - Working with arguments
   - Task dependencies
@@ -112,7 +112,7 @@ Monitoring and debugging your workflows:
 
 Production deployment and operations:
 
-- **[PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md)** - Running JobFlow in production
+- **[PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md)** - Running JobWorkflow in production
   - SolidQueue configuration
   - Worker optimization
   - Auto-scaling (AWS ECS)
@@ -167,8 +167,8 @@ Complete API documentation and best practices:
 
 ## 🤝 Contributing
 
-Found an issue or have a suggestion? Please open an issue on the [GitHub repository](https://github.com/shoma07/job-flow).
+Found an issue or have a suggestion? Please open an issue on the [GitHub repository](https://github.com/shoma07/job-workflow).
 
 ## 📄 License
 
-JobFlow is released under the MIT License. See LICENSE file for details.
+JobWorkflow is released under the MIT License. See LICENSE file for details.

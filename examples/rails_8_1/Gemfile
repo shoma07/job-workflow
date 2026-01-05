@@ -2,7 +2,7 @@
 
 source "https://rubygems.org"
 
-gem "job-flow", path: "../../"
+gem "job-workflow", path: "../../"
 gem "puma", ">= 5.0"
 gem "rails", "~> 8.1.1"
 gem "solid_cache", "1.0.10"

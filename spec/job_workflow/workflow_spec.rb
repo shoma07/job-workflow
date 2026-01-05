@@ -1,0 +1,180 @@
+# frozen_string_literal: true
+
+RSpec.describe JobWorkflow::Workflow do
+  describe "#initialize" do
+    subject(:workflow) { described_class.new }
+
+    it { is_expected.to have_attributes(tasks: []) }
+  end
+
+  describe "#add_task" do
+    subject(:add_task) { workflow.add_task(task) }
+
+    let(:workflow) { described_class.new }
+    let(:task) do
+      JobWorkflow::Task.new(
+        job_name: "TestJob",
+        name: :sample_task,
+        namespace: JobWorkflow::Namespace.default,
+        block: ->(ctx) { ctx[:key] }
+      )
+    end
+
+    it { expect { add_task }.to change(workflow, :tasks).from([]).to([task]) }
+  end
+
+  describe "#tasks" do
+    subject(:tasks) { workflow.tasks }
+
+    let(:workflow) do
+      workflow = described_class.new
+      namespace = JobWorkflow::Namespace.default
+      workflow.add_task(
+        JobWorkflow::Task.new(
+          job_name: "TestJob",
+          name: :task1,
+          namespace:,
+          block: ->(ctx) { ctx[:a] }
+        )
+      )
+      workflow.add_task(
+        JobWorkflow::Task.new(
+          job_name: "TestJob",
+          name: :task2,
+          namespace:,
+          block: ->(ctx) { ctx[:b] }
+        )
+      )
+      workflow
+    end
+
+    it do
+      expect(tasks).to have_attributes(
+        class: Array,
+        size: 2
+      )
+    end
+  end
+
+  describe "#fetch_task" do
+    subject(:fetch_task) { workflow.fetch_task(task_name) }
+
+    let(:workflow) do
+      workflow = described_class.new
+      workflow.add_task(task)
+      workflow
+    end
+    let(:task) do
+      JobWorkflow::Task.new(
+        job_name: "TestJob",
+        name: :task1,
+        namespace: JobWorkflow::Namespace.default,
+        block: ->(ctx) { ctx[:a] }
+      )
+    end
+
+    context "when task exists" do
+      let(:task_name) { :task1 }
+
+      it { is_expected.to eq(task) }
+    end
+
+    context "when task does not exist" do
+      let(:task_name) { :missing_task }
+
+      it { is_expected.to be_nil }
+    end
+  end
+
+  describe "#add_hook" do
+    subject(:add_hook) { workflow.add_hook(type, task_names: [:task_a], block:) }
+
+    let(:workflow) { described_class.new }
+
+    context "when type is :before" do
+      let(:type) { :before }
+      let(:block) { ->(_ctx) {} }
+
+      it "adds a before hook to the registry" do
+        expect { add_hook }.to change { workflow.hooks.before_hooks_for(:task_a).size }.from(0).to(1)
+      end
+    end
+
+    context "when type is :after" do
+      let(:type) { :after }
+      let(:block) { ->(_ctx) {} }
+
+      it "adds an after hook to the registry" do
+        expect { add_hook }.to change { workflow.hooks.after_hooks_for(:task_a).size }.from(0).to(1)
+      end
+    end
+
+    context "when type is :around" do
+      let(:type) { :around }
+      let(:block) { ->(_ctx, _task) {} }
+
+      it "adds an around hook to the registry" do
+        expect { add_hook }.to change { workflow.hooks.around_hooks_for(:task_a).size }.from(0).to(1)
+      end
+    end
+
+    context "when type is :error" do
+      let(:type) { :error }
+      let(:block) { ->(_ctx, _error, _task) {} }
+
+      it "adds an error hook to the registry" do
+        expect { add_hook }.to change { workflow.hooks.error_hooks_for(:task_a).size }.from(0).to(1)
+      end
+    end
+
+    context "when type is invalid" do
+      let(:type) { :invalid }
+      let(:block) { ->(_ctx) {} }
+
+      it "raises ArgumentError" do
+        expect { add_hook }.to raise_error(ArgumentError, "Invalid hook type: :invalid")
+      end
+    end
+  end
+
+  describe "#hooks" do
+    subject(:hooks) { workflow.hooks }
+
+    let(:workflow) { described_class.new }
+
+    it { is_expected.to be_a(JobWorkflow::HookRegistry) }
+  end
+
+  describe "#add_schedule" do
+    subject(:add_schedule) { workflow.add_schedule(schedule) }
+
+    let(:workflow) { described_class.new }
+    let(:schedule) { JobWorkflow::Schedule.new(expression: "every hour", class_name: "TestJob", key: "test_schedule") }
+
+    it { expect { add_schedule }.to change { workflow.build_schedules_hash.size }.from(0).to(1) }
+  end
+
+  describe "#build_schedules_hash" do
+    subject(:schedules_hash) { workflow.build_schedules_hash }
+
+    let(:workflow) { described_class.new }
+
+    context "when no schedules" do
+      it { is_expected.to eq({}) }
+    end
+
+    context "when schedules exist" do
+      before do
+        workflow.add_schedule(
+          JobWorkflow::Schedule.new(
+            expression: "every hour",
+            class_name: "TestJob",
+            key: "test_key"
+          )
+        )
+      end
+
+      it { expect(schedules_hash).to eq(test_key: { class: "TestJob", schedule: "every hour" }) }
+    end
+  end
+end

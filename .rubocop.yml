@@ -67,7 +67,7 @@ Metrics/ModuleLength:
 
 Naming/FileName:
   Exclude:
-    - lib/job-flow.rb
+    - lib/job-workflow.rb
 
 RSpec/ExampleLength:
   Enabled: true

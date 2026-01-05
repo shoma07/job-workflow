@@ -1,8 +1,8 @@
 # Production Deployment
 
-> ⚠️ **Early Stage (v0.1.2):** JobFlow is still in early development. While this section outlines potential deployment patterns, please thoroughly test in your specific environment and monitor for any issues before relying on JobFlow in critical production systems.
+> ⚠️ **Early Stage (v0.1.2):** JobWorkflow is still in early development. While this section outlines potential deployment patterns, please thoroughly test in your specific environment and monitor for any issues before relying on JobWorkflow in critical production systems.
 
-This section covers suggested settings and patterns for running JobFlow in production-like environments.
+This section covers suggested settings and patterns for running JobWorkflow in production-like environments.
 
 ## SolidQueue Configuration
 
@@ -55,22 +55,22 @@ production:
 
 ## Auto Scaling (AWS ECS)
 
-JobFlow provides a simple autoscaling helper that updates an AWS ECS service `desired_count` based on queue latency.
+JobWorkflow provides a simple autoscaling helper that updates an AWS ECS service `desired_count` based on queue latency.
 
 ### Prerequisites
 
-- Currently supports **AWS ECS only** via `JobFlow::AutoScaling::Adapter::AwsAdapter`.
+- Currently supports **AWS ECS only** via `JobWorkflow::AutoScaling::Adapter::AwsAdapter`.
 - The autoscaling job must run **inside an ECS task** (uses ECS metadata via `ECS_CONTAINER_METADATA_URI_V4`).
-- Latency is read via `JobFlow::Queue.latency` which uses the configured queue adapter.
+- Latency is read via `JobWorkflow::Queue.latency` which uses the configured queue adapter.
 - Scheduling (how often you evaluate scaling) is **out of scope**: enqueue this job periodically from your app/ops tooling.
 
 ### Usage
 
-Create a job for autoscaling and configure it via `include JobFlow::AutoScaling`.
+Create a job for autoscaling and configure it via `include JobWorkflow::AutoScaling`.
 
 ```ruby
 class MyAutoScalingJob < ApplicationJob
-  include JobFlow::AutoScaling
+  include JobWorkflow::AutoScaling
 
   # Target queue name
   target_queue_name "default"
@@ -90,7 +90,7 @@ end
 ### Scaling model
 
 - Queue latency is bucketed into $0..max_latency$ and scaled from `min_count` to `max_count` by `step_count`.
-- Latency is retrieved via `JobFlow::Queue.latency(queue_name)`, which delegates to the configured queue adapter.
+- Latency is retrieved via `JobWorkflow::Queue.latency(queue_name)`, which delegates to the configured queue adapter.
 
 ## SolidCache Configuration
 

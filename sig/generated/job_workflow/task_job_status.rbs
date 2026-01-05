@@ -1,0 +1,42 @@
+# Generated from lib/job_workflow/task_job_status.rb with RBS::Inline
+
+module JobWorkflow
+  class TaskJobStatus
+    attr_reader task_name: Symbol
+
+    attr_reader job_id: String
+
+    attr_reader each_index: Integer
+
+    attr_reader status: Symbol
+
+    # :  (Hash[Symbol, untyped]) -> TaskJobStatus
+    def self.from_hash: (Hash[Symbol, untyped]) -> TaskJobStatus
+
+    # :  (Hash[String, untyped]) -> TaskJobStatus
+    def self.deserialize: (Hash[String, untyped]) -> TaskJobStatus
+
+    # :  (
+    #       task_name: Symbol,
+    #       job_id: String,
+    #       each_index: Integer,
+    #       ?status: Symbol
+    #     ) -> void
+    def initialize: (task_name: Symbol, job_id: String, each_index: Integer, ?status: Symbol) -> void
+
+    # :  (Symbol) -> void
+    def update_status: (Symbol) -> void
+
+    # :  () -> bool
+    def finished?: () -> bool
+
+    # :  () -> bool
+    def succeeded?: () -> bool
+
+    # :  () -> bool
+    def failed?: () -> bool
+
+    # :  () -> Hash[String, untyped]
+    def serialize: () -> Hash[String, untyped]
+  end
+end

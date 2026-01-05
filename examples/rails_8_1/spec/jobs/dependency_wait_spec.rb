@@ -13,7 +13,7 @@ RSpec.describe "Dependency Wait" do
 
       before do
         stub_const("DependencyWaitIntegerJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           argument :items, "Array[Integer]"
 
@@ -45,7 +45,7 @@ RSpec.describe "Dependency Wait" do
 
       before do
         stub_const("DependencyWaitHashJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           argument :values, "Array[Integer]"
 
@@ -78,7 +78,7 @@ RSpec.describe "Dependency Wait" do
 
       before do
         stub_const("DependencyWaitPollingOnlyJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           task :step1, output: { value: "Integer" } do |_ctx|
             { value: 100 }
@@ -111,7 +111,7 @@ RSpec.describe "Dependency Wait" do
 
       before do
         stub_const("SyncDependencyJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           argument :numbers, "Array[Integer]"
 
@@ -156,7 +156,7 @@ RSpec.describe "Dependency Wait" do
         workflow_job.enqueue
         raise "Job did not complete in time" unless wait_for_job(job_id, timeout: 60)
 
-        status = JobFlow::WorkflowStatus.find(job_id)
+        status = JobWorkflow::WorkflowStatus.find(job_id)
         expect(status).to be_completed
       end
 
@@ -164,7 +164,7 @@ RSpec.describe "Dependency Wait" do
         workflow_job.enqueue
         raise "Job did not complete in time" unless wait_for_job(job_id, timeout: 60)
 
-        status = JobFlow::WorkflowStatus.find(job_id)
+        status = JobWorkflow::WorkflowStatus.find(job_id)
         expect(status.status).to eq(:succeeded)
       end
     end

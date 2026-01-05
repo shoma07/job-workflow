@@ -1,0 +1,18 @@
+# Generated from lib/job_workflow/error_hook.rb with RBS::Inline
+
+module JobWorkflow
+  class ErrorHook
+    attr_reader task_names: Set[Symbol]
+
+    attr_reader block: ^(Context, StandardError, Task) -> void
+
+    # :  (task_names: Array[Symbol], block: ^(Context, StandardError, Task) -> void) -> void
+    def initialize: (task_names: Array[Symbol], block: ^(Context, StandardError, Task) -> void) -> void
+
+    # :  (Symbol) -> bool
+    def applies_to?: (Symbol) -> bool
+
+    # :  () -> bool
+    def global?: () -> bool
+  end
+end

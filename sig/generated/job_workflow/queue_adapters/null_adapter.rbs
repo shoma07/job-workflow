@@ -1,0 +1,73 @@
+# Generated from lib/job_workflow/queue_adapters/null_adapter.rb with RBS::Inline
+
+module JobWorkflow
+  module QueueAdapters
+    # rubocop:disable Naming/PredicateMethod
+    class NullAdapter < Abstract
+      # :  () -> void
+      def initialize_adapter!: () -> void
+
+      def initialize: () -> untyped
+
+      # :  () -> bool
+      def semaphore_available?: () -> bool
+
+      # :  (Semaphore) -> bool
+      def semaphore_wait: (Semaphore) -> bool
+
+      # :  (Semaphore) -> bool
+      def semaphore_signal: (Semaphore) -> bool
+
+      # :  (Array[String]) -> Hash[String, untyped]
+      def fetch_job_statuses: (Array[String]) -> Hash[String, untyped]
+
+      # :  (untyped) -> Symbol
+      def job_status: (untyped) -> Symbol
+
+      # :  () -> bool
+      def supports_concurrency_limits?: () -> bool
+
+      # :  (String) -> bool
+      def pause_queue: (String) -> bool
+
+      # :  (String) -> bool
+      def resume_queue: (String) -> bool
+
+      # :  (String) -> bool
+      def queue_paused?: (String) -> bool
+
+      # :  () -> Array[String]
+      def paused_queues: () -> Array[String]
+
+      # :  (String) -> Integer?
+      def queue_latency: (String) -> Integer?
+
+      # :  (String) -> Integer
+      def queue_size: (String) -> Integer
+
+      # :  (String) -> bool
+      def clear_queue: (String) -> bool
+
+      # :  (String) -> Hash[String, untyped]?
+      def find_job: (String) -> Hash[String, untyped]?
+
+      # :  (DSL, Numeric) -> bool
+      def reschedule_job: (DSL, Numeric) -> bool
+
+      # @note Test helpers
+      #
+      # :  (String, untyped) -> void
+      def enqueue_test_job: (String, untyped) -> void
+
+      # @note Test helpers - stores job data for find_job
+      #
+      # :  (String, Hash[String, untyped]) -> void
+      def store_job: (String, Hash[String, untyped]) -> void
+
+      # @note Test helpers
+      #
+      # :  () -> void
+      def reset!: () -> void
+    end
+  end
+end

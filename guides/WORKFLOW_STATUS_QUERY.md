@@ -1,6 +1,6 @@
 # Workflow Status Query
 
-JobFlow provides a robust API for querying the execution status of workflows. This allows you to monitor running workflows, inspect their state, and build observability dashboards.
+JobWorkflow provides a robust API for querying the execution status of workflows. This allows you to monitor running workflows, inspect their state, and build observability dashboards.
 
 ## Basic Usage
 
@@ -8,10 +8,10 @@ JobFlow provides a robust API for querying the execution status of workflows. Th
 
 ```ruby
 # Find by job_id (raises NotFoundError if not found)
-status = JobFlow::WorkflowStatus.find("job-123")
+status = JobWorkflow::WorkflowStatus.find("job-123")
 
 # Find by job_id (returns nil if not found)
-status = JobFlow::WorkflowStatus.find_by(job_id: "job-123")
+status = JobWorkflow::WorkflowStatus.find_by(job_id: "job-123")
 return unless status
 
 # Check workflow status
@@ -33,7 +33,7 @@ status.failed?     # => true if execution failed
 ### Basic Information
 
 ```ruby
-status = JobFlow::WorkflowStatus.find("job-123")
+status = JobWorkflow::WorkflowStatus.find("job-123")
 
 # Job class name
 status.job_class_name  # => "OrderProcessingJob"
@@ -128,7 +128,7 @@ status_hash = status.to_h
 # app/controllers/api/workflows_controller.rb
 class Api::WorkflowsController < ApplicationController
   def show
-    status = JobFlow::WorkflowStatus.find_by(job_id: params[:id])
+    status = JobWorkflow::WorkflowStatus.find_by(job_id: params[:id])
     
     if status
       render json: {
@@ -159,7 +159,7 @@ end
 # Track workflow progress
 class WorkflowProgressTracker
   def self.track(job_id)
-    status = JobFlow::WorkflowStatus.find(job_id)
+    status = JobWorkflow::WorkflowStatus.find(job_id)
     
     # Calculate progress based on completed tasks
     total_tasks = count_total_tasks(status.job_class_name)
@@ -208,7 +208,7 @@ class WorkflowMonitor
     running_job_ids = fetch_running_job_ids
     
     running_job_ids.map do |job_id|
-      status = JobFlow::WorkflowStatus.find_by(job_id: job_id)
+      status = JobWorkflow::WorkflowStatus.find_by(job_id: job_id)
       next unless status&.running?
       
       {
@@ -232,7 +232,7 @@ end
 ```ruby
 # Check if workflow failed and retry with same arguments
 def retry_workflow_if_failed(job_id)
-  status = JobFlow::WorkflowStatus.find(job_id)
+  status = JobWorkflow::WorkflowStatus.find(job_id)
   
   if status.failed?
     # Get the original arguments
@@ -251,12 +251,12 @@ end
 
 ### NotFoundError
 
-When using `find`, a `JobFlow::WorkflowStatus::NotFoundError` is raised if the job is not found:
+When using `find`, a `JobWorkflow::WorkflowStatus::NotFoundError` is raised if the job is not found:
 
 ```ruby
 begin
-  status = JobFlow::WorkflowStatus.find("invalid-job-id")
-rescue JobFlow::WorkflowStatus::NotFoundError => e
+  status = JobWorkflow::WorkflowStatus.find("invalid-job-id")
+rescue JobWorkflow::WorkflowStatus::NotFoundError => e
   Rails.logger.error "Workflow not found: #{e.message}"
   # Handle the error appropriately
 end
@@ -267,7 +267,7 @@ end
 Use `find_by` for safe queries that return `nil` instead of raising:
 
 ```ruby
-status = JobFlow::WorkflowStatus.find_by(job_id: params[:job_id])
+status = JobWorkflow::WorkflowStatus.find_by(job_id: params[:job_id])
 
 if status.nil?
   render json: { error: "Workflow not found" }, status: :not_found

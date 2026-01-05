@@ -1,6 +1,6 @@
 # Parallel Processing
 
-JobFlow enables parallel processing of collection elements by specifying the `each:` option in a `task` definition. Based on the Fork-Join pattern, it provides efficient and safe parallel execution.
+JobWorkflow enables parallel processing of collection elements by specifying the `each:` option in a `task` definition. Based on the Fork-Join pattern, it provides efficient and safe parallel execution.
 
 ## Collection Task Basics
 
@@ -8,7 +8,7 @@ JobFlow enables parallel processing of collection elements by specifying the `ea
 
 ```ruby
 class BatchProcessingJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :user_ids, "Array[Integer]", default: []
   
@@ -167,7 +167,7 @@ For scenarios where you need to process all combinations of multiple dimensions 
 
 ```ruby
 class DataProcessingJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :regions, "Array[String]"
   argument :data_types, "Array[String]"
