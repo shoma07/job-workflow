@@ -1,6 +1,6 @@
 # JobWorkflow
 
-> ⚠️ **Early Stage (v0.1.2):** This library is in active development. APIs and features may change in breaking ways without notice. Use in production at your own risk and expect potential breaking changes in future releases.
+> ⚠️ **Early Stage (v0.1.3):** This library is in active development. APIs and features may change in breaking ways without notice. Use in production at your own risk and expect potential breaking changes in future releases.
 
 ## Overview
 

@@ -6,7 +6,7 @@ gems:
   source:
     type: git
     name: ruby/gem_rbs_collection
-    revision: f2826d40140e8d87f43a44375bb277ba7b7b2e19
+    revision: 2af46cde7fec5e4130f6c84c5b691c0538af8789
     remote: https://github.com/ruby/gem_rbs_collection.git
     repo_dir: gems
 - name: activerecord
@@ -14,7 +14,7 @@ gems:
   source:
     type: git
     name: ruby/gem_rbs_collection
-    revision: f2826d40140e8d87f43a44375bb277ba7b7b2e19
+    revision: 2af46cde7fec5e4130f6c84c5b691c0538af8789
     remote: https://github.com/ruby/gem_rbs_collection.git
     repo_dir: gems
 - name: activesupport
@@ -22,7 +22,7 @@ gems:
   source:
     type: git
     name: ruby/gem_rbs_collection
-    revision: f2826d40140e8d87f43a44375bb277ba7b7b2e19
+    revision: 2af46cde7fec5e4130f6c84c5b691c0538af8789
     remote: https://github.com/ruby/gem_rbs_collection.git
     repo_dir: gems
 - name: base64
@@ -34,7 +34,7 @@ gems:
   source:
     type: git
     name: ruby/gem_rbs_collection
-    revision: f2826d40140e8d87f43a44375bb277ba7b7b2e19
+    revision: 2af46cde7fec5e4130f6c84c5b691c0538af8789
     remote: https://github.com/ruby/gem_rbs_collection.git
     repo_dir: gems
 - name: concurrent-ruby
@@ -42,7 +42,7 @@ gems:
   source:
     type: git
     name: ruby/gem_rbs_collection
-    revision: f2826d40140e8d87f43a44375bb277ba7b7b2e19
+    revision: 2af46cde7fec5e4130f6c84c5b691c0538af8789
     remote: https://github.com/ruby/gem_rbs_collection.git
     repo_dir: gems
 - name: connection_pool
@@ -50,7 +50,7 @@ gems:
   source:
     type: git
     name: ruby/gem_rbs_collection
-    revision: f2826d40140e8d87f43a44375bb277ba7b7b2e19
+    revision: 2af46cde7fec5e4130f6c84c5b691c0538af8789
     remote: https://github.com/ruby/gem_rbs_collection.git
     repo_dir: gems
 - name: date
@@ -74,7 +74,7 @@ gems:
   source:
     type: git
     name: ruby/gem_rbs_collection
-    revision: f2826d40140e8d87f43a44375bb277ba7b7b2e19
+    revision: 2af46cde7fec5e4130f6c84c5b691c0538af8789
     remote: https://github.com/ruby/gem_rbs_collection.git
     repo_dir: gems
 - name: i18n
@@ -82,7 +82,7 @@ gems:
   source:
     type: git
     name: ruby/gem_rbs_collection
-    revision: f2826d40140e8d87f43a44375bb277ba7b7b2e19
+    revision: 2af46cde7fec5e4130f6c84c5b691c0538af8789
     remote: https://github.com/ruby/gem_rbs_collection.git
     repo_dir: gems
 - name: json
@@ -98,7 +98,7 @@ gems:
   source:
     type: git
     name: ruby/gem_rbs_collection
-    revision: f2826d40140e8d87f43a44375bb277ba7b7b2e19
+    revision: 2af46cde7fec5e4130f6c84c5b691c0538af8789
     remote: https://github.com/ruby/gem_rbs_collection.git
     repo_dir: gems
 - name: monitor
@@ -138,7 +138,7 @@ gems:
   source:
     type: git
     name: ruby/gem_rbs_collection
-    revision: f2826d40140e8d87f43a44375bb277ba7b7b2e19
+    revision: 2af46cde7fec5e4130f6c84c5b691c0538af8789
     remote: https://github.com/ruby/gem_rbs_collection.git
     repo_dir: gems
 - name: stringio
@@ -162,7 +162,7 @@ gems:
   source:
     type: git
     name: ruby/gem_rbs_collection
-    revision: f2826d40140e8d87f43a44375bb277ba7b7b2e19
+    revision: 2af46cde7fec5e4130f6c84c5b691c0538af8789
     remote: https://github.com/ruby/gem_rbs_collection.git
     repo_dir: gems
 - name: uri
