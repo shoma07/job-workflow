@@ -75,7 +75,7 @@ end
 # Parallel processing with collection
 task :process_items,
      each: ->(ctx) { ctx.arguments.items },
-     concurrency: 5,
+     enqueue: { concurrency: 5 },
      output: { result: "String" } do |ctx|
   item = ctx.each_value
   { result: ProcessService.handle(item) }
@@ -91,7 +91,7 @@ argument :items, "Array[String]"
 
 task :process_items,
      each: ->(ctx) { ctx.arguments.items },
-     concurrency: 5,
+     enqueue: { concurrency: 5 },
      output: { result: "String", status: "Symbol" } do |ctx|
   item = ctx.each_value
   {
@@ -104,7 +104,7 @@ task :summarize, depends_on: [:process_items] do |ctx|
   # Access outputs as an array
   outputs = ctx.output[:process_items]
   puts "Processed #{outputs.size} items"
-  
+
   outputs.each do |output|
     puts "Result: #{output.result}, Status: #{output.status}"
   end

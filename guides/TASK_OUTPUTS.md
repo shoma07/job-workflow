@@ -39,26 +39,26 @@ Outputs from map tasks are collected as an array, with one output per iteration.
 ```ruby
 class BatchCalculationJob < ApplicationJob
   include JobWorkflow::DSL
-  
+
   argument :numbers, "Array[Integer]", default: []
-  
+
   # Map task with output definition
-  task :double_numbers, 
-    each: ->(ctx) { ctx.arguments.numbers },
-    output: { doubled: "Integer", original: "Integer" } do |ctx|
-    value = ctx.each_value
+  task :double_numbers,
+       each: ->(ctx) { ctx.arguments.numbers },
+       output: { doubled: "Integer", original: "Integer" } do |ctx|
+       value = ctx.each_value
     {
       doubled: value * 2,
       original: value
     }
   end
-  
+
   # Access all outputs from the map task
   task :summarize, depends_on: [:double_numbers] do |ctx|
     ctx.output[:double_numbers].each do |output|
       puts "Original: #{output.original}, Doubled: #{output.doubled}"
     end
-    
+
     # Calculate total
     total = ctx.output[:double_numbers].sum(&:doubled)
     puts "Total: #{total}"
@@ -103,9 +103,9 @@ end
 ### Map Task Output Array
 
 ```ruby
-task :process_items, 
-  each: ->(ctx) { ctx.arguments.items },
-  output: { result: "String", status: "String" } do |ctx|
+task :process_items,
+     each: ->(ctx) { ctx.arguments.items },
+     output: { result: "String", status: "String" } do |ctx|
   item = ctx.each_value
   {
     result: transform(item),
@@ -116,10 +116,10 @@ end
 task :verify, depends_on: [:process_items] do |ctx|
   # outputs is an array of TaskOutput objects
   outputs = ctx.output[:process_items]
-  
+
   successful = outputs.count { |o| o.status == "success" }
   puts "Processed #{outputs.size} items, #{successful} successful"
-  
+
   # Access individual outputs by index
   first_result = outputs[0].result
   last_result = outputs[-1].result
@@ -179,13 +179,13 @@ Use Context fields when you need to:
 ```ruby
 class WellDesignedJob < ApplicationJob
   include JobWorkflow::DSL
-  
+
   # Arguments for configuration
   argument :user_id, "Integer"
-  
+
   # Use outputs for intermediate structured data
-  task :fetch_user, 
-    output: { name: "String", email: "String", role: "String" } do |ctx|
+  task :fetch_user,
+       output: { name: "String", email: "String", role: "String" } do |ctx|
     user = User.find(ctx.arguments.user_id)
     {
       name: user.name,
@@ -193,23 +193,23 @@ class WellDesignedJob < ApplicationJob
       role: user.role
     }
   end
-  
+
   task :fetch_permissions,
-    depends_on: [:fetch_user],
-    output: { permissions: "Array[String]" } do |ctx|
+       depends_on: [:fetch_user],
+       output: { permissions: "Array[String]" } do |ctx|
     role = ctx.output[:fetch_user].first.role
     {
       permissions: PermissionService.get_permissions(role)
     }
   end
-  
+
   # Build final report as output
   task :generate_report,
-    depends_on: [:fetch_user, :fetch_permissions],
-    output: { final_report: "Hash" } do |ctx|
+       depends_on: [:fetch_user, :fetch_permissions],
+       output: { final_report: "Hash" } do |ctx|
     user = ctx.output[:fetch_user].first
     perms = ctx.output[:fetch_permissions].first
-    
+
     {
       final_report: {
         user: { name: user.name, email: user.email },

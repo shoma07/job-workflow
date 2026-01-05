@@ -61,16 +61,16 @@ The `schedule` method accepts several options:
 ```ruby
 class DataSyncJob < ApplicationJob
   include JobWorkflow::DSL
-  
+
   schedule "0 */4 * * *",
-    key: "data_sync_every_4_hours",
-    queue: "high_priority",
-    priority: 10,
-    args: { source: "primary" },
-    description: "Sync data from primary source every 4 hours"
-  
+           key: "data_sync_every_4_hours",
+           queue: "high_priority",
+           priority: 10,
+           args: { source: "primary" },
+           description: "Sync data from primary source every 4 hours"
+
   argument :source, "String", default: "default"
-  
+
   task :sync do |ctx|
     source = ctx.arguments.source
     DataSynchronizer.sync(source)
@@ -85,17 +85,17 @@ You can define multiple schedules for the same job. When using multiple schedule
 ```ruby
 class ReportJob < ApplicationJob
   include JobWorkflow::DSL
-  
+
   # Morning report
   schedule "0 9 * * *", key: "morning_report"
-  
+
   # Evening report with different args
-  schedule "0 18 * * *", 
-    key: "evening_report",
-    args: { time_of_day: "evening" }
-  
+  schedule "0 18 * * *",
+           key: "evening_report",
+           args: { time_of_day: "evening" }
+
   argument :time_of_day, "String", default: "morning"
-  
+
   task :generate do |ctx|
     time = ctx.arguments.time_of_day
     ReportGenerator.generate(time)
