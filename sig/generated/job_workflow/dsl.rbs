@@ -1,0 +1,117 @@
+# Generated from lib/job_workflow/dsl.rb with RBS::Inline
+
+module JobWorkflow
+  module DSL
+    extend ActiveSupport::Concern
+
+    include ActiveJob::Continuable
+
+    extend ClassMethods
+
+    def self._included_classes: () -> Set[singleton(DSL)]
+
+    def class: () -> ClassMethods
+
+    def job_id: () -> String
+
+    def queue_name: () -> String
+
+    def set: (Hash[Symbol, untyped]) -> self
+
+    def step: (Symbol, ?start: ActiveJob::Continuation::_Succ, ?isolated: bool) -> void
+            | (Symbol, ?start: ActiveJob::Continuation::_Succ, ?isolated: bool) { (ActiveJob::Continuation::Step) -> void } -> void
+
+    # :  (Hash[untyped, untyped]) -> void
+    def perform: (Hash[untyped, untyped]) -> void
+
+    # :  () -> Output
+    def output: () -> Output
+
+    # :  (Context) -> void
+    def _context=: (Context) -> void
+
+    # :  () -> Context?
+    def _context: () -> Context?
+
+    # :  () -> Hash[String, untyped]
+    def serialize: () -> Hash[String, untyped]
+
+    # :  (Hash[String, untyped]) -> void
+    def deserialize: (Hash[String, untyped]) -> void
+
+    module ClassMethods
+      def class_attribute: (Symbol, default: untyped) -> void
+
+      def _workflow: () -> Workflow
+
+      def new: (Hash[untyped, untyped]) -> DSL
+
+      def name: () -> String
+
+      def enqueue: (Hash[untyped, untyped]) -> void
+
+      def queue_name: () -> String
+
+      def queue_as: () -> String
+
+      def limits_concurrency: (to: Integer, key: ^(untyped) -> untyped, ?duration: ActiveSupport::Duration?, ?group: String?, ?on_conflict: Symbol?) -> void
+
+      # :  (Context) -> DSL
+      def from_context: (Context) -> DSL
+
+      # :  (Symbol argument_name, String type, ?default: untyped) -> void
+      def argument: (Symbol argument_name, String type, ?default: untyped) -> void
+
+      # :  (Symbol) { () -> void } -> void
+      def namespace: (Symbol) { () -> void } -> void
+
+      # rubocop:disable Metrics/ParameterLists
+      #
+      # :  (
+      #     Symbol task_name,
+      #     ?each: ^(Context) -> untyped,
+      #     ?enqueue: true | false | ^(Context) -> bool | Hash[Symbol, untyped],
+      #     ?retry: Integer | Hash[Symbol, untyped],
+      #     ?output: Hash[Symbol, String],
+      #     ?depends_on: Array[Symbol],
+      #     ?condition: ^(Context) -> bool,
+      #     ?throttle: Integer | Hash[Symbol, untyped],
+      #     ?timeout: Numeric?,
+      #     ?dependency_wait: Hash[Symbol, untyped],
+      #     ?dry_run: bool | ^(Context) -> bool
+      #   ) { (untyped) -> void } -> void
+      def task: (Symbol task_name, ?each: ^(Context) -> untyped, ?enqueue: true | false | ^(Context) -> bool | Hash[Symbol, untyped], ?retry: Integer | Hash[Symbol, untyped], ?output: Hash[Symbol, String], ?depends_on: Array[Symbol], ?condition: ^(Context) -> bool, ?throttle: Integer | Hash[Symbol, untyped], ?timeout: Numeric?, ?dependency_wait: Hash[Symbol, untyped], ?dry_run: bool | ^(Context) -> bool) { (untyped) -> void } -> void
+
+      # :  (*Symbol) { (Context) -> void } -> void
+      def before: (*Symbol) { (Context) -> void } -> void
+
+      # :  (*Symbol) { (Context) -> void } -> void
+      def after: (*Symbol) { (Context) -> void } -> void
+
+      # :  (*Symbol) { (Context, TaskCallable) -> void } -> void
+      def around: (*Symbol) { (Context, TaskCallable) -> void } -> void
+
+      # :  (*Symbol) { (Context, StandardError, Task) -> void } -> void
+      def on_error: (*Symbol) { (Context, StandardError, Task) -> void } -> void
+
+      # :  (?bool) ?{ (Context) -> bool } -> void
+      def dry_run: (?bool) ?{ (Context) -> bool } -> void
+
+      # rubocop:disable Metrics/ParameterLists
+      # :  (
+      #     String expression,
+      #     ?key: (String | Symbol)?,
+      #     ?queue: String?,
+      #     ?priority: Integer?,
+      #     ?args: Hash[Symbol, untyped],
+      #     ?description: String?
+      #   ) -> void
+      def schedule: (String expression, ?key: (String | Symbol)?, ?queue: String?, ?priority: Integer?, ?args: Hash[Symbol, untyped], ?description: String?) -> void
+
+      private
+
+      # :  () -> void
+      def validate_namespace!: () -> void
+    end
+  end
+end

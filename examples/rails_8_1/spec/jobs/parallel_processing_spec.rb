@@ -12,7 +12,7 @@ RSpec.describe "Parallel Processing" do
         tracker = processed_items
 
         stub_const("SyncMapJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           argument :items, "Array[String]"
 
@@ -49,7 +49,7 @@ RSpec.describe "Parallel Processing" do
 
       before do
         stub_const("EachValueJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           argument :numbers, "Array[Integer]"
 
@@ -88,7 +88,7 @@ RSpec.describe "Parallel Processing" do
 
       before do
         stub_const("OutputDrivenMapJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           task :fetch_ids, output: { ids: "Array" } do |_ctx|
             { ids: [1, 2, 3] }
@@ -119,7 +119,7 @@ RSpec.describe "Parallel Processing" do
 
       before do
         stub_const("AggregationJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           argument :values, "Array[Integer]"
 
@@ -167,7 +167,7 @@ RSpec.describe "Parallel Processing" do
         workflow_job.enqueue
         raise "Job did not complete in time" unless wait_for_job(job_id, timeout: 60)
 
-        status = JobFlow::WorkflowStatus.find(job_id)
+        status = JobWorkflow::WorkflowStatus.find(job_id)
         expect(status).to be_completed
       end
 
@@ -175,7 +175,7 @@ RSpec.describe "Parallel Processing" do
         workflow_job.enqueue
         raise "Job did not complete in time" unless wait_for_job(job_id, timeout: 60)
 
-        status = JobFlow::WorkflowStatus.find(job_id)
+        status = JobWorkflow::WorkflowStatus.find(job_id)
         expect(status.status).to eq(:succeeded)
       end
 
@@ -183,7 +183,7 @@ RSpec.describe "Parallel Processing" do
         workflow_job.enqueue
         raise "Job did not complete in time" unless wait_for_job(job_id, timeout: 60)
 
-        status = JobFlow::WorkflowStatus.find(job_id)
+        status = JobWorkflow::WorkflowStatus.find(job_id)
         expect(status).to be_completed
       end
     end

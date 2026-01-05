@@ -1,0 +1,30 @@
+# Generated from lib/job_workflow/task_retry.rb with RBS::Inline
+
+module JobWorkflow
+  class TaskRetry
+    attr_reader count: Integer
+
+    attr_reader strategy: Symbol
+
+    attr_reader base_delay: Integer
+
+    attr_reader jitter: bool
+
+    # :  (Integer | Hash[Symbol, untyped]) -> TaskRetry
+    def self.from_primitive_value: (Integer | Hash[Symbol, untyped]) -> TaskRetry
+
+    # :  (?count: Integer, ?strategy: Symbol, ?base_delay: Integer, ?jitter: bool) -> void
+    def initialize: (?count: Integer, ?strategy: Symbol, ?base_delay: Integer, ?jitter: bool) -> void
+
+    # :  (Integer) -> Float
+    def delay_for: (Integer) -> Float
+
+    private
+
+    # :  (Integer) -> Integer
+    def calculate_base_delay: (Integer) -> Integer
+
+    # :  (Integer) -> Float
+    def apply_jitter: (Integer) -> Float
+  end
+end

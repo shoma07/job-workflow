@@ -1,0 +1,37 @@
+# Generated from lib/job_workflow/semaphore.rb with RBS::Inline
+
+module JobWorkflow
+  class Semaphore
+    DEFAULT_POLLING_INTERVAL: Float
+
+    attr_reader concurrency_key: String
+
+    attr_reader concurrency_limit: Integer
+
+    attr_reader concurrency_duration: ActiveSupport::Duration
+
+    # :  () -> bool
+    def self.available?: () -> bool
+
+    # :  (
+    #      concurrency_key: String,
+    #      concurrency_duration: ActiveSupport::Duration,
+    #      ?concurrency_limit: Integer,
+    #      ?polling_interval: Float
+    #    ) -> void
+    def initialize: (concurrency_key: String, concurrency_duration: ActiveSupport::Duration, ?concurrency_limit: Integer, ?polling_interval: Float) -> void
+
+    # :  () -> bool
+    def wait: () -> bool
+
+    # :  () -> bool
+    def signal: () -> bool
+
+    # : [T] () { () -> T } -> T
+    def with: [T] () { () -> T } -> T
+
+    private
+
+    attr_reader polling_interval: Float
+  end
+end

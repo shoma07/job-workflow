@@ -9,7 +9,7 @@ RSpec.describe "Throttling" do
 
       before do
         stub_const("SimpleThrottleJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           task :throttled_task, throttle: 10, output: { result: "String" } do |_ctx|
             { result: "throttled_execution" }
@@ -32,7 +32,7 @@ RSpec.describe "Throttling" do
 
       before do
         stub_const("HashThrottleJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           task :api_call,
                throttle: { key: "external_api", limit: 5, ttl: 120 },
@@ -60,7 +60,7 @@ RSpec.describe "Throttling" do
         tracker = execution_times
 
         stub_const("ThrottledMapJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           argument :ids, "Array[Integer]"
 
@@ -97,7 +97,7 @@ RSpec.describe "Throttling" do
 
       before do
         stub_const("RuntimeThrottleJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           task :process_and_save, output: { result: "String" } do |ctx|
             result = ctx.throttle(limit: 3, key: "db_write") do
@@ -124,7 +124,7 @@ RSpec.describe "Throttling" do
         tracker = executed_blocks
 
         stub_const("MultiThrottleJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           define_method(:tracker) { tracker }
 

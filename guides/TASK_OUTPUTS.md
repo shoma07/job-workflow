@@ -1,6 +1,6 @@
 # Task Outputs
 
-JobFlow allows tasks to define and collect outputs, making it easy to access task execution results. This is particularly useful when you need to use results from previous tasks in subsequent tasks or when collecting results from parallel map tasks.
+JobWorkflow allows tasks to define and collect outputs, making it easy to access task execution results. This is particularly useful when you need to use results from previous tasks in subsequent tasks or when collecting results from parallel map tasks.
 
 ## Defining Task Outputs
 
@@ -10,7 +10,7 @@ Use the `output:` option to define the structure of task outputs. Specify output
 
 ```ruby
 class DataProcessingJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :input_value, "Integer", default: 0
   
@@ -38,7 +38,7 @@ Outputs from map tasks are collected as an array, with one output per iteration.
 
 ```ruby
 class BatchCalculationJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :numbers, "Array[Integer]", default: []
   
@@ -178,7 +178,7 @@ Use Context fields when you need to:
 
 ```ruby
 class WellDesignedJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   # Arguments for configuration
   argument :user_id, "Integer"

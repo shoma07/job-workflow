@@ -9,7 +9,7 @@ RSpec.describe "Task Outputs" do
 
       before do
         stub_const("TaskOutputJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           argument :input_value, "Integer"
 
@@ -42,7 +42,7 @@ RSpec.describe "Task Outputs" do
 
       before do
         stub_const("MapTaskOutputJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           argument :numbers, "Array[Integer]"
 
@@ -95,7 +95,7 @@ RSpec.describe "Task Outputs" do
 
       before do
         stub_const("OutputChainingJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           argument :user_id, "Integer"
 

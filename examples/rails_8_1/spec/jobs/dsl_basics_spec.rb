@@ -8,7 +8,7 @@ RSpec.describe "DSL Basics" do
 
     before do
       stub_const("SimpleTaskJob", Class.new(ApplicationJob) do
-        include JobFlow::DSL
+        include JobWorkflow::DSL
 
         argument :name, "String"
 
@@ -32,7 +32,7 @@ RSpec.describe "DSL Basics" do
 
       before do
         stub_const("SingleDependencyJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           task :fetch_data, output: { fetched: "String" } do |_ctx|
             { fetched: "fetched_data" }
@@ -58,7 +58,7 @@ RSpec.describe "DSL Basics" do
 
       before do
         stub_const("MultipleDependenciesJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           task :task_a, output: { a: "Integer" } do |_ctx|
             { a: 1 }
@@ -92,7 +92,7 @@ RSpec.describe "DSL Basics" do
         execution_tracker = execution_order
 
         stub_const("OrderIndependentJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           task :step3, depends_on: [:step2], output: { final: "Boolean" } do |_ctx|
             execution_tracker << :step3
@@ -126,7 +126,7 @@ RSpec.describe "DSL Basics" do
 
       before do
         stub_const("TypedArgumentsJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           argument :user_id, "Integer"
           argument :name, "String"
@@ -151,7 +151,7 @@ RSpec.describe "DSL Basics" do
 
       before do
         stub_const("DefaultArgumentsJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           argument :optional_field, "String", default: "default_value"
           argument :required_field, "String", default: ""
@@ -175,7 +175,7 @@ RSpec.describe "DSL Basics" do
 
       before do
         stub_const("ArrayArgumentsJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           argument :items, "Array[String]"
 
@@ -200,7 +200,7 @@ RSpec.describe "DSL Basics" do
 
       before do
         stub_const("OutputJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           task :calculate, output: { result: "Integer", message: "String" } do |_ctx|
             { result: 42, message: "Calculation complete" }
@@ -222,7 +222,7 @@ RSpec.describe "DSL Basics" do
 
       before do
         stub_const("PartialOutputJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           task :partial, output: { required: "String", optional: "Integer" } do |_ctx|
             { required: "value" }

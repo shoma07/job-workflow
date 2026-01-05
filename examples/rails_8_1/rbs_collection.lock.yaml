@@ -157,7 +157,7 @@ gems:
   version: '0'
   source:
     type: stdlib
-- name: job-flow
+- name: job-workflow
   version: 0.1.2
   source:
     type: rubygems

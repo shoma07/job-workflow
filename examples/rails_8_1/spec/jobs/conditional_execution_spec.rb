@@ -9,7 +9,7 @@ RSpec.describe "Conditional Execution" do
 
       before do
         stub_const("ConditionalJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           argument :premium, "TrueClass | FalseClass"
 
@@ -45,7 +45,7 @@ RSpec.describe "Conditional Execution" do
 
       before do
         stub_const("ConditionalJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           argument :premium, "TrueClass | FalseClass"
 
@@ -81,7 +81,7 @@ RSpec.describe "Conditional Execution" do
 
       before do
         stub_const("ComplexConditionJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           argument :amount, "Integer"
           argument :verified, "TrueClass | FalseClass"

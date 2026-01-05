@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    job-flow (0.1.2)
+    job-workflow (0.1.2)
       activejob (>= 8.1)
 
 GEM
@@ -190,7 +190,7 @@ PLATFORMS
 
 DEPENDENCIES
   irb
-  job-flow!
+  job-workflow!
   rake
   rbs
   rbs-inline

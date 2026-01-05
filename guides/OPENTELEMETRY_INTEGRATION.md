@@ -1,6 +1,6 @@
 # OpenTelemetry Integration
 
-JobFlow provides optional OpenTelemetry integration for distributed tracing. When enabled, all workflow and task executions create OpenTelemetry spans.
+JobWorkflow provides optional OpenTelemetry integration for distributed tracing. When enabled, all workflow and task executions create OpenTelemetry spans.
 
 ## Prerequisites
 
@@ -25,25 +25,25 @@ OpenTelemetry::SDK.configure do |c|
   c.use_all  # Auto-instrument Rails, HTTP clients, etc.
 end
 
-# Enable JobFlow OpenTelemetry integration
-JobFlow::Instrumentation::OpenTelemetrySubscriber.subscribe!
+# Enable JobWorkflow OpenTelemetry integration
+JobWorkflow::Instrumentation::OpenTelemetrySubscriber.subscribe!
 ```
 
 ## Span Attributes
 
-JobFlow spans include the following attributes:
+JobWorkflow spans include the following attributes:
 
 | Attribute | Description |
 |-----------|-------------|
-| `job_flow.job.name` | Job class name |
-| `job_flow.job.id` | Unique job identifier |
-| `job_flow.task.name` | Task name |
-| `job_flow.task.each_index` | Index in map task iteration |
-| `job_flow.task.retry_count` | Current retry attempt |
-| `job_flow.concurrency.key` | Throttle concurrency key |
-| `job_flow.concurrency.limit` | Throttle concurrency limit |
-| `job_flow.error.class` | Exception class (on error) |
-| `job_flow.error.message` | Exception message (on error) |
+| `job_workflow.job.name` | Job class name |
+| `job_workflow.job.id` | Unique job identifier |
+| `job_workflow.task.name` | Task name |
+| `job_workflow.task.each_index` | Index in map task iteration |
+| `job_workflow.task.retry_count` | Current retry attempt |
+| `job_workflow.concurrency.key` | Throttle concurrency key |
+| `job_workflow.concurrency.limit` | Throttle concurrency limit |
+| `job_workflow.error.class` | Exception class (on error) |
+| `job_workflow.error.message` | Exception message (on error) |
 
 ## Span Naming
 
@@ -52,8 +52,8 @@ Spans are named based on the event type:
 - `DataProcessingJob workflow` - Workflow execution
 - `DataProcessingJob.fetch_data task` - Task execution
 - `DataProcessingJob.process_items task` - Map task execution
-- `JobFlow throttle.acquire` - Throttle acquisition
-- `JobFlow dependent.wait` - Dependency waiting
+- `JobWorkflow throttle.acquire` - Throttle acquisition
+- `JobWorkflow dependent.wait` - Dependency waiting
 
 ## Viewing Traces
 
@@ -78,7 +78,7 @@ To disable OpenTelemetry integration:
 
 ```ruby
 # Unsubscribe from all events
-JobFlow::Instrumentation::OpenTelemetrySubscriber.unsubscribe!
+JobWorkflow::Instrumentation::OpenTelemetrySubscriber.unsubscribe!
 ```
 
 ## Error Handling

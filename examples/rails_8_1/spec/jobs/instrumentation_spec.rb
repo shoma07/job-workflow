@@ -10,31 +10,31 @@ RSpec.describe "Instrumentation" do
 
       before do
         stub_const("InstrumentedWorkflowJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           task :simple_task, output: { result: "String" } do |_ctx|
             { result: "done" }
           end
         end)
 
-        ActiveSupport::Notifications.subscribe(/\.job_flow$/) do |name, _start, _finish, _id, payload|
+        ActiveSupport::Notifications.subscribe(/\.job_workflow$/) do |name, _start, _finish, _id, payload|
           received_events << { name: name, payload: payload.slice(:job_name, :task_name) }
         end
       end
 
       after do
-        ActiveSupport::Notifications.unsubscribe(/\.job_flow$/)
+        ActiveSupport::Notifications.unsubscribe(/\.job_workflow$/)
       end
 
-      it "emits workflow.job_flow event" do
+      it "emits workflow.job_workflow event" do
         perform_workflow
-        workflow_events = received_events.select { |e| e[:name] == "workflow.job_flow" }
+        workflow_events = received_events.select { |e| e[:name] == "workflow.job_workflow" }
         expect(workflow_events).not_to be_empty
       end
 
-      it "emits task.job_flow event" do
+      it "emits task.job_workflow event" do
         perform_workflow
-        task_events = received_events.select { |e| e[:name] == "task.job_flow" }
+        task_events = received_events.select { |e| e[:name] == "task.job_workflow" }
         expect(task_events).not_to be_empty
       end
     end
@@ -49,14 +49,14 @@ RSpec.describe "Instrumentation" do
 
       before do
         stub_const("TaskEventsJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           task :my_task, output: { result: "String" } do |_ctx|
             { result: "completed" }
           end
         end)
 
-        %w[task.start.job_flow task.complete.job_flow].each do |event_name|
+        %w[task.start.job_workflow task.complete.job_workflow].each do |event_name|
           ActiveSupport::Notifications.subscribe(event_name) do |name, _start, _finish, _id, payload|
             received_events << { name: name, task_name: payload[:task_name] }
           end
@@ -64,20 +64,20 @@ RSpec.describe "Instrumentation" do
       end
 
       after do
-        %w[task.start.job_flow task.complete.job_flow].each do |event_name|
+        %w[task.start.job_workflow task.complete.job_workflow].each do |event_name|
           ActiveSupport::Notifications.unsubscribe(event_name)
         end
       end
 
-      it "emits task.start.job_flow event" do
+      it "emits task.start.job_workflow event" do
         perform_workflow
-        start_events = received_events.select { |e| e[:name] == "task.start.job_flow" }
+        start_events = received_events.select { |e| e[:name] == "task.start.job_workflow" }
         expect(start_events.first[:task_name]).to eq(:my_task)
       end
 
-      it "emits task.complete.job_flow event" do
+      it "emits task.complete.job_workflow event" do
         perform_workflow
-        complete_events = received_events.select { |e| e[:name] == "task.complete.job_flow" }
+        complete_events = received_events.select { |e| e[:name] == "task.complete.job_workflow" }
         expect(complete_events.first[:task_name]).to eq(:my_task)
       end
     end
@@ -92,7 +92,7 @@ RSpec.describe "Instrumentation" do
 
       before do
         stub_const("CustomInstrumentJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           task :fetch_data, output: { result: "String" } do |ctx|
             result = ctx.instrument("api_call", endpoint: "/users", method: "GET") do
@@ -102,18 +102,18 @@ RSpec.describe "Instrumentation" do
           end
         end)
 
-        ActiveSupport::Notifications.subscribe("api_call.job_flow") do |name, _start, _finish, _id, payload|
+        ActiveSupport::Notifications.subscribe("api_call.job_workflow") do |name, _start, _finish, _id, payload|
           received_events << { name: name, payload: payload }
         end
       end
 
       after do
-        ActiveSupport::Notifications.unsubscribe("api_call.job_flow")
+        ActiveSupport::Notifications.unsubscribe("api_call.job_workflow")
       end
 
       it "emits custom instrumentation event" do
         perform_workflow
-        expect(received_events.first[:name]).to eq("api_call.job_flow")
+        expect(received_events.first[:name]).to eq("api_call.job_workflow")
       end
 
       it "includes custom payload" do
@@ -134,7 +134,7 @@ RSpec.describe "Instrumentation" do
 
       before do
         stub_const("SkipEventJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           task :skipped_task,
                condition: ->(_ctx) { false },
@@ -147,16 +147,16 @@ RSpec.describe "Instrumentation" do
           end
         end)
 
-        ActiveSupport::Notifications.subscribe("task.skip.job_flow") do |name, _start, _finish, _id, payload|
+        ActiveSupport::Notifications.subscribe("task.skip.job_workflow") do |name, _start, _finish, _id, payload|
           received_events << { name: name, task_name: payload[:task_name], reason: payload[:reason] }
         end
       end
 
       after do
-        ActiveSupport::Notifications.unsubscribe("task.skip.job_flow")
+        ActiveSupport::Notifications.unsubscribe("task.skip.job_workflow")
       end
 
-      it "emits task.skip.job_flow event for skipped task" do
+      it "emits task.skip.job_workflow event for skipped task" do
         perform_workflow
         skip_event = received_events.find { |e| e[:task_name] == :skipped_task }
         expect(skip_event).not_to be_nil
@@ -182,7 +182,7 @@ RSpec.describe "Instrumentation" do
 
       before do
         # Subscribe to all throttle-related events
-        ActiveSupport::Notifications.subscribe(/throttle.*\.job_flow$/) do |name, _start, _finish, _id, payload|
+        ActiveSupport::Notifications.subscribe(/throttle.*\.job_workflow$/) do |name, _start, _finish, _id, payload|
           mutex.synchronize do
             received_events << { name: name, key: payload[:concurrency_key] }
           end
@@ -192,7 +192,7 @@ RSpec.describe "Instrumentation" do
       end
 
       after do
-        ActiveSupport::Notifications.unsubscribe(/throttle.*\.job_flow$/)
+        ActiveSupport::Notifications.unsubscribe(/throttle.*\.job_workflow$/)
       end
 
       it "emits throttle acquire events",
@@ -215,7 +215,7 @@ RSpec.describe "Instrumentation" do
         # Give time for all events to be processed
         sleep 0.2
 
-        release_events = mutex.synchronize { received_events.select { |e| e[:name] == "throttle.release.job_flow" } }
+        release_events = mutex.synchronize { received_events.select { |e| e[:name] == "throttle.release.job_workflow" } }
         expect(release_events).not_to be_empty
       end
     end

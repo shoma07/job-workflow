@@ -12,7 +12,7 @@ RSpec.describe "Namespaces" do
         tracker = execution_log
 
         stub_const("NamespacedJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           define_method(:tracker) { tracker }
 
@@ -67,7 +67,7 @@ RSpec.describe "Namespaces" do
         tracker = execution_log
 
         stub_const("CrossNamespaceJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           define_method(:tracker) { tracker }
 

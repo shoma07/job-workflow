@@ -1,0 +1,8 @@
+# Generated from lib/job_workflow.rb with RBS::Inline
+
+module JobWorkflow
+  class Error < StandardError
+  end
+
+  extend Logger
+end

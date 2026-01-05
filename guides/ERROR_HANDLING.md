@@ -1,6 +1,6 @@
 # Error Handling
 
-JobFlow provides robust error handling features. With retry strategies and custom error handling, you can build reliable workflows.
+JobWorkflow provides robust error handling features. With retry strategies and custom error handling, you can build reliable workflows.
 
 ## Retry Configuration
 
@@ -72,7 +72,7 @@ To retry the entire workflow (all tasks from the beginning) when an error occurs
 
 ```ruby
 class DataPipelineJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :data_source, "String"
   
@@ -101,7 +101,7 @@ You can combine task-level retries (for handling transient errors) with workflow
 
 ```ruby
 class RobustDataPipelineJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   # Workflow-level: Handle catastrophic failures (e.g., database connection loss)
   retry_on DatabaseConnectionError, wait: :exponentially_longer, attempts: 3
@@ -137,7 +137,7 @@ The `retry_on` method supports several options from ActiveJob:
 
 ```ruby
 class MyWorkflowJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   # Wait with exponential backoff (2, 4, 8, 16, 32 seconds...)
   retry_on TimeoutError, 

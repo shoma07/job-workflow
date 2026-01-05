@@ -1,6 +1,6 @@
 # Conditional Execution
 
-JobFlow provides conditional execution features to selectively execute tasks based on runtime state.
+JobWorkflow provides conditional execution features to selectively execute tasks based on runtime state.
 
 ## Basic Conditional Execution
 
@@ -10,7 +10,7 @@ Execute task only if condition returns true.
 
 ```ruby
 class UserNotificationJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :user, "User"
   argument :notification_type, "String"
@@ -46,7 +46,7 @@ You can use any Ruby expression in the condition lambda.
 
 ```ruby
 class DataSyncJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :force_sync, "TrueClass | FalseClass", default: false
   argument :last_sync_at, "Time", default: nil

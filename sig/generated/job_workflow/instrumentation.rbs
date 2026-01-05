@@ -1,0 +1,138 @@
+# Generated from lib/job_workflow/instrumentation.rb with RBS::Inline
+
+module JobWorkflow
+  # Instrumentation provides ActiveSupport::Notifications-based event instrumentation for JobWorkflow workflows and tasks.
+  #
+  # @example Subscribing to events
+  #   ```ruby
+  #   ActiveSupport::Notifications.subscribe("task.start.job_workflow") do |name, start, finish, id, payload|
+  #     puts "Task #{payload[:task_name]} started"
+  #   end
+  #   ```
+  module Instrumentation
+    # rubocop:disable Metrics/ModuleLength
+    NAMESPACE: ::String
+
+    module Events
+      WORKFLOW: untyped
+
+      WORKFLOW_START: untyped
+
+      WORKFLOW_COMPLETE: untyped
+
+      TASK: untyped
+
+      TASK_START: untyped
+
+      TASK_COMPLETE: untyped
+
+      TASK_ERROR: untyped
+
+      TASK_SKIP: untyped
+
+      TASK_ENQUEUE: untyped
+
+      TASK_RETRY: untyped
+
+      THROTTLE_ACQUIRE: untyped
+
+      THROTTLE_ACQUIRE_START: untyped
+
+      THROTTLE_ACQUIRE_COMPLETE: untyped
+
+      THROTTLE_RELEASE: untyped
+
+      DEPENDENT_WAIT: untyped
+
+      DEPENDENT_WAIT_START: untyped
+
+      DEPENDENT_WAIT_COMPLETE: untyped
+
+      DEPENDENT_RESCHEDULE: untyped
+
+      QUEUE_PAUSE: untyped
+
+      QUEUE_RESUME: untyped
+
+      CUSTOM: untyped
+
+      DRY_RUN: untyped
+
+      DRY_RUN_SKIP: untyped
+
+      DRY_RUN_EXECUTE: untyped
+    end
+
+    # :  (DSL) { () -> untyped } -> untyped
+    def self.instrument_workflow: (DSL) { () -> untyped } -> untyped
+
+    # :  (DSL, Task, Context) { () -> untyped } -> untyped
+    def self.instrument_task: (DSL, Task, Context) { () -> untyped } -> untyped
+
+    # :  (DSL, Task, String) -> void
+    def self.notify_task_skip: (DSL, Task, String) -> void
+
+    # :  (DSL, Task, Integer) -> void
+    def self.notify_task_enqueue: (DSL, Task, Integer) -> void
+
+    # :  (Task, Context, String, Integer, Float, StandardError) -> void
+    def self.notify_task_retry: (Task, Context, String, Integer, Float, StandardError) -> void
+
+    # :  (DSL, Task) { () -> untyped } -> untyped
+    def self.instrument_dependent_wait: (DSL, Task) { () -> untyped } -> untyped
+
+    # :  (DSL, Task, Numeric, Integer) -> void
+    def self.notify_dependent_reschedule: (DSL, Task, Numeric, Integer) -> void
+
+    # :  (Semaphore) { () -> untyped } -> untyped
+    def self.instrument_throttle: (Semaphore) { () -> untyped } -> untyped
+
+    # :  (Semaphore) -> void
+    def self.notify_throttle_release: (Semaphore) -> void
+
+    # :  (String) -> void
+    def self.notify_queue_pause: (String) -> void
+
+    # :  (String) -> void
+    def self.notify_queue_resume: (String) -> void
+
+    # :  (String, Hash[Symbol, untyped]) { () -> untyped } -> untyped
+    def self.instrument_custom: (String, Hash[Symbol, untyped]) { () -> untyped } -> untyped
+
+    # :  (DSL, Context, Symbol?, Integer, bool) { () -> untyped } -> untyped
+    def self.instrument_dry_run: (DSL, Context, Symbol?, Integer, bool) { () -> untyped } -> untyped
+
+    # :  (String, Hash[Symbol, untyped]) ?{ () -> untyped } -> untyped
+    private def self.instrument: (String, Hash[Symbol, untyped]) ?{ () -> untyped } -> untyped
+
+    # :  (DSL) -> Hash[Symbol, untyped]
+    private def self.build_workflow_payload: (DSL) -> Hash[Symbol, untyped]
+
+    # :  (DSL, Task, Context) -> Hash[Symbol, untyped]
+    private def self.build_task_payload: (DSL, Task, Context) -> Hash[Symbol, untyped]
+
+    # :  (DSL, Task, String) -> Hash[Symbol, untyped]
+    private def self.build_task_skip_payload: (DSL, Task, String) -> Hash[Symbol, untyped]
+
+    # :  (DSL, Task, Integer) -> Hash[Symbol, untyped]
+    private def self.build_task_enqueue_payload: (DSL, Task, Integer) -> Hash[Symbol, untyped]
+
+    # :  (Task, Context, String, Integer, Float, StandardError) -> Hash[Symbol, untyped]
+    private def self.build_task_retry_payload: (Task, Context, String, Integer, Float, StandardError) -> Hash[Symbol, untyped]
+
+    # :  (DSL, Task) -> Hash[Symbol, untyped]
+    private def self.build_dependent_payload: (DSL, Task) -> Hash[Symbol, untyped]
+
+    # :  (DSL, Task, Numeric, Integer) -> Hash[Symbol, untyped]
+    private def self.build_dependent_reschedule_payload: (DSL, Task, Numeric, Integer) -> Hash[Symbol, untyped]
+
+    # :  (Semaphore) -> Hash[Symbol, untyped]
+    private def self.build_throttle_payload: (Semaphore) -> Hash[Symbol, untyped]
+
+    # :  (String) -> Hash[Symbol, untyped]
+    private def self.build_queue_payload: (String) -> Hash[Symbol, untyped]
+
+    # :  (DSL, Context, Symbol?, Integer, bool) -> Hash[Symbol, untyped]
+    private def self.build_skip_in_dry_run_payload: (DSL, Context, Symbol?, Integer, bool) -> Hash[Symbol, untyped]
+  end
+end

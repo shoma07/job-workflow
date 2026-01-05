@@ -1,0 +1,46 @@
+# Generated from lib/job_workflow/job_status.rb with RBS::Inline
+
+module JobWorkflow
+  class JobStatus
+    # :  (Array[Hash[untyped, untyped]]) -> JobStatus
+    def self.from_hash_array: (Array[Hash[untyped, untyped]]) -> JobStatus
+
+    # :  (Hash[String, untyped]) -> JobStatus
+    def self.deserialize: (Hash[String, untyped]) -> JobStatus
+
+    # :  (?task_job_statuses: Array[TaskJobStatus]) -> void
+    def initialize: (?task_job_statuses: Array[TaskJobStatus]) -> void
+
+    # :  (task_name: Symbol) -> Array[TaskJobStatus]
+    def fetch_all: (task_name: Symbol) -> Array[TaskJobStatus]
+
+    # :  (task_name: Symbol, index: Integer) -> TaskJobStatus?
+    def fetch: (task_name: Symbol, index: Integer) -> TaskJobStatus?
+
+    # :  (task_name: Symbol) -> Array[String]
+    def finished_job_ids: (task_name: Symbol) -> Array[String]
+
+    # :  () -> Array[TaskJobStatus]
+    def flat_task_job_statuses: () -> Array[TaskJobStatus]
+
+    # @note
+    #   - If the array is empty, the task is not enqueued and is considered completed.
+    #   - If we add a task existence check in the future, we'll check here.
+    #
+    # :  (Symbol) -> bool
+    def needs_waiting?: (Symbol) -> bool
+
+    # :  (TaskJobStatus) -> void
+    def update_task_job_status: (TaskJobStatus) -> void
+
+    # :  (task_name: Symbol, jobs: Array[DSL]) -> void
+    def update_task_job_statuses_from_jobs: (task_name: Symbol, jobs: Array[DSL]) -> void
+
+    # :  (Symbol) -> void
+    def update_task_job_statuses_from_db: (Symbol) -> void
+
+    private
+
+    attr_accessor task_job_statuses: Hash[Symbol, Array[TaskJobStatus]]
+  end
+end

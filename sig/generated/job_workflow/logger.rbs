@@ -1,0 +1,56 @@
+# Generated from lib/job_workflow/logger.rb with RBS::Inline
+
+module JobWorkflow
+  # Logger provides structured JSON logging for JobWorkflow workflows.
+  #
+  # @example Basic usage
+  #   ```ruby
+  #   JobWorkflow.logger = ActiveSupport::Logger.new($stdout)
+  #   JobWorkflow.logger.formatter = JobWorkflow::Logger::JsonFormatter.new
+  #   ```
+  #
+  # @example With custom log tags
+  #   ```ruby
+  #   JobWorkflow.logger.formatter = JobWorkflow::Logger::JsonFormatter.new(log_tags: [:request_id])
+  #   ```
+  module Logger
+    # :  (ActiveSupport::Logger) -> void
+    attr_writer logger: untyped
+
+    # :  () -> ActiveSupport::Logger
+    def logger: () -> ActiveSupport::Logger
+
+    private
+
+    # :  () -> ActiveSupport::Logger
+    def build_default_logger: () -> ActiveSupport::Logger
+
+    # JSON formatter for structured logging output.
+    # @rbs inherits ::Logger::Formatter
+    class JsonFormatter < ::Logger::Formatter
+      include ActiveSupport::TaggedLogging::Formatter
+
+      # :  (?log_tags: Array[Symbol]) -> void
+      def initialize: (?log_tags: Array[Symbol]) -> void
+
+      # :  (String, Time, String, String | Hash[untyped, untyped]) -> String
+      def call: (String, Time, String, String | Hash[untyped, untyped]) -> String
+
+      private
+
+      attr_reader log_tags: Array[Symbol]
+
+      # :  (String, Time, String) -> Hash[Symbol, untyped]
+      def build_base_hash: (String, Time, String) -> Hash[Symbol, untyped]
+
+      # :  () -> Hash[Symbol, untyped]
+      def build_tags_hash: () -> Hash[Symbol, untyped]
+
+      # :  (String | Hash[untyped, untyped]) -> Hash[Symbol, untyped]
+      def build_msg_hash: (String | Hash[untyped, untyped]) -> Hash[Symbol, untyped]
+
+      # :  (String) -> Hash[Symbol, untyped]
+      def parse_json_or_message: (String) -> Hash[Symbol, untyped]
+    end
+  end
+end

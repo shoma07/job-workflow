@@ -1,6 +1,6 @@
 # Workflow Composition
 
-JobFlow allows you to invoke existing workflow jobs from other workflows, enabling you to modularize large workflows and reuse common processing. This guide explains workflow composition patterns, their benefits, and important considerations.
+JobWorkflow allows you to invoke existing workflow jobs from other workflows, enabling you to modularize large workflows and reuse common processing. This guide explains workflow composition patterns, their benefits, and important considerations.
 
 ## Core Concepts
 
@@ -20,7 +20,7 @@ Use `perform_now` to execute a child workflow synchronously and obtain its resul
 
 ```ruby
 class UserRegistrationJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :user_id, "Integer"
   argument :email, "String"
@@ -39,7 +39,7 @@ class UserRegistrationJob < ApplicationJob
 end
 
 class OnboardingWorkflowJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :user_id, "Integer"
   argument :email, "String"
@@ -67,7 +67,7 @@ Use `perform_later` to execute a child workflow asynchronously. The parent workf
 
 ```ruby
 class NotificationWorkflowJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :user_id, "Integer"
   
@@ -97,7 +97,7 @@ Retrieve outputs defined in the child workflow:
 
 ```ruby
 class DataFetchJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :source, "String"
   
@@ -112,7 +112,7 @@ class DataFetchJob < ApplicationJob
 end
 
 class DataProcessingJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :source, "String"
   
@@ -146,7 +146,7 @@ Retrieve multiple task outputs from a child workflow:
 
 ```ruby
 class ReportGenerationJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :user_id, "Integer"
   
@@ -165,7 +165,7 @@ class ReportGenerationJob < ApplicationJob
 end
 
 class DashboardJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :user_id, "Integer"
   
@@ -205,7 +205,7 @@ You can parallelize child workflow execution across multiple items and collect r
 
 ```ruby
 class SingleItemProcessingJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :item_id, "Integer"
   
@@ -222,7 +222,7 @@ class SingleItemProcessingJob < ApplicationJob
 end
 
 class BatchProcessingJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :item_ids, "Array[Integer]"
   
@@ -265,7 +265,7 @@ Construct arguments for child workflows based on the parent workflow's state:
 
 ```ruby
 class UserDataExportJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :user_id, "Integer"
   argument :format, "String"
@@ -282,7 +282,7 @@ class UserDataExportJob < ApplicationJob
 end
 
 class MonthlyReportJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :month, "String"
   
@@ -328,7 +328,7 @@ How to handle errors that occur in child workflows:
 
 ```ruby
 class RiskySubWorkflowJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :data, "String"
   
@@ -340,7 +340,7 @@ class RiskySubWorkflowJob < ApplicationJob
 end
 
 class ParentWorkflowJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :data, "String"
   
@@ -367,7 +367,7 @@ When a child workflow has retry configuration, the parent workflow waits for ret
 
 ```ruby
 class RetryableSubWorkflowJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :attempt_id, "Integer"
   
@@ -381,7 +381,7 @@ class RetryableSubWorkflowJob < ApplicationJob
 end
 
 class CoordinatorJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :attempt_id, "Integer"
   
@@ -402,17 +402,17 @@ Follow the single responsibility principle when dividing workflows:
 ```ruby
 # ✅ Good example: Clear responsibilities
 class UserCreationJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   # Focus on user creation only
 end
 
 class NotificationJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   # Focus on sending notifications only
 end
 
 class OnboardingJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   # Combine them
   task :create_user do |ctx|
     UserCreationJob.perform_now(...)
@@ -430,7 +430,7 @@ Explicitly define and document child workflow outputs:
 
 ```ruby
 class DataFetchJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   # Define outputs clearly
   task :fetch,
@@ -451,19 +451,19 @@ Deep nesting of workflow invocations makes debugging difficult:
 ```ruby
 # ❌ Bad example: Deep nesting
 class LevelThreeJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   task :do_something do; end
 end
 
 class LevelTwoJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   task :call_three do
     LevelThreeJob.perform_now
   end
 end
 
 class LevelOneJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   task :call_two do
     LevelTwoJob.perform_now  # Three levels is too complex
   end
@@ -471,7 +471,7 @@ end
 
 # ✅ Good example: Flat structure
 class CoordinatorJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   task :step_one do
     StepOneJob.perform_now
@@ -493,7 +493,7 @@ Design child workflows to be idempotent, supporting retries and re-execution:
 
 ```ruby
 class IdempotentSubWorkflowJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :order_id, "Integer"
   
@@ -516,7 +516,7 @@ Use different queues for parent and child workflows with different priority or r
 
 ```ruby
 class HighPriorityParentJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   queue "urgent"
   
@@ -583,7 +583,7 @@ This is a current implementation limitation. When the child workflow is reschedu
 
 ```ruby
 class ChildWithDependencyWaitJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   # Dependency Wait is enabled (default: enable_dependency_wait: true)
   argument :data, "String"
@@ -600,7 +600,7 @@ class ChildWithDependencyWaitJob < ApplicationJob
 end
 
 class ParentWorkflowJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :data, "String"
   
@@ -625,7 +625,7 @@ If you need to guarantee complete child workflow completion, consider these appr
 1. **Disable Dependency Wait in the child workflow** (if child completes quickly):
 ```ruby
 class ChildWorkflowJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   # Explicitly disable Dependency Wait
   enable_dependency_wait false
@@ -641,7 +641,7 @@ task :invoke_and_wait do |ctx|
   
   # Check completion using job ID
   loop do
-    status = JobFlow::WorkflowStatus.find_by_job_id(job.job_id)
+    status = JobWorkflow::WorkflowStatus.find_by_job_id(job.job_id)
     break if status.all_completed?
     
     sleep 5  # Polling interval

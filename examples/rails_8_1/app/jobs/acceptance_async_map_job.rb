@@ -2,7 +2,7 @@
 
 # Job for acceptance testing - async map task feature
 class AcceptanceAsyncMapJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
 
   argument :values, "Array[Integer]"
 

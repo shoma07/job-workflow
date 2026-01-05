@@ -12,7 +12,7 @@ RSpec.describe "Lifecycle Hooks" do
         tracker = execution_log
 
         stub_const("GlobalBeforeHookJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           define_method(:tracker) { tracker }
 
@@ -48,7 +48,7 @@ RSpec.describe "Lifecycle Hooks" do
         tracker = execution_log
 
         stub_const("TaskSpecificBeforeHookJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           define_method(:tracker) { tracker }
 
@@ -86,7 +86,7 @@ RSpec.describe "Lifecycle Hooks" do
         tracker = execution_log
 
         stub_const("GlobalAfterHookJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           define_method(:tracker) { tracker }
 
@@ -117,7 +117,7 @@ RSpec.describe "Lifecycle Hooks" do
         tracker = execution_log
 
         stub_const("TaskSpecificAfterHookJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           define_method(:tracker) { tracker }
 
@@ -150,7 +150,7 @@ RSpec.describe "Lifecycle Hooks" do
         tracker = execution_log
 
         stub_const("AroundHookJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           define_method(:tracker) { tracker }
 
@@ -180,7 +180,7 @@ RSpec.describe "Lifecycle Hooks" do
 
       before do
         stub_const("AroundHookNotCalledJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           around do |_task|
             # Intentionally not calling task.call
@@ -194,7 +194,7 @@ RSpec.describe "Lifecycle Hooks" do
       end
 
       it "raises TaskCallable::NotCalledError" do
-        expect { perform_workflow }.to raise_error(JobFlow::TaskCallable::NotCalledError)
+        expect { perform_workflow }.to raise_error(JobWorkflow::TaskCallable::NotCalledError)
       end
     end
   end
@@ -210,7 +210,7 @@ RSpec.describe "Lifecycle Hooks" do
         tracker = execution_log
 
         stub_const("MultipleHooksJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           define_method(:tracker) { tracker }
 
@@ -277,7 +277,7 @@ RSpec.describe "Lifecycle Hooks" do
         tracker = error_log
 
         stub_const("OnErrorHookJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           define_method(:tracker) { tracker }
 
@@ -309,7 +309,7 @@ RSpec.describe "Lifecycle Hooks" do
         tracker = execution_log
 
         stub_const("MultiTaskHookJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           define_method(:tracker) { tracker }
 

@@ -1,0 +1,49 @@
+# Generated from lib/job_workflow/queue.rb with RBS::Inline
+
+module JobWorkflow
+  # Queue provides a unified interface for queue operations across different queue adapters.
+  #
+  # @example Pausing and resuming a queue
+  #   ```ruby
+  #   JobWorkflow::Queue.pause(:import_workflow)
+  #   JobWorkflow::Queue.paused?(:import_workflow)  # => true
+  #   JobWorkflow::Queue.resume(:import_workflow)
+  #   JobWorkflow::Queue.paused?(:import_workflow)  # => false
+  #   ```
+  #
+  # @example Getting queue metrics
+  #   ```ruby
+  #   JobWorkflow::Queue.latency(:import_workflow)  # => 120 (seconds)
+  #   JobWorkflow::Queue.size(:import_workflow)     # => 42 (pending jobs)
+  #   ```
+  #
+  # @example Listing workflows associated with a queue
+  #   ```ruby
+  #   JobWorkflow::Queue.workflows(:import_workflow)  # => [ImportJob, DataSyncJob]
+  #   ```
+  class Queue
+    # :  (String | Symbol) -> bool
+    def self.pause: (String | Symbol) -> bool
+
+    # :  (String | Symbol) -> bool
+    def self.resume: (String | Symbol) -> bool
+
+    # :  (String | Symbol) -> bool
+    def self.paused?: (String | Symbol) -> bool
+
+    # :  () -> Array[String]
+    def self.paused_queues: () -> Array[String]
+
+    # :  (String | Symbol) -> Integer?
+    def self.latency: (String | Symbol) -> Integer?
+
+    # :  (String | Symbol) -> Integer
+    def self.size: (String | Symbol) -> Integer
+
+    # :  (String | Symbol) -> bool
+    def self.clear: (String | Symbol) -> bool
+
+    # :  (String | Symbol) -> Array[singleton(DSL)]
+    def self.workflows: (String | Symbol) -> Array[singleton(DSL)]
+  end
+end

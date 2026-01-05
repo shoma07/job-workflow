@@ -15,7 +15,7 @@ Use the `dry_run` DSL method to enable dry-run mode for the entire workflow:
 
 ```ruby
 class MyWorkflowJob < ActiveJob::Base
-  include JobFlow::DSL
+  include JobWorkflow::DSL
 
   # Always dry-run
   dry_run true
@@ -36,7 +36,7 @@ Use a Proc to dynamically determine dry-run mode based on context:
 
 ```ruby
 class MyWorkflowJob < ActiveJob::Base
-  include JobFlow::DSL
+  include JobWorkflow::DSL
 
   argument :dry_run_mode, "bool", default: false
 
@@ -55,7 +55,7 @@ You can also configure dry-run at the task level:
 
 ```ruby
 class MyWorkflowJob < ActiveJob::Base
-  include JobFlow::DSL
+  include JobWorkflow::DSL
 
   task :safe_operation do |ctx|
     # Normal execution
@@ -79,7 +79,7 @@ When both workflow and task have dry-run configuration:
 
 ```ruby
 class MyWorkflowJob < ActiveJob::Base
-  include JobFlow::DSL
+  include JobWorkflow::DSL
 
   # Workflow-level: always dry-run
   dry_run true
@@ -187,12 +187,12 @@ end
 
 Dry-run operations emit ActiveSupport::Notifications events for monitoring:
 
-### Event: `dry_run.skip.job_flow`
+### Event: `dry_run.skip.job_workflow`
 
 Emitted for each `skip_in_dry_run` call:
 
 ```ruby
-ActiveSupport::Notifications.subscribe("dry_run.skip.job_flow") do |name, start, finish, id, payload|
+ActiveSupport::Notifications.subscribe("dry_run.skip.job_workflow") do |name, start, finish, id, payload|
   puts "Dry-run operation: #{payload[:dry_run_name]}"
   puts "Task: #{payload[:task_name]}"
   puts "Index: #{payload[:dry_run_index]}"
@@ -301,7 +301,7 @@ end
 
 ```ruby
 class ProductionWorkflowJob < ActiveJob::Base
-  include JobFlow::DSL
+  include JobWorkflow::DSL
 
   # Dry-run in non-production environments
   dry_run { |_ctx| !Rails.env.production? }
@@ -335,7 +335,7 @@ end
 
 ```ruby
 class OrderProcessingJob < ActiveJob::Base
-  include JobFlow::DSL
+  include JobWorkflow::DSL
 
   argument :order_id, "Integer"
   argument :dry_run_mode, "bool", default: false

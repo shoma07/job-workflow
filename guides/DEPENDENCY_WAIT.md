@@ -1,6 +1,6 @@
 # Dependency Wait
 
-JobFlow provides a `dependency_wait` option for tasks to efficiently wait for their dependencies without occupying worker threads. This feature is essential for workflows where map tasks spawn many parallel sub-jobs.
+JobWorkflow provides a `dependency_wait` option for tasks to efficiently wait for their dependencies without occupying worker threads. This feature is essential for workflows where map tasks spawn many parallel sub-jobs.
 
 ## The Problem
 
@@ -8,7 +8,7 @@ Consider a workflow where Task B depends on Task A, and Task A is a map task tha
 
 ```ruby
 class ExampleJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
 
   argument :items, "Array[Integer]"
 
@@ -165,7 +165,7 @@ The `dependency_wait` feature leverages SolidQueue's internal mechanisms with a 
 
 ```ruby
 class DataPipelineJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
 
   argument :date, "String"
 
@@ -206,7 +206,7 @@ end
 
 ```ruby
 class APIAggregatorJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
 
   argument :user_ids, "Array[Integer]"
 
@@ -298,7 +298,7 @@ Use instrumentation to track reschedule events:
 
 ```ruby
 # Subscribe to instrumentation events
-ActiveSupport::Notifications.subscribe("job_rescheduled.job_flow") do |_name, _start, _finish, _id, payload|
+ActiveSupport::Notifications.subscribe("job_rescheduled.job_workflow") do |_name, _start, _finish, _id, payload|
   Rails.logger.info(
     "Job rescheduled",
     task: payload[:task_name],
@@ -317,13 +317,13 @@ end
 **Cause**: Dependencies are never completing (failed or stuck sub-jobs).
 
 **Solution**:
-1. Check sub-job status using `JobFlow::JobStatus`
+1. Check sub-job status using `JobWorkflow::JobStatus`
 2. Look for failed executions in `solid_queue_failed_executions`
 3. Add error handling or timeout to dependent tasks
 
 ```ruby
 # Check job status
-status = JobFlow::JobStatus.new(MyJob, job_id)
+status = JobWorkflow::JobStatus.new(MyJob, job_id)
 status.fetch!
 puts status.tasks_status  # See which tasks are incomplete
 ```
@@ -347,13 +347,13 @@ dependency_wait: {
 
 **Cause**: The `ClaimedExecutionPatch` was not applied to SolidQueue.
 
-**Solution**: JobFlow automatically installs the patch when the adapter is initialized. Ensure SolidQueue is properly configured and the adapter initialization runs during boot.
+**Solution**: JobWorkflow automatically installs the patch when the adapter is initialized. Ensure SolidQueue is properly configured and the adapter initialization runs during boot.
 
 ## Technical Details
 
 ### How `throw/catch` Makes This Safe
 
-JobFlow uses Ruby's `throw/catch` mechanism (not exceptions) to handle job rescheduling:
+JobWorkflow uses Ruby's `throw/catch` mechanism (not exceptions) to handle job rescheduling:
 
 **Why `throw/catch` instead of exceptions?**
 - `throw` is a non-local jump mechanism, not exception handling

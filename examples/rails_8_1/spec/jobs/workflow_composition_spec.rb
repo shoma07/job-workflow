@@ -9,7 +9,7 @@ RSpec.describe "Workflow Composition" do
 
       before do
         stub_const("ChildWorkflowJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           argument :input, "Integer"
 
@@ -19,7 +19,7 @@ RSpec.describe "Workflow Composition" do
         end)
 
         stub_const("ParentWorkflowJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           argument :value, "Integer"
 
@@ -55,7 +55,7 @@ RSpec.describe "Workflow Composition" do
 
       before do
         stub_const("DataFetchWorkflowJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           argument :user_id, "Integer"
 
@@ -69,7 +69,7 @@ RSpec.describe "Workflow Composition" do
         end)
 
         stub_const("AggregatorWorkflowJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           argument :user_id, "Integer"
 
@@ -111,7 +111,7 @@ RSpec.describe "Workflow Composition" do
 
       before do
         stub_const("Level2WorkflowJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           argument :value, "Integer"
 
@@ -121,7 +121,7 @@ RSpec.describe "Workflow Composition" do
         end)
 
         stub_const("Level1WorkflowJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           argument :value, "Integer"
 
@@ -136,7 +136,7 @@ RSpec.describe "Workflow Composition" do
         end)
 
         stub_const("TopLevelWorkflowJob", Class.new(ApplicationJob) do
-          include JobFlow::DSL
+          include JobWorkflow::DSL
 
           argument :base_value, "Integer"
 

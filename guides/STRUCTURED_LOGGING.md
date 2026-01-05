@@ -1,10 +1,10 @@
 # Structured Logging
 
-JobFlow provides structured JSON logging for comprehensive workflow observability. All workflow and task lifecycle events are automatically logged with detailed context information.
+JobWorkflow provides structured JSON logging for comprehensive workflow observability. All workflow and task lifecycle events are automatically logged with detailed context information.
 
 ## Overview
 
-JobFlow's logging system uses a JSON formatter that outputs structured logs with timestamps, log levels, and event-specific fields. This makes it easy to search, filter, and analyze workflow execution in production environments.
+JobWorkflow's logging system uses a JSON formatter that outputs structured logs with timestamps, log levels, and event-specific fields. This makes it easy to search, filter, and analyze workflow execution in production environments.
 
 ### Key Features
 
@@ -16,7 +16,7 @@ JobFlow's logging system uses a JSON formatter that outputs structured logs with
 
 ## Log Event Types
 
-JobFlow automatically logs the following events:
+JobWorkflow automatically logs the following events:
 
 | Event | Description | Log Level | Fields |
 |-------|-------------|-----------|--------|
@@ -35,15 +35,15 @@ JobFlow automatically logs the following events:
 
 ## Default Configuration
 
-JobFlow automatically configures a logger with JSON output:
+JobWorkflow automatically configures a logger with JSON output:
 
 ```ruby
 # Default logger (outputs to STDOUT)
-JobFlow.logger
+JobWorkflow.logger
 # => #<ActiveSupport::Logger:...>
 
-JobFlow.logger.formatter
-# => #<JobFlow::Logger::JsonFormatter:...>
+JobWorkflow.logger.formatter
+# => #<JobWorkflow::Logger::JsonFormatter:...>
 ```
 
 ## Log Output Examples
@@ -89,10 +89,10 @@ JobFlow.logger.formatter
 You can replace the default logger with your own:
 
 ```ruby
-# config/initializers/job_flow.rb
-JobFlow.logger = ActiveSupport::Logger.new(Rails.root.join('log', 'job_flow.log'))
-JobFlow.logger.formatter = JobFlow::Logger::JsonFormatter.new
-JobFlow.logger.level = :info
+# config/initializers/job_workflow.rb
+JobWorkflow.logger = ActiveSupport::Logger.new(Rails.root.join('log', 'job_workflow.log'))
+JobWorkflow.logger.formatter = JobWorkflow::Logger::JsonFormatter.new
+JobWorkflow.logger.level = :info
 ```
 
 ### Custom Log Tags
@@ -100,13 +100,13 @@ JobFlow.logger.level = :info
 Add custom tags to include in every log entry:
 
 ```ruby
-# config/initializers/job_flow.rb
-JobFlow.logger.formatter = JobFlow::Logger::JsonFormatter.new(
+# config/initializers/job_workflow.rb
+JobWorkflow.logger.formatter = JobWorkflow::Logger::JsonFormatter.new(
   log_tags: [:request_id, :user_id]
 )
 
 # In your application code, set tags using ActiveSupport::TaggedLogging
-JobFlow.logger.tagged(request_id: request.request_id, user_id: current_user.id) do
+JobWorkflow.logger.tagged(request_id: request.request_id, user_id: current_user.id) do
   MyWorkflowJob.perform_later
 end
 ```
@@ -123,10 +123,10 @@ Control which logs are output by setting the log level:
 
 ```ruby
 # config/environments/production.rb
-JobFlow.logger.level = :info  # INFO, WARN, ERROR only (no DEBUG)
+JobWorkflow.logger.level = :info  # INFO, WARN, ERROR only (no DEBUG)
 
 # config/environments/development.rb
-JobFlow.logger.level = :debug  # All logs including throttling details
+JobWorkflow.logger.level = :debug  # All logs including throttling details
 ```
 
 ## Querying and Analyzing Logs
@@ -177,12 +177,12 @@ Use tagged logging to add request-specific context:
 
 ```ruby
 class ApplicationController < ActionController::Base
-  around_action :tag_job_flow_logs
+  around_action :tag_job_workflow_logs
 
   private
 
-  def tag_job_flow_logs
-    JobFlow.logger.tagged(
+  def tag_job_workflow_logs
+    JobWorkflow.logger.tagged(
       request_id: request.request_id,
       user_id: current_user&.id,
       tenant_id: current_tenant&.id
@@ -233,11 +233,11 @@ Configure appropriate retention policies based on your compliance and operationa
 
 ```ruby
 # Check logger configuration
-JobFlow.logger.level  # Should be :debug or :info
-JobFlow.logger.formatter.class  # Should be JobFlow::Logger::JsonFormatter
+JobWorkflow.logger.level  # Should be :debug or :info
+JobWorkflow.logger.formatter.class  # Should be JobWorkflow::Logger::JsonFormatter
 
 # Verify logger is writing
-JobFlow.logger.info({ event: "test", message: "test message" })
+JobWorkflow.logger.info({ event: "test", message: "test message" })
 ```
 
 ### Malformed JSON
@@ -246,11 +246,11 @@ If you see non-JSON log lines mixed with JSON:
 
 ```ruby
 # Ensure all loggers use JsonFormatter
-Rails.logger.formatter = JobFlow::Logger::JsonFormatter.new  # If needed
+Rails.logger.formatter = JobWorkflow::Logger::JsonFormatter.new  # If needed
 
-# Or separate JobFlow logs to a dedicated file
-JobFlow.logger = ActiveSupport::Logger.new('log/job_flow.log')
-JobFlow.logger.formatter = JobFlow::Logger::JsonFormatter.new
+# Or separate JobWorkflow logs to a dedicated file
+JobWorkflow.logger = ActiveSupport::Logger.new('log/job_workflow.log')
+JobWorkflow.logger.formatter = JobWorkflow::Logger::JsonFormatter.new
 ```
 
 ### Missing Context Fields
@@ -262,7 +262,7 @@ If expected fields are missing from logs:
 # The logger automatically includes job_name, job_id, task_name, etc.
 # Custom fields require tagged logging:
 
-JobFlow.logger.tagged(custom_field: "value") do
+JobWorkflow.logger.tagged(custom_field: "value") do
   MyWorkflowJob.perform_later
 end
 ```

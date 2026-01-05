@@ -53,7 +53,7 @@ end
 
 ### Dependency Resolution Order
 
-JobFlow automatically topologically sorts dependencies.
+JobWorkflow automatically topologically sorts dependencies.
 
 ```ruby
 # Correct order is executed regardless of definition order
@@ -80,7 +80,7 @@ Type information is specified as **strings**. This is used for RBS generation an
 
 ```ruby
 class TypedWorkflowJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   # Type information specified as strings (for RBS generation)
   argument :user_id, "Integer"

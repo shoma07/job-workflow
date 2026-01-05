@@ -1,6 +1,6 @@
 # Throttling
 
-JobFlow provides semaphore-based throttling to handle external API rate limits and protect shared resources. Throttling works across multiple jobs and workers, ensuring system-wide rate limiting.
+JobWorkflow provides semaphore-based throttling to handle external API rate limits and protect shared resources. Throttling works across multiple jobs and workers, ensuring system-wide rate limiting.
 
 ## Task-Level Throttling
 
@@ -10,7 +10,7 @@ For most use cases, specify the concurrency limit as an integer:
 
 ```ruby
 class ExternalAPIJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :user_ids, "Array[Integer]"
   
@@ -49,7 +49,7 @@ Use the same `key` to share rate limits across different jobs and tasks:
 ```ruby
 # Both jobs share the same "payment_api" throttle limit
 class CreateUserJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :user_data, "Hash"
   
@@ -60,7 +60,7 @@ class CreateUserJob < ApplicationJob
 end
 
 class UpdateBillingJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :billing_id, "String"
   
@@ -107,7 +107,7 @@ Throttling is especially useful with map tasks to limit API calls:
 
 ```ruby
 class BatchFetchJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :ids, "Array[Integer]"
   
@@ -130,7 +130,7 @@ For fine-grained control within a task, use the `ctx.throttle` method to wrap sp
 
 ```ruby
 class ComplexProcessingJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :data, "Hash"
   
@@ -188,7 +188,7 @@ Use both approaches for comprehensive rate limiting:
 
 ```ruby
 class APIIntegrationJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :ids, "Array[Integer]"
   

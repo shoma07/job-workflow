@@ -1,0 +1,60 @@
+# Generated from lib/job_workflow/task.rb with RBS::Inline
+
+module JobWorkflow
+  class Task
+    attr_reader job_name: String
+
+    attr_reader namespace: Namespace
+
+    attr_reader block: ^(untyped) -> void
+
+    attr_reader each: ^(Context) -> untyped
+
+    attr_reader enqueue: TaskEnqueue
+
+    attr_reader output: Array[OutputDef]
+
+    attr_reader depends_on: Array[Symbol]
+
+    attr_reader condition: ^(Context) -> bool
+
+    attr_reader task_retry: TaskRetry
+
+    attr_reader throttle: TaskThrottle
+
+    attr_reader timeout: Numeric?
+
+    attr_reader dependency_wait: TaskDependencyWait
+
+    attr_reader dry_run_config: DryRunConfig
+
+    # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength, Metrics/AbcSize
+    # :  (
+    #     job_name: String,
+    #     name: Symbol,
+    #     namespace: Namespace,
+    #     block: ^(untyped) -> void,
+    #     ?each: ^(Context) -> untyped,
+    #     ?enqueue: true | false | ^(Context) -> bool | Hash[Symbol, untyped],
+    #     ?output: Hash[Symbol, String],
+    #     ?depends_on: Array[Symbol],
+    #     condition: ^(Context) -> bool,
+    #     ?task_retry: Integer | Hash[Symbol, untyped],
+    #     ?throttle: Integer | Hash[Symbol, untyped],
+    #     ?timeout: Numeric?,
+    #     ?dependency_wait: Hash[Symbol, untyped],
+    #     ?dry_run: bool | ^(Context) -> bool
+    #   ) -> void
+    def initialize: (job_name: String, name: Symbol, namespace: Namespace, block: ^(untyped) -> void, condition: ^(Context) -> bool, ?each: ^(Context) -> untyped, ?enqueue: true | false | ^(Context) -> bool | Hash[Symbol, untyped], ?output: Hash[Symbol, String], ?depends_on: Array[Symbol], ?task_retry: Integer | Hash[Symbol, untyped], ?throttle: Integer | Hash[Symbol, untyped], ?timeout: Numeric?, ?dependency_wait: Hash[Symbol, untyped], ?dry_run: bool | ^(Context) -> bool) -> void
+
+    # :  () -> Symbol
+    def task_name: () -> Symbol
+
+    # :  () -> String
+    def throttle_prefix_key: () -> String
+
+    private
+
+    attr_reader name: Symbol
+  end
+end

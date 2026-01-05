@@ -1,10 +1,10 @@
-# JobFlow
+# JobWorkflow
 
 > ⚠️ **Early Stage (v0.1.2):** This library is in active development. APIs and features may change in breaking ways without notice. Use in production at your own risk and expect potential breaking changes in future releases.
 
 ## Overview
 
-JobFlow is a declarative workflow orchestration engine for Ruby on Rails applications, built on top of ActiveJob. It provides a simple DSL for defining workflows.
+JobWorkflow is a declarative workflow orchestration engine for Ruby on Rails applications, built on top of ActiveJob. It provides a simple DSL for defining workflows.
 
 ## Installation
 
@@ -12,7 +12,7 @@ Add this line to your application's Gemfile:
 
 ```ruby
 # Gemfile
-gem 'job-flow'
+gem 'job-workflow'
 ```
 
 And then execute:
@@ -40,7 +40,7 @@ To install this gem onto your local machine, run `bundle exec rake install`.
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/shoma07/job-flow.
+Bug reports and pull requests are welcome on GitHub at https://github.com/shoma07/job-workflow.
 
 ## License
 

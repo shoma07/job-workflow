@@ -1,0 +1,39 @@
+# Generated from lib/job_workflow/output.rb with RBS::Inline
+
+module JobWorkflow
+  class Output
+    # :  (Array[Hash[untyped, untyped]]) -> Output
+    def self.from_hash_array: (Array[Hash[untyped, untyped]]) -> Output
+
+    # :  (Hash[String, untyped]) -> Output
+    def self.deserialize: (Hash[String, untyped]) -> Output
+
+    # :  (?task_outputs: Array[TaskOutput]) -> void
+    def initialize: (?task_outputs: Array[TaskOutput]) -> void
+
+    # :  (task_name: Symbol?) -> Array[TaskOutput]
+    def fetch_all: (task_name: Symbol?) -> Array[TaskOutput]
+
+    # :  (task_name: Symbol?, each_index: Integer) -> TaskOutput?
+    def fetch: (task_name: Symbol?, each_index: Integer) -> TaskOutput?
+
+    # :  (Symbol | String) -> Array[TaskOutput?]
+    def []: (Symbol | String) -> Array[TaskOutput?]
+
+    # :  (TaskOutput) -> void
+    def add_task_output: (TaskOutput) -> void
+
+    # :  (Array[String], Workflow) -> void
+    def update_task_outputs_from_db: (Array[String], Workflow) -> void
+
+    # :  (Array[SolidQueue::Job], Workflow) -> void
+    def update_task_outputs_from_jobs: (Array[SolidQueue::Job], Workflow) -> void
+
+    # :  () -> Array[TaskOutput]
+    def flat_task_outputs: () -> Array[TaskOutput]
+
+    private
+
+    attr_accessor task_outputs: Hash[Symbol, Array[TaskOutput]]
+  end
+end

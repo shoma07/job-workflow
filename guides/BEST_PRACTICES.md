@@ -1,6 +1,6 @@
 # Best Practices
 
-Best practices, design patterns, and recommendations for effective JobFlow usage.
+Best practices, design patterns, and recommendations for effective JobWorkflow usage.
 
 ## Workflow Design
 
@@ -11,7 +11,7 @@ Best practices, design patterns, and recommendations for effective JobFlow usage
 ```ruby
 # ✅ Recommended: Follow single responsibility principle
 class WellDesignedWorkflowJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :data, "Hash"
   
@@ -42,7 +42,7 @@ end
 
 # ❌ Not recommended: Multiple responsibilities in one task
 class PoorlyDesignedWorkflowJob < ApplicationJob
-  include JobFlow::DSL
+  include JobWorkflow::DSL
   
   argument :data, "Hash"
   

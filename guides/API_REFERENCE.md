@@ -1,6 +1,6 @@
 # API Reference
 
-Detailed reference for all DSL methods and classes in JobFlow.
+Detailed reference for all DSL methods and classes in JobWorkflow.
 
 ## DSL Methods
 
