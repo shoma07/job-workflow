@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    job-workflow (0.1.3)
+    job-workflow (0.2.0)
       activejob (>= 8.1)
 
 GEM

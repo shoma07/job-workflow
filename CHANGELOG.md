@@ -1,5 +1,15 @@
 ## [Unreleased]
 
+## [0.2.0] - 2026-03-12
+
+### Added
+
+- Add `workflow_concurrency` DSL class method as a context-aware wrapper around SolidQueue's `limits_concurrency`. Unlike `limits_concurrency`, the key Proc receives a `Context` object, giving access to `ctx.arguments`, `ctx.sub_job?`, and `ctx.concurrency_key`. A fallback `Context` is built from job arguments when `_context` is not yet initialized (e.g. during enqueue before `perform`).
+
+### Fixed
+
+- Fix task-level concurrency key: internal `limits_concurrency` call for `enqueue: { concurrency: N }` tasks now goes through `workflow_concurrency`, ensuring the key Proc receives a proper `Context` instead of raw ActiveJob arguments. Also changed the internal key proc from `lambda` to `proc` for compatibility with SolidQueue's `instance_exec(*arguments, &proc)` call site.
+
 ## [0.1.3] - 2026-01-06
 
 ### Changed
