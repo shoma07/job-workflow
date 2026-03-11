@@ -110,6 +110,68 @@ The `enqueue:` option determines how map task iterations are executed:
 
 **Note**: `enqueue:` works with both regular tasks and map tasks. For map tasks, it enables asynchronous sub-job execution. For regular tasks, it allows conditional enqueueing as a separate job. Legacy syntax (`enqueue: ->(_ctx) { true }` as a Proc) is still supported for backward compatibility.
 
+### Job-Level Concurrency with `workflow_concurrency`
+
+When using SolidQueue's `limits_concurrency` directly, the key Proc receives raw ActiveJob arguments (a Hash), making it difficult to distinguish parent jobs from sub-jobs. `workflow_concurrency` is a wrapper that passes a **Context** object to the key Proc, giving access to workflow-aware information.
+
+```ruby
+class ImportJob < ApplicationJob
+  include JobWorkflow::DSL
+
+  argument :tenant_id, "Integer"
+  argument :items, "Array[Integer]"
+
+  # Limit to 1 concurrent execution per tenant.
+  # The key Proc receives a Context, not raw arguments.
+  workflow_concurrency to: 1,
+                       key: ->(ctx) { "import:#{ctx.arguments.tenant_id}" },
+                       on_conflict: :discard
+
+  task :process_items,
+       each: ->(ctx) { ctx.arguments.items },
+       enqueue: { concurrency: 5 },
+       output: { result: "String" } do |ctx|
+    { result: process(ctx.each_value) }
+  end
+end
+```
+
+**Key differences from `limits_concurrency`:**
+
+| Feature | `limits_concurrency` (SolidQueue) | `workflow_concurrency` (JobWorkflow) |
+|---|---|---|
+| Key Proc argument | Raw Hash (ActiveJob arguments) | `Context` object |
+| Access to `sub_job?` | ❌ Not available | ✅ `ctx.sub_job?` |
+| Access to `concurrency_key` | ❌ Not available | ✅ `ctx.concurrency_key` |
+| Access to `arguments` | Manual Hash parsing | ✅ `ctx.arguments.<name>` |
+
+**Separating parent and sub-job concurrency keys:**
+
+When a parent job enqueues sub-jobs (via `enqueue:` option), they share the same job class. With `limits_concurrency`, both parent and sub-jobs resolve to the same concurrency key, which can cause sub-jobs to be discarded. Use `workflow_concurrency` with `ctx.sub_job?` to generate distinct keys:
+
+```ruby
+workflow_concurrency to: 1,
+                     key: lambda { |ctx|
+                       if ctx.sub_job?
+                         # Sub-jobs use a unique key per task iteration
+                         ctx.concurrency_key
+                       else
+                         # Parent job uses a tenant-scoped key
+                         "import:#{ctx.arguments.tenant_id}"
+                       end
+                     },
+                     on_conflict: :discard
+```
+
+**Parameters:**
+- `to:` (Integer): Maximum number of concurrent executions
+- `key:` (Proc): A Proc that receives a `Context` and returns a String used as the concurrency key
+- `on_conflict:` (Symbol, optional): `:discard` to drop duplicate jobs, or omit for default SolidQueue behavior
+- `duration:` (ActiveSupport::Duration, optional): How long the concurrency lock is held
+- `group:` (String, optional): Concurrency group name
+
+> **Note**: `workflow_concurrency` requires SolidQueue. It delegates to `limits_concurrency` internally.
+
 ## Fork-Join Pattern
 
 ### Context Isolation

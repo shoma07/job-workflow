@@ -94,6 +94,38 @@ module JobWorkflow
       # :  (*Symbol) { (Context, StandardError, Task) -> void } -> void
       def on_error: (*Symbol) { (Context, StandardError, Task) -> void } -> void
 
+      # Configures concurrency limits for this workflow job.
+      #
+      # Unlike `limits_concurrency` (SolidQueue's raw API), this method passes a
+      # {Context} as the first argument to the key Proc, giving access to
+      # workflow-aware information such as `arguments`, `sub_job?`, and
+      # `concurrency_key`.
+      #
+      # When `_context` is not yet initialized (e.g. during enqueue before
+      # perform), a temporary Context is built from the job's arguments so the
+      # key Proc can always rely on `ctx.arguments`.
+      #
+      # @example Limit duplicate workflow runs by argument
+      #   workflow_concurrency to: 1,
+      #     key: ->(ctx) { "my_job:#{ctx.arguments.tenant_id}" },
+      #     on_conflict: :discard
+      #
+      # @example Separate parent and sub-job concurrency keys
+      #   workflow_concurrency to: 1,
+      #     key: ->(ctx) {
+      #       ctx.sub_job? ? ctx.concurrency_key : "my_job:#{ctx.arguments.name}"
+      #     },
+      #     on_conflict: :discard
+      #
+      # :  (
+      #     to: Integer,
+      #     key: ^(Context) -> String?,
+      #     ?duration: ActiveSupport::Duration?,
+      #     ?group: String?,
+      #     ?on_conflict: Symbol?
+      #   ) -> void
+      def workflow_concurrency: (to: Integer, key: ^(Context) -> String?, ?duration: ActiveSupport::Duration?, ?group: String?, ?on_conflict: Symbol?) -> void
+
       # :  (?bool) ?{ (Context) -> bool } -> void
       def dry_run: (?bool) ?{ (Context) -> bool } -> void
 

@@ -199,7 +199,7 @@ RSpec.describe JobWorkflow::DSL do
       end
     end
 
-    context "with each and concurrency options with limits_concurrency" do
+    context "with each and concurrency options calling workflow_concurrency" do
       subject(:task) do
         klass.task(
           :example_task,
@@ -218,6 +218,34 @@ RSpec.describe JobWorkflow::DSL do
       it do
         task
         expect(klass).to have_received(:limits_concurrency).with(to: 3, key: be_instance_of(Proc)).once
+      end
+    end
+
+    context "with each and concurrency key Proc invocation via workflow_concurrency" do
+      let(:captured_proc) do
+        proc_holder = nil
+        allow(klass).to receive(:limits_concurrency) { |**args| proc_holder = args[:key] }
+        klass.task(
+          :example_task,
+          each: ->(ctx) { ctx.arguments.items },
+          enqueue: { condition: ->(_ctx) { true }, concurrency: 2 }
+        ) { |_ctx| nil }
+        proc_holder
+      end
+
+      before do
+        stub_const("SolidQueue", Module.new)
+      end
+
+      it "returns concurrency_key from _context when _context is present" do
+        job = klass.new(sum: 0, items: [1])
+        job._context = JobWorkflow::Context.from_hash(job: job, workflow: klass._workflow)
+        expect(job.instance_exec(&captured_proc)).to be_nil
+      end
+
+      it "returns nil when _context is nil" do
+        job = klass.new(sum: 0, items: [1])
+        expect(job.instance_exec(&captured_proc)).to be_nil
       end
     end
 
@@ -272,6 +300,71 @@ RSpec.describe JobWorkflow::DSL do
           base_delay: 1,
           jitter: false
         )
+      end
+    end
+  end
+
+  describe "self.workflow_concurrency" do
+    let(:klass) do
+      Class.new(ActiveJob::Base) do
+        include JobWorkflow::DSL
+      end
+    end
+
+    context "when SolidQueue is not available" do
+      subject(:call) do
+        klass.workflow_concurrency(to: 1, key: ->(ctx) { ctx.arguments.name }, on_conflict: :discard)
+      end
+
+      it "calls limits_concurrency with a wrapped Proc" do
+        allow(klass).to receive(:limits_concurrency)
+        call
+        expect(klass).to have_received(:limits_concurrency).with(
+          to: 1,
+          key: be_instance_of(Proc),
+          on_conflict: :discard
+        )
+      end
+    end
+
+    context "when the key Proc is called with _context nil" do
+      subject(:resolved_key) do
+        captured_proc = nil
+        allow(klass).to receive(:limits_concurrency) { |**args| captured_proc = args[:key] }
+        klass.workflow_concurrency(to: 1, key: ->(ctx) { "prefix:#{ctx.arguments.name}" })
+        job = klass.new(name: "hello")
+        job.instance_exec(&captured_proc)
+      end
+
+      before do
+        klass.argument :name, "String"
+        klass.task(:work) { |_ctx| nil }
+      end
+
+      it "builds a fallback Context and passes it to the key Proc" do
+        expect(resolved_key).to eq("prefix:hello")
+      end
+    end
+
+    context "when the key Proc is called with _context present" do
+      subject(:resolved_key) do
+        captured_proc = nil
+        allow(klass).to receive(:limits_concurrency) { |**args| captured_proc = args[:key] }
+        klass.workflow_concurrency(to: 1, key: ->(ctx) { "prefix:#{ctx.arguments.name}" })
+        job = klass.new(name: "hello")
+        job._context = JobWorkflow::Context.from_hash(
+          job: job, workflow: klass._workflow
+        )._update_arguments({ name: "hello" })
+        job.instance_exec(&captured_proc)
+      end
+
+      before do
+        klass.argument :name, "String"
+        klass.task(:work) { |_ctx| nil }
+      end
+
+      it "passes the existing Context to the key Proc" do
+        expect(resolved_key).to eq("prefix:hello")
       end
     end
   end

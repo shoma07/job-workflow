@@ -165,7 +165,7 @@ module JobWorkflow
         _workflow.add_task(new_task)
         if new_task.enqueue.should_limits_concurrency? # rubocop:disable Style/GuardClause
           concurrency = new_task.enqueue.concurrency #: Integer
-          limits_concurrency(to: concurrency, key: ->(ctx) { ctx.concurrency_key }) # rubocop:disable Style/SymbolProc
+          workflow_concurrency(to: concurrency, key: :concurrency_key.to_proc)
         end
       end
       # rubocop:enable Metrics/ParameterLists
@@ -192,6 +192,50 @@ module JobWorkflow
       def on_error(*task_names, &block)
         validate_namespace!
         _workflow.add_hook(:error, task_names:, block:)
+      end
+
+      # Configures concurrency limits for this workflow job.
+      #
+      # Unlike `limits_concurrency` (SolidQueue's raw API), this method passes a
+      # {Context} as the first argument to the key Proc, giving access to
+      # workflow-aware information such as `arguments`, `sub_job?`, and
+      # `concurrency_key`.
+      #
+      # When `_context` is not yet initialized (e.g. during enqueue before
+      # perform), a temporary Context is built from the job's arguments so the
+      # key Proc can always rely on `ctx.arguments`.
+      #
+      # @example Limit duplicate workflow runs by argument
+      #   workflow_concurrency to: 1,
+      #     key: ->(ctx) { "my_job:#{ctx.arguments.tenant_id}" },
+      #     on_conflict: :discard
+      #
+      # @example Separate parent and sub-job concurrency keys
+      #   workflow_concurrency to: 1,
+      #     key: ->(ctx) {
+      #       ctx.sub_job? ? ctx.concurrency_key : "my_job:#{ctx.arguments.name}"
+      #     },
+      #     on_conflict: :discard
+      #
+      #:  (
+      #     to: Integer,
+      #     key: ^(Context) -> String?,
+      #     ?duration: ActiveSupport::Duration?,
+      #     ?group: String?,
+      #     ?on_conflict: Symbol?
+      #   ) -> void
+      def workflow_concurrency(to:, key:, **opts)
+        concurrency_key_proc = key
+        limits_concurrency(
+          to:,
+          key: proc {
+            ctx = _context || Context.from_hash(
+              job: self, workflow: self.class._workflow
+            )._update_arguments((arguments.first || {}).symbolize_keys)
+            concurrency_key_proc.call(ctx)
+          },
+          **opts
+        )
       end
 
       #:  (?bool) ?{ (Context) -> bool } -> void

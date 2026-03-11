@@ -84,6 +84,73 @@ end
 
 **Map Task Output**: When `each:` is specified, outputs are automatically collected as an array.
 
+### workflow_concurrency
+
+Configure job-level concurrency limits with workflow-aware context.
+
+```ruby
+workflow_concurrency(to:, key:, **opts)
+```
+
+**Parameters**:
+- `to` (Integer): Maximum number of concurrent executions
+- `key` (Proc): A Proc that receives a `Context` and returns a String concurrency key
+- `opts` (Hash): Additional options passed to SolidQueue's `limits_concurrency`
+  - `on_conflict` (Symbol): `:discard` to drop duplicate jobs (optional)
+  - `duration` (ActiveSupport::Duration): How long the concurrency lock is held (optional)
+  - `group` (String): Concurrency group name (optional)
+
+Unlike SolidQueue's `limits_concurrency` (which passes raw ActiveJob arguments to the key Proc), `workflow_concurrency` passes a **Context** object, giving access to `arguments`, `sub_job?`, and `concurrency_key`.
+
+**Example — simple per-tenant key**:
+
+```ruby
+class ImportJob < ApplicationJob
+  include JobWorkflow::DSL
+
+  argument :tenant_id, "Integer"
+  argument :items, "Array[Integer]"
+
+  workflow_concurrency to: 1,
+                       key: ->(ctx) { "import:#{ctx.arguments.tenant_id}" },
+                       on_conflict: :discard
+
+  task :process,
+       each: ->(ctx) { ctx.arguments.items },
+       enqueue: { concurrency: 5 },
+       output: { result: "String" } do |ctx|
+    { result: handle(ctx.each_value) }
+  end
+end
+```
+
+**Example — separating parent and sub-job keys**:
+
+```ruby
+class BatchImportJob < ApplicationJob
+  include JobWorkflow::DSL
+
+  argument :tenant_id, "Integer"
+  argument :items, "Array[Integer]"
+
+  workflow_concurrency to: 1,
+                       key: lambda { |ctx|
+                         ctx.sub_job? ? ctx.concurrency_key : "batch:#{ctx.arguments.tenant_id}"
+                       },
+                       on_conflict: :discard
+
+  task :process,
+       each: ->(ctx) { ctx.arguments.items },
+       enqueue: { concurrency: 5 },
+       output: { result: "String" } do |ctx|
+    { result: handle(ctx.each_value) }
+  end
+end
+```
+
+> **Note**: `workflow_concurrency` calls `limits_concurrency` internally. Calling it multiple times in the same class will **overwrite** the previous setting (last-wins). Define it once per job class.
+> Requires SolidQueue.
+
 **Example**:
 
 ```ruby
