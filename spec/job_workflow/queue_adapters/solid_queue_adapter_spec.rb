@@ -127,6 +127,7 @@ RSpec.describe JobWorkflow::QueueAdapters::SolidQueueAdapter do
 
       before do
         stub_const("SolidQueue::Job", solid_queue_job)
+        allow(SolidQueue::Job).to receive(:uncached).and_yield
         allow(first_job).to receive(:active_job_id).and_return("job-1")
         allow(second_job).to receive(:active_job_id).and_return("job-2")
         allow(SolidQueue::Job).to receive(:where).with(active_job_id: %w[job-1 job-2]).and_return(relation)
@@ -460,6 +461,7 @@ RSpec.describe JobWorkflow::QueueAdapters::SolidQueueAdapter do
 
       before do
         stub_const("SolidQueue::Job", job.class)
+        allow(SolidQueue::Job).to receive(:uncached).and_yield
         allow(job.class).to receive(:find_by).with(active_job_id: "job-123").and_return(job)
         allow(job).to receive_messages(
           active_job_id: "job-123",
@@ -482,6 +484,7 @@ RSpec.describe JobWorkflow::QueueAdapters::SolidQueueAdapter do
               "class_name" => "TestJob",
               "queue_name" => "default",
               "arguments" => [{ "value" => 42 }],
+              "job_workflow_context" => nil,
               "status" => :running
             }
           )
@@ -494,6 +497,7 @@ RSpec.describe JobWorkflow::QueueAdapters::SolidQueueAdapter do
 
       before do
         stub_const("SolidQueue::Job", job.class)
+        allow(SolidQueue::Job).to receive(:uncached).and_yield
         allow(job.class).to receive(:find_by).with(active_job_id: "job-456").and_return(job)
         allow(job).to receive_messages(
           active_job_id: "job-456",
@@ -516,6 +520,7 @@ RSpec.describe JobWorkflow::QueueAdapters::SolidQueueAdapter do
               "class_name" => "LegacyJob",
               "queue_name" => "legacy",
               "arguments" => nil,
+              "job_workflow_context" => nil,
               "status" => :succeeded
             }
           )
@@ -526,10 +531,104 @@ RSpec.describe JobWorkflow::QueueAdapters::SolidQueueAdapter do
     context "when job is not found" do
       before do
         stub_const("SolidQueue::Job", Class.new)
+        allow(SolidQueue::Job).to receive(:uncached).and_yield
         allow(SolidQueue::Job).to receive(:find_by).with(active_job_id: "job-123").and_return(nil)
       end
 
       it { is_expected.to be_nil }
+    end
+  end
+
+  describe "#fetch_job_contexts" do
+    subject(:fetch_job_contexts) { adapter.fetch_job_contexts(job_ids) }
+
+    let(:job_ids) { %w[job-1 job-2] }
+
+    context "when SolidQueue::Job is not defined" do
+      before { hide_const("SolidQueue::Job") }
+
+      it { is_expected.to eq([]) }
+    end
+
+    context "when job_ids is empty" do
+      let(:job_ids) { [] }
+
+      before { stub_const("SolidQueue::Job", Class.new) }
+
+      it { is_expected.to eq([]) }
+    end
+
+    context "when jobs have job_workflow_context" do
+      let(:sq_jobs) { [Class.new.new, Class.new.new] }
+      let(:first_context_hash) do
+        {
+          "task_context" => {
+            "task_name" => "task_a", "parent_job_id" => "p1",
+            "index" => 0, "value" => 1, "retry_count" => 0
+          },
+          "task_outputs" => [],
+          "task_job_statuses" => []
+        }
+      end
+      let(:second_context_hash) do
+        {
+          "task_context" => {
+            "task_name" => "task_a", "parent_job_id" => "p1",
+            "index" => 1, "value" => 2, "retry_count" => 0
+          },
+          "task_outputs" => [],
+          "task_job_statuses" => []
+        }
+      end
+
+      before do
+        stub_const("SolidQueue::Job", sq_jobs.first.class)
+        allow(SolidQueue::Job).to receive(:uncached).and_yield
+        allow(SolidQueue::Job).to receive(:where)
+          .with(active_job_id: job_ids).and_return(sq_jobs)
+        allow(sq_jobs[0]).to receive(:arguments)
+          .and_return({ "job_workflow_context" => first_context_hash })
+        allow(sq_jobs[1]).to receive(:arguments)
+          .and_return({ "job_workflow_context" => second_context_hash })
+      end
+
+      it { is_expected.to eq([first_context_hash, second_context_hash]) }
+    end
+
+    context "when some jobs have non-Hash arguments" do
+      let(:sq_jobs) { [Class.new.new, Class.new.new] }
+      let(:context_hash) do
+        {
+          "task_context" => {
+            "task_name" => "task_a", "parent_job_id" => "p1",
+            "index" => 0, "value" => 1, "retry_count" => 0
+          },
+          "task_outputs" => [],
+          "task_job_statuses" => []
+        }
+      end
+
+      before do
+        stub_const("SolidQueue::Job", sq_jobs.first.class)
+        allow(SolidQueue::Job).to receive(:uncached).and_yield
+        allow(SolidQueue::Job).to receive(:where)
+          .with(active_job_id: job_ids).and_return(sq_jobs)
+        allow(sq_jobs[0]).to receive(:arguments)
+          .and_return({ "job_workflow_context" => context_hash })
+        allow(sq_jobs[1]).to receive(:arguments).and_return(nil)
+      end
+
+      it { is_expected.to eq([context_hash]) }
+    end
+
+    context "when no jobs are found" do
+      before do
+        stub_const("SolidQueue::Job", Class.new)
+        allow(SolidQueue::Job).to receive(:uncached).and_yield
+        allow(SolidQueue::Job).to receive(:where).with(active_job_id: job_ids).and_return([])
+      end
+
+      it { is_expected.to eq([]) }
     end
   end
 
@@ -557,6 +656,7 @@ RSpec.describe JobWorkflow::QueueAdapters::SolidQueueAdapter do
     context "when SolidQueue::Job is defined and job is not claimed" do
       before do
         stub_const("SolidQueue::Job", sq_job.class)
+        allow(SolidQueue::Job).to receive(:uncached).and_yield
         allow(sq_job.class).to receive(:find_by).with(active_job_id: active_job.job_id).and_return(sq_job)
         allow(sq_job).to receive(:claimed?).and_return(false)
       end
@@ -567,6 +667,7 @@ RSpec.describe JobWorkflow::QueueAdapters::SolidQueueAdapter do
     context "when SolidQueue::Job is defined and job is not found" do
       before do
         stub_const("SolidQueue::Job", sq_job.class)
+        allow(SolidQueue::Job).to receive(:uncached).and_yield
         allow(sq_job.class).to receive(:find_by).with(active_job_id: active_job.job_id).and_return(nil)
       end
 
@@ -576,6 +677,7 @@ RSpec.describe JobWorkflow::QueueAdapters::SolidQueueAdapter do
     context "when SolidQueue::Job is defined and job is claimed" do
       before do
         stub_const("SolidQueue::Job", sq_job.class)
+        allow(SolidQueue::Job).to receive(:uncached).and_yield
         allow(sq_job.class).to receive(:find_by).with(active_job_id: active_job.job_id).and_return(sq_job)
         allow(sq_job).to receive_messages(
           claimed?: true,
@@ -595,9 +697,16 @@ RSpec.describe JobWorkflow::QueueAdapters::SolidQueueAdapter do
         expect(claimed_execution).to have_received(:destroy!)
       end
 
-      it "updates scheduled_at" do
+      it "updates scheduled_at and arguments" do
         reschedule_job
         expect(sq_job).to have_received(:update!).with(hash_including(:scheduled_at, :arguments))
+      end
+
+      it "saves arguments as a Hash (full serialized job)" do
+        reschedule_job
+        expect(sq_job).to have_received(:update!).with(
+          hash_including(arguments: { "arguments" => [{ "_job_workflow_context" => {} }] })
+        )
       end
 
       it "prepares for execution" do
@@ -609,6 +718,7 @@ RSpec.describe JobWorkflow::QueueAdapters::SolidQueueAdapter do
     context "when SolidQueue::Job is defined and job is claimed but claimed_execution is nil" do
       before do
         stub_const("SolidQueue::Job", sq_job.class)
+        allow(SolidQueue::Job).to receive(:uncached).and_yield
         allow(sq_job.class).to receive(:find_by).with(active_job_id: active_job.job_id).and_return(sq_job)
         allow(sq_job).to receive_messages(
           claimed?: true,
@@ -631,11 +741,67 @@ RSpec.describe JobWorkflow::QueueAdapters::SolidQueueAdapter do
       before do
         stub_const("SolidQueue::Job", sq_job.class)
         stub_const("ActiveRecord::RecordNotFound", Class.new(StandardError))
+        allow(SolidQueue::Job).to receive(:uncached).and_yield
         allow(sq_job.class).to receive(:find_by).with(active_job_id: active_job.job_id).and_return(sq_job)
         allow(sq_job).to receive(:claimed?).and_raise(ActiveRecord::RecordNotFound)
       end
 
       it { is_expected.to be false }
+    end
+  end
+
+  describe "#persist_job_context" do
+    subject(:persist_job_context) { adapter.persist_job_context(active_job) }
+
+    let(:active_job) do
+      klass = Class.new(ActiveJob::Base) do
+        include JobWorkflow::DSL
+      end
+      job = klass.new
+      allow(job).to receive(:serialize).and_return(
+        {
+          "job_class" => "TestJob",
+          "arguments" => [],
+          "job_workflow_context" => { "task_outputs" => [{ "result" => 42 }] }
+        }
+      )
+      job
+    end
+
+    let(:sq_job) { Class.new.new }
+
+    context "when SolidQueue::Job is not defined" do
+      before { hide_const("SolidQueue::Job") }
+
+      it "does not raise" do
+        expect { persist_job_context }.not_to raise_error
+      end
+    end
+
+    context "when SolidQueue::Job is defined and job is found" do
+      before do
+        stub_const("SolidQueue::Job", sq_job.class)
+        allow(sq_job.class).to receive(:find_by).with(active_job_id: active_job.job_id).and_return(sq_job)
+        allow(sq_job).to receive(:update!)
+      end
+
+      it "updates the job arguments with full serialized data" do
+        persist_job_context
+        expect(sq_job).to have_received(:update!).with(
+          arguments: hash_including("job_workflow_context" => { "task_outputs" => [{ "result" => 42 }] })
+        )
+      end
+    end
+
+    context "when SolidQueue::Job is defined and job is not found" do
+      before do
+        stub_const("SolidQueue::Job", sq_job.class)
+        allow(sq_job.class).to receive(:find_by).with(active_job_id: active_job.job_id).and_return(nil)
+      end
+
+      it "does not raise" do
+        expect { persist_job_context }.not_to raise_error
+      end
     end
   end
 end

@@ -286,6 +286,7 @@ RSpec.describe JobWorkflow::JobStatus do
     let(:jobs) do
       klass = Class.new
       stub_const("SolidQueue::Job", klass)
+      allow(SolidQueue::Job).to receive(:uncached).and_yield
       [
         SolidQueue::Job.new,
         SolidQueue::Job.new

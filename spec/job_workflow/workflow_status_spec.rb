@@ -174,6 +174,37 @@ RSpec.describe JobWorkflow::WorkflowStatus do
         )
       end
     end
+
+    context "when job_workflow_context is at the top level (SolidQueue format)" do
+      let(:context_data) do
+        {
+          "task_context" => { "task_name" => :step_one, "each_index" => 0, "data" => {} },
+          "task_outputs" => [
+            { "task_name" => "step_one", "each_index" => 0,
+              "data" => { "_aj_symbol_keys" => %w[data], "data" => "from_top" } }
+          ],
+          "task_job_statuses" => []
+        }
+      end
+      let(:job_data) do
+        {
+          "class_name" => "TestWorkflowJob",
+          "arguments" => [{}],
+          "job_workflow_context" => context_data,
+          "status" => :succeeded
+        }
+      end
+
+      it { expect(workflow_status.output[:step_one].first.data).to eq(data: "from_top") }
+    end
+
+    context "when arguments is nil" do
+      let(:job_data) do
+        { "class_name" => "TestWorkflowJob", "arguments" => nil, "status" => :pending }
+      end
+
+      it { expect(workflow_status.current_task_name).to be_nil }
+    end
   end
 
   describe "#status" do

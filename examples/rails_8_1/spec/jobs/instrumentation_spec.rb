@@ -215,7 +215,11 @@ RSpec.describe "Instrumentation" do
         # Give time for all events to be processed
         sleep 0.2
 
-        release_events = mutex.synchronize { received_events.select { |e| e[:name] == "throttle.release.job_workflow" } }
+        release_events = mutex.synchronize do
+          received_events.select do |e|
+            e[:name] == "throttle.release.job_workflow"
+          end
+        end
         expect(release_events).not_to be_empty
       end
     end

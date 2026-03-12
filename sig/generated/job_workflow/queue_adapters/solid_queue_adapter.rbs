@@ -2,7 +2,7 @@
 
 module JobWorkflow
   module QueueAdapters
-    # rubocop:disable Naming/PredicateMethod
+    # rubocop:disable Naming/PredicateMethod, Metrics/ClassLength
     class SolidQueueAdapter < Abstract
       # @note
       #   - Registry scope: @semaphore_registry is process-scoped (shared across fibers/threads
@@ -82,12 +82,36 @@ module JobWorkflow
       # :  (String) -> Hash[String, untyped]?
       def find_job: (String) -> Hash[String, untyped]?
 
+      # @note
+      #   - Fetches job_workflow_context hashes for the given job IDs.
+      #
+      # :  (Array[String]) -> Array[Hash[String, untyped]]
+      def fetch_job_contexts: (Array[String]) -> Array[Hash[String, untyped]]
+
       # :  (DSL, Numeric) -> bool
       def reschedule_job: (DSL, Numeric) -> bool
+
+      # @note
+      #   - Persists the job's updated context (including task outputs) back
+      #     to the SolidQueue job record after execution completes. Without this,
+      #     outputs computed during job execution would be lost because
+      #     SolidQueue does not re-serialize job arguments after perform.
+      #
+      # :  (DSL) -> void
+      def persist_job_context: (DSL) -> void
 
       private
 
       attr_reader semaphore_registry: Hash[Object, ^(SolidQueue::Worker) -> void]
+
+      # @note
+      #   - Bypasses ActiveRecord query cache for the given block.
+      #   - When running under SolidQueue's executor, SELECT queries are cached
+      #     for the entire job execution. Polling queries must bypass this cache
+      #     to observe status changes made by other threads/processes.
+      #
+      # :  [T] () { () -> T } -> T
+      def without_query_cache: [T] () { () -> T } -> T
 
       # :  (SolidQueue::Job, DSL, Numeric) -> bool
       def reschedule_solid_queue_job: (SolidQueue::Job, DSL, Numeric) -> bool

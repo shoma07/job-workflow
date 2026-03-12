@@ -2,7 +2,7 @@
 
 module JobWorkflow
   module QueueAdapters
-    # rubocop:disable Naming/PredicateMethod
+    # rubocop:disable Naming/PredicateMethod, Metrics/ClassLength
     class SolidQueueAdapter < Abstract
       # @note
       #   - Registry scope: @semaphore_registry is process-scoped (shared across fibers/threads
@@ -74,16 +74,20 @@ module JobWorkflow
       def fetch_job_statuses(job_ids)
         return {} unless defined?(SolidQueue::Job)
 
-        SolidQueue::Job.where(active_job_id: job_ids).index_by(&:active_job_id)
+        without_query_cache do
+          SolidQueue::Job.where(active_job_id: job_ids).index_by(&:active_job_id)
+        end
       end
 
       #:  (untyped) -> Symbol
       def job_status(job)
-        return :failed if job.failed?
-        return :succeeded if job.finished?
-        return :running if job.claimed?
+        without_query_cache do
+          return :failed if job.failed?
+          return :succeeded if job.finished?
+          return :running if job.claimed?
 
-        :pending
+          :pending
+        end
       end
 
       #:  () -> bool
@@ -153,23 +157,40 @@ module JobWorkflow
       def find_job(job_id)
         return unless defined?(SolidQueue::Job)
 
-        job = SolidQueue::Job.find_by(active_job_id: job_id)
+        job = without_query_cache { SolidQueue::Job.find_by(active_job_id: job_id) }
         return if job.nil?
 
+        args = job.arguments
         {
           "job_id" => job.active_job_id,
           "class_name" => job.class_name,
           "queue_name" => job.queue_name,
-          "arguments" => job.arguments.is_a?(Hash) ? job.arguments["arguments"] : job.arguments,
+          "arguments" => args.is_a?(Hash) ? args["arguments"] : args,
+          "job_workflow_context" => args.is_a?(Hash) ? args["job_workflow_context"] : nil,
           "status" => job_status(job)
         }
+      end
+
+      # @note
+      #   - Fetches job_workflow_context hashes for the given job IDs.
+      #
+      #:  (Array[String]) -> Array[Hash[String, untyped]]
+      def fetch_job_contexts(job_ids)
+        return [] unless defined?(SolidQueue::Job)
+        return [] if job_ids.empty?
+
+        jobs = without_query_cache { SolidQueue::Job.where(active_job_id: job_ids).to_a }
+        jobs.filter_map do |job|
+          args = job.arguments
+          args.is_a?(Hash) ? args["job_workflow_context"] : nil
+        end
       end
 
       #:  (DSL, Numeric) -> bool
       def reschedule_job(job, wait)
         return false unless defined?(SolidQueue::Job)
 
-        solid_queue_job = SolidQueue::Job.find_by(active_job_id: job.job_id)
+        solid_queue_job = without_query_cache { SolidQueue::Job.find_by(active_job_id: job.job_id) }
         return false unless solid_queue_job&.claimed?
 
         reschedule_solid_queue_job(solid_queue_job, job, wait)
@@ -177,9 +198,36 @@ module JobWorkflow
         false
       end
 
+      # @note
+      #   - Persists the job's updated context (including task outputs) back
+      #     to the SolidQueue job record after execution completes. Without this,
+      #     outputs computed during job execution would be lost because
+      #     SolidQueue does not re-serialize job arguments after perform.
+      #
+      #:  (DSL) -> void
+      def persist_job_context(job)
+        return unless defined?(SolidQueue::Job)
+
+        solid_queue_job = SolidQueue::Job.find_by(active_job_id: job.job_id)
+        return if solid_queue_job.nil?
+
+        solid_queue_job.update!(arguments: job.serialize.deep_stringify_keys)
+      end
+
       private
 
       attr_reader :semaphore_registry #: Hash[Object, ^(SolidQueue::Worker) -> void]
+
+      # @note
+      #   - Bypasses ActiveRecord query cache for the given block.
+      #   - When running under SolidQueue's executor, SELECT queries are cached
+      #     for the entire job execution. Polling queries must bypass this cache
+      #     to observe status changes made by other threads/processes.
+      #
+      #:  [T] () { () -> T } -> T
+      def without_query_cache(&)
+        defined?(SolidQueue::Job) ? SolidQueue::Job.uncached(&) : yield
+      end
 
       #:  (SolidQueue::Job, DSL, Numeric) -> bool
       def reschedule_solid_queue_job(solid_queue_job, active_job, wait)
@@ -187,7 +235,7 @@ module JobWorkflow
           solid_queue_job.claimed_execution&.destroy!
           solid_queue_job.update!(
             scheduled_at: wait.seconds.from_now,
-            arguments: active_job.serialize.deep_stringify_keys["arguments"]
+            arguments: active_job.serialize.deep_stringify_keys
           )
           solid_queue_job.prepare_for_execution
         end
@@ -219,6 +267,6 @@ module JobWorkflow
         end
       end
     end
-    # rubocop:enable Naming/PredicateMethod
+    # rubocop:enable Naming/PredicateMethod, Metrics/ClassLength
   end
 end

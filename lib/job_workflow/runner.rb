@@ -13,9 +13,14 @@ module JobWorkflow
     #:  () -> void
     def run
       task = context._task_context.task
-      return run_task(task) if !task.nil? && context.sub_job?
+      if !task.nil? && context.sub_job?
+        run_task(task)
+        QueueAdapter.current.persist_job_context(job)
+        return
+      end
 
       catch(:rescheduled) { run_workflow }
+      QueueAdapter.current.persist_job_context(job)
     end
 
     private
@@ -167,7 +172,8 @@ module JobWorkflow
     #:  (Task) -> void
     def update_task_outputs(task)
       finished_job_ids = context.job_status.finished_job_ids(task_name: task.task_name)
-      context.output.update_task_outputs_from_db(finished_job_ids, context.workflow)
+      context_data_list = QueueAdapter.current.fetch_job_contexts(finished_job_ids)
+      context.output.update_task_outputs_from_contexts(context_data_list, context.workflow)
     end
   end
 end

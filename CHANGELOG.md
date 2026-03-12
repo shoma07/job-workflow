@@ -1,5 +1,25 @@
 ## [Unreleased]
 
+## [0.3.0] - 2026-03-13
+
+### Added
+
+- Add `fetch_job_contexts(job_ids)` to queue adapter interface (`Abstract`, `SolidQueueAdapter`, `NullAdapter`) for fetching sub-job context data without direct `SolidQueue::Job` dependency from domain classes
+- Add `persist_job_context(job)` to queue adapter interface for persisting task outputs back to SolidQueue job records after execution
+- Add `without_query_cache` private helper to `SolidQueueAdapter` to bypass ActiveRecord query cache during polling queries
+- Add `"job_workflow_context"` key to `find_job` return hash for direct access to workflow context data
+- Add `AcceptanceNoDependencyWaitJob` and acceptance tests for `depends_on` without `dependency_wait` (polling-only mode)
+- Add acceptance test for output aggregation verification in async workflows
+
+### Changed
+
+- **Breaking (internal):** Replace `Output#update_task_outputs_from_db` and `Output#update_task_outputs_from_jobs` with `Output#update_task_outputs_from_contexts` — callers now pass context data hashes instead of `SolidQueue::Job` objects
+- `Runner#update_task_outputs` now routes through `QueueAdapter.current.fetch_job_contexts` instead of directly querying `SolidQueue::Job`
+- `Runner#run` now calls `QueueAdapter.current.persist_job_context(job)` after both sub-job and workflow execution
+- `WorkflowStatus.from_job_data` now reads `job_workflow_context` from top-level data first, falling back to `arguments.first.dig("job_workflow_context")`
+- `reschedule_solid_queue_job` now saves full serialized job hash (`active_job.serialize.deep_stringify_keys`) instead of only `["arguments"]`
+- Wrap `find_job`, `fetch_job_statuses`, `job_status`, `reschedule_job`, and `fetch_job_contexts` with `without_query_cache` to prevent stale reads under SolidQueue executor
+
 ## [0.2.0] - 2026-03-12
 
 ### Added
