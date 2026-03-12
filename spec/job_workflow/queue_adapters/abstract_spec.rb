@@ -79,6 +79,10 @@ RSpec.describe JobWorkflow::QueueAdapters::Abstract do
     it { expect { adapter.find_job("job-id-1") }.to raise_error(NotImplementedError) }
   end
 
+  describe "#fetch_job_contexts" do
+    it { expect { adapter.fetch_job_contexts(%w[job-1 job-2]) }.to raise_error(NotImplementedError) }
+  end
+
   describe "#reschedule_job" do
     subject(:reschedule_job) { adapter.reschedule_job(job, 10) }
 
@@ -90,5 +94,20 @@ RSpec.describe JobWorkflow::QueueAdapters::Abstract do
     end
 
     it { is_expected.to be false }
+  end
+
+  describe "#persist_job_context" do
+    subject(:persist_job_context) { adapter.persist_job_context(job) }
+
+    let(:job) do
+      klass = Class.new(ActiveJob::Base) do
+        include JobWorkflow::DSL
+      end
+      klass.new
+    end
+
+    it "is a no-op by default" do
+      expect(persist_job_context).to be_nil
+    end
   end
 end

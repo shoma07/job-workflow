@@ -222,6 +222,12 @@ RSpec.describe JobWorkflow::QueueAdapters::NullAdapter do
     end
   end
 
+  describe "#fetch_job_contexts" do
+    subject(:fetch_job_contexts) { adapter.fetch_job_contexts(%w[job-1 job-2]) }
+
+    it { is_expected.to eq([]) }
+  end
+
   describe "#reschedule_job" do
     subject(:reschedule_job) { adapter.reschedule_job(job, 10) }
 

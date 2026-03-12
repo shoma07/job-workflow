@@ -23,11 +23,8 @@ module JobWorkflow
     # :  (TaskOutput) -> void
     def add_task_output: (TaskOutput) -> void
 
-    # :  (Array[String], Workflow) -> void
-    def update_task_outputs_from_db: (Array[String], Workflow) -> void
-
-    # :  (Array[SolidQueue::Job], Workflow) -> void
-    def update_task_outputs_from_jobs: (Array[SolidQueue::Job], Workflow) -> void
+    # :  (Array[Hash[String, untyped]], Workflow) -> void
+    def update_task_outputs_from_contexts: (Array[Hash[String, untyped]], Workflow) -> void
 
     # :  () -> Array[TaskOutput]
     def flat_task_outputs: () -> Array[TaskOutput]

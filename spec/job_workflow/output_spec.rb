@@ -274,8 +274,10 @@ RSpec.describe JobWorkflow::Output do
     end
   end
 
-  describe "#update_task_outputs_from_jobs" do
-    subject(:update_task_outputs_from_jobs) { output.update_task_outputs_from_jobs(jobs, workflow) }
+  describe "#update_task_outputs_from_contexts" do
+    subject(:update_task_outputs_from_contexts) do
+      output.update_task_outputs_from_contexts(context_data_list, workflow)
+    end
 
     let(:output) { described_class.new }
     let(:workflow) do
@@ -290,76 +292,61 @@ RSpec.describe JobWorkflow::Output do
       )
       wf
     end
-    let(:all_jobs) do
-      stub_const("SolidQueue::Job", Class.new)
-      [SolidQueue::Job.new, SolidQueue::Job.new, SolidQueue::Job.new]
+    let(:all_contexts) do
+      [
+        {
+          "task_context" => {
+            "task_name" => "sample_task",
+            "parent_job_id" => "parent-id",
+            "index" => 0,
+            "value" => 10,
+            "retry_count" => 0
+          },
+          "task_outputs" => [
+            { "task_name" => "sample_task", "each_index" => 0,
+              "data" => { "_aj_symbol_keys" => %w[result], "result" => 42 } }
+          ],
+          "task_job_statuses" => []
+        },
+        {
+          "task_context" => {
+            "task_name" => "sample_task",
+            "parent_job_id" => "parent-id",
+            "index" => 1,
+            "value" => 11,
+            "retry_count" => 0
+          },
+          "task_outputs" => [
+            { "task_name" => "sample_task", "each_index" => 1,
+              "data" => { "_aj_symbol_keys" => %w[result], "result" => 82 } }
+          ],
+          "task_job_statuses" => []
+        },
+        {
+          "task_context" => {
+            "task_name" => "sample_task",
+            "parent_job_id" => "parent-id",
+            "index" => 2,
+            "value" => 12,
+            "retry_count" => 0
+          },
+          "task_outputs" => [],
+          "task_job_statuses" => []
+        }
+      ]
     end
 
-    before do
-      allow(all_jobs[0]).to receive(:arguments).and_return(
-        {
-          "job_workflow_context" => {
-            "task_context" => {
-              "task_name" => "sample_task",
-              "parent_job_id" => "parent-id",
-              "index" => 0,
-              "value" => 10,
-              "retry_count" => 0
-            },
-            "task_outputs" => [
-              { "task_name" => "sample_task", "each_index" => 0,
-                "data" => { "_aj_symbol_keys" => %w[result], "result" => 42 } }
-            ],
-            "task_job_statuses" => []
-          }
-        }
-      )
-      allow(all_jobs[1]).to receive(:arguments).and_return(
-        {
-          "job_workflow_context" => {
-            "task_context" => {
-              "task_name" => "sample_task",
-              "parent_job_id" => "parent-id",
-              "index" => 1,
-              "value" => 11,
-              "retry_count" => 0
-            },
-            "task_outputs" => [
-              { "task_name" => "sample_task", "each_index" => 1,
-                "data" => { "_aj_symbol_keys" => %w[result], "result" => 82 } }
-            ],
-            "task_job_statuses" => []
-          }
-        }
-      )
-      allow(all_jobs[2]).to receive(:arguments).and_return(
-        {
-          "job_workflow_context" => {
-            "task_context" => {
-              "task_name" => "sample_task",
-              "parent_job_id" => "parent-id",
-              "index" => 2,
-              "value" => 12,
-              "retry_count" => 0
-            },
-            "task_outputs" => [],
-            "task_job_statuses" => []
-          }
-        }
-      )
+    context "when context_data_list is empty" do
+      let(:context_data_list) { [] }
+
+      it { expect { update_task_outputs_from_contexts }.not_to(change(output, :flat_task_outputs)) }
     end
 
-    context "when jobs are empty" do
-      let(:jobs) { [] }
+    context "when contexts have outputs" do
+      let(:context_data_list) { all_contexts[0..1] }
 
-      it { expect { update_task_outputs_from_jobs }.not_to(change(output, :flat_task_outputs)) }
-    end
-
-    context "when jobs have outputs" do
-      let(:jobs) { all_jobs[0..1] }
-
-      it "merges task outputs from all jobs" do
-        expect { update_task_outputs_from_jobs }.to(
+      it "merges task outputs from all contexts" do
+        expect { update_task_outputs_from_contexts }.to(
           change { output.fetch_all(task_name: :sample_task) }.from([]).to(
             contain_exactly(have_attributes(result: 42), have_attributes(result: 82))
           )
@@ -367,111 +354,15 @@ RSpec.describe JobWorkflow::Output do
       end
     end
 
-    context "when some jobs have no outputs" do
-      let(:jobs) { all_jobs[1..2] }
+    context "when some contexts have no outputs" do
+      let(:context_data_list) { all_contexts[1..2] }
 
-      it "merges task outputs from jobs that have them" do
-        expect { update_task_outputs_from_jobs }.to(
+      it "merges task outputs from contexts that have them" do
+        expect { update_task_outputs_from_contexts }.to(
           change { output.fetch_all(task_name: :sample_task) }.from([]).to(
             contain_exactly(have_attributes(result: 82))
           )
         )
-      end
-    end
-  end
-
-  describe "#update_task_outputs_from_db" do
-    subject(:update_task_outputs_from_db) { output.update_task_outputs_from_db(job_ids, workflow) }
-
-    let(:output) { described_class.new }
-    let(:workflow) do
-      wf = JobWorkflow::Workflow.new
-      wf.add_task(
-        JobWorkflow::Task.new(
-          job_name: "TestJob",
-          name: :db_task,
-          namespace: JobWorkflow::Namespace.default,
-          block: ->(_ctx) {}
-        )
-      )
-      wf
-    end
-    let(:job_ids) { %w[job1 job2] }
-    let(:solid_jobs) do
-      stub_const("SolidQueue::Job", Class.new)
-      [SolidQueue::Job.new, SolidQueue::Job.new]
-    end
-
-    before do
-      allow(solid_jobs[0]).to receive(:arguments).and_return(
-        {
-          "job_workflow_context" => {
-            "task_context" => {
-              "task_name" => "db_task",
-              "parent_job_id" => "parent-id",
-              "index" => 0,
-              "value" => 10,
-              "retry_count" => 0
-            },
-            "task_outputs" => [
-              { "task_name" => "db_task", "each_index" => 0,
-                "data" => { "_aj_symbol_keys" => %w[result], "result" => 100 } }
-            ],
-            "task_job_statuses" => []
-          }
-        }
-      )
-      allow(solid_jobs[1]).to receive(:arguments).and_return(
-        {
-          "job_workflow_context" => {
-            "task_context" => {
-              "task_name" => "db_task",
-              "parent_job_id" => "parent-id",
-              "index" => 1,
-              "value" => 20,
-              "retry_count" => 0
-            },
-            "task_outputs" => [
-              { "task_name" => "db_task", "each_index" => 1,
-                "data" => { "_aj_symbol_keys" => %w[result], "result" => 200 } }
-            ],
-            "task_job_statuses" => []
-          }
-        }
-      )
-
-      allow(SolidQueue::Job).to receive(:where).with(active_job_id: job_ids).and_return(solid_jobs)
-    end
-
-    context "when job_ids are provided" do
-      it "fetches jobs from DB and updates outputs" do
-        expect { update_task_outputs_from_db }.to(
-          change { output.fetch_all(task_name: :db_task) }.from([]).to(
-            contain_exactly(have_attributes(result: 100), have_attributes(result: 200))
-          )
-        )
-      end
-    end
-
-    context "when no jobs are found in DB" do
-      before do
-        allow(SolidQueue::Job).to receive(:where).with(active_job_id: job_ids).and_return([])
-      end
-
-      it "does not update outputs" do
-        expect { update_task_outputs_from_db }.not_to(change(output, :flat_task_outputs))
-      end
-    end
-
-    context "when job_ids is empty" do
-      let(:job_ids) { [] }
-
-      before do
-        allow(SolidQueue::Job).to receive(:where).with(active_job_id: []).and_return([])
-      end
-
-      it "does not update outputs" do
-        expect { update_task_outputs_from_db }.not_to(change(output, :flat_task_outputs))
       end
     end
   end

@@ -186,6 +186,15 @@ RSpec.describe "Parallel Processing" do
         status = JobWorkflow::WorkflowStatus.find(job_id)
         expect(status).to be_completed
       end
+
+      it "computes correct total from async sub-job outputs" do
+        workflow_job.enqueue
+        raise "Job did not complete in time" unless wait_for_job(job_id, timeout: 60)
+
+        status = JobWorkflow::WorkflowStatus.find(job_id)
+        # Each value is multiplied by 3: (1*3) + (2*3) + (3*3) + (4*3) + (5*3) = 45
+        expect(status.output[:sum_results].first.total).to eq(45)
+      end
     end
   end
 end

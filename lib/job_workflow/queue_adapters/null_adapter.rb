@@ -90,6 +90,11 @@ module JobWorkflow
         @stored_jobs[job_id]
       end
 
+      #:  (Array[String]) -> Array[Hash[String, untyped]]
+      def fetch_job_contexts(_job_ids)
+        []
+      end
+
       #:  (DSL, Numeric) -> bool
       def reschedule_job(_job, _wait)
         false

@@ -443,6 +443,13 @@ RSpec.describe JobWorkflow::Runner do
         run
         expect(ctx.output.fetch(task_name: :process_items, each_index: 1)).to have_attributes(doubled: 40)
       end
+
+      it "persists sub-job context after execution" do
+        adapter = JobWorkflow::QueueAdapter.current
+        allow(adapter).to receive(:persist_job_context)
+        run
+        expect(adapter).to have_received(:persist_job_context).with(job)
+      end
     end
 
     context "with simple tasks" do
@@ -476,6 +483,13 @@ RSpec.describe JobWorkflow::Runner do
       it do
         run
         expect(ctx.output[:task_two].first.value).to eq(3)
+      end
+
+      it "persists job context after workflow completes" do
+        adapter = JobWorkflow::QueueAdapter.current
+        allow(adapter).to receive(:persist_job_context)
+        run
+        expect(adapter).to have_received(:persist_job_context).with(job)
       end
     end
 
@@ -818,6 +832,8 @@ RSpec.describe JobWorkflow::Runner do
       before do
         stub_const("SolidQueue", Module.new)
         stub_const("SolidQueue::Job", Class.new)
+        allow(SolidQueue::Job).to receive(:uncached).and_yield
+        allow(SolidQueue::Job).to receive(:find_by).and_return(nil)
 
         # Track sub jobs created by perform_all_later
         sub_job_ids = []
@@ -991,6 +1007,8 @@ RSpec.describe JobWorkflow::Runner do
       before do
         stub_const("SolidQueue", Module.new)
         stub_const("SolidQueue::Job", Class.new)
+        allow(SolidQueue::Job).to receive(:uncached).and_yield
+        allow(SolidQueue::Job).to receive(:find_by).and_return(nil)
 
         # Capture job IDs when perform_all_later is called
         allow(ActiveJob).to receive(:perform_all_later) do |jobs|
@@ -1098,6 +1116,8 @@ RSpec.describe JobWorkflow::Runner do
       before do
         stub_const("SolidQueue", Module.new)
         stub_const("SolidQueue::Job", Class.new)
+        allow(SolidQueue::Job).to receive(:uncached).and_yield
+        allow(SolidQueue::Job).to receive(:find_by).and_return(nil)
 
         allow(ActiveJob).to receive(:perform_all_later) do |jobs|
           created_jobs.concat(jobs)
@@ -1222,6 +1242,8 @@ RSpec.describe JobWorkflow::Runner do
       before do
         stub_const("SolidQueue", Module.new)
         stub_const("SolidQueue::Job", Class.new)
+        allow(SolidQueue::Job).to receive(:uncached).and_yield
+        allow(SolidQueue::Job).to receive(:find_by).and_return(nil)
 
         # Ensure perform_all_later is not called
         allow(ActiveJob).to receive(:perform_all_later) do |_jobs|
@@ -1976,8 +1998,8 @@ RSpec.describe JobWorkflow::Runner do
       include_context "with poll timeout exceeded"
 
       before do
-        allow(adapter).to receive_messages(reschedule_job: false)
-        allow(ctx.output).to receive(:update_task_outputs_from_db)
+        allow(adapter).to receive_messages(reschedule_job: false, fetch_job_contexts: [])
+        allow(ctx.output).to receive(:update_task_outputs_from_contexts)
       end
 
       it "continues polling without raising error" do
@@ -1994,8 +2016,8 @@ RSpec.describe JobWorkflow::Runner do
       let(:poll_config) { { poll_timeout: 0 } }
 
       before do
-        allow(ctx.output).to receive(:update_task_outputs_from_db)
-        allow(adapter).to receive(:reschedule_job).and_return(true)
+        allow(ctx.output).to receive(:update_task_outputs_from_contexts)
+        allow(adapter).to receive_messages(reschedule_job: true, fetch_job_contexts: [])
         call_count = 0
         allow(ctx.job_status).to receive(:needs_waiting?).with(:producer) { (call_count += 1) > 1 }
       end

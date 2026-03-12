@@ -49,8 +49,14 @@ module JobWorkflow
       # :  (String) -> Hash[String, untyped]?
       def find_job: (String) -> Hash[String, untyped]?
 
+      # :  (Array[String]) -> Array[Hash[String, untyped]]
+      def fetch_job_contexts: (Array[String]) -> Array[Hash[String, untyped]]
+
       # :  (DSL, Numeric) -> bool
       def reschedule_job: (DSL, Numeric) -> bool
+
+      # :  (DSL) -> void
+      def persist_job_context: (DSL) -> void
     end
   end
 end

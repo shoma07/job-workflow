@@ -34,7 +34,7 @@ module JobWorkflow
         job_class = job_class_name.constantize
         workflow = job_class._workflow
 
-        context_data = data["arguments"].first["job_workflow_context"]
+        context_data = data["job_workflow_context"] || data["arguments"]&.first&.dig("job_workflow_context")
         context = if context_data
                     Context.deserialize(context_data.merge("workflow" => workflow))
                   else
