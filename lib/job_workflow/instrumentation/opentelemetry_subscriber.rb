@@ -30,6 +30,9 @@ module JobWorkflow
         ERROR_MESSAGE = "#{NAMESPACE}.error.message".freeze #: String
         CONCURRENCY_KEY = "#{NAMESPACE}.concurrency.key".freeze #: String
         CONCURRENCY_LIMIT = "#{NAMESPACE}.concurrency.limit".freeze #: String
+        SLA_TYPE = "#{NAMESPACE}.sla.type".freeze #: String
+        SLA_LIMIT_SECONDS = "#{NAMESPACE}.sla.limit_seconds".freeze #: String
+        SLA_ELAPSED_SECONDS = "#{NAMESPACE}.sla.elapsed_seconds".freeze #: String
       end
 
       SUBSCRIBED_EVENTS = [
@@ -38,6 +41,7 @@ module JobWorkflow
         Events::TASK_SKIP,
         Events::TASK_ENQUEUE,
         Events::TASK_RETRY,
+        Events::SLA_EXCEEDED,
         Events::THROTTLE_ACQUIRE,
         Events::DEPENDENT_WAIT
       ].freeze
@@ -179,7 +183,10 @@ module JobWorkflow
           Attributes::TASK_EACH_INDEX => payload[:each_index],
           Attributes::TASK_RETRY_COUNT => payload[:retry_count],
           Attributes::CONCURRENCY_KEY => payload[:concurrency_key],
-          Attributes::CONCURRENCY_LIMIT => payload[:concurrency_limit]
+          Attributes::CONCURRENCY_LIMIT => payload[:concurrency_limit],
+          Attributes::SLA_TYPE => payload[:sla_type]&.to_s,
+          Attributes::SLA_LIMIT_SECONDS => payload[:sla_limit_seconds],
+          Attributes::SLA_ELAPSED_SECONDS => payload[:sla_elapsed_seconds]
         }.compact
         add_error_attributes(attrs, payload)
         attrs

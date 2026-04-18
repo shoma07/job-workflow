@@ -141,9 +141,11 @@ RSpec.describe JobWorkflow::Context do
           workflow:,
           arguments: JobWorkflow::Arguments.new(data: { arg_one: nil, arg_two: [1, 2] }),
           task_context: JobWorkflow::TaskContext.new(
+            task: task_with_retry,
             parent_job_id: "019b6901-8bdf-7fd4-83aa-6c18254fe076",
             index: 0,
-            retry_count: 2
+            retry_count: 2,
+            execution_sla_started_at: 1_700_000_000.123
           ),
           output: JobWorkflow::Output.new,
           job_status: JobWorkflow::JobStatus.new
@@ -169,6 +171,13 @@ RSpec.describe JobWorkflow::Context do
       it "allows resuming _with_each_value from restored task_context retry_count" do
         retry_counts = context_with_retry._with_each_value(task_with_retry).map { |ctx| ctx._task_context.retry_count }
         expect(retry_counts).to eq([2])
+      end
+
+      it "preserves restored task execution SLA start time in resumed context" do
+        execution_sla_started_at = context_with_retry._with_each_value(task_with_retry).map do |ctx|
+          ctx._task_context.execution_sla_started_at
+        end
+        expect(execution_sla_started_at).to eq([1_700_000_000.123])
       end
     end
 
@@ -359,6 +368,20 @@ RSpec.describe JobWorkflow::Context do
       )
     end
 
+    it "sets workflow_started_at to Time.current" do
+      before_time = Time.current
+      ctx = from_hash
+      expect(ctx.workflow_started_at).to be >= before_time
+    end
+
+    context "when workflow_started_at is present in the hash" do
+      it "restores workflow_started_at from the serialized float" do
+        fixed_time = Time.at(1_700_000_000.0)
+        ctx = described_class.from_hash(hash.merge(workflow_started_at: fixed_time.to_f))
+        expect(ctx.workflow_started_at.to_f).to be_within(0.001).of(fixed_time.to_f)
+      end
+    end
+
     it do
       expect(from_hash.output.flat_task_outputs).to contain_exactly(
         have_attributes(task_name: :task_a, each_index: 0, data: { result: 100 }),
@@ -404,6 +427,39 @@ RSpec.describe JobWorkflow::Context do
           have_attributes(task_name: :task_a, each_index: 0, data: { result: 100 }),
           have_attributes(task_name: :task_b, each_index: 0, data: { value: 200 })
         )
+      end
+    end
+
+    context "when workflow_started_at is present in the hash" do
+      let(:fixed_time) { Time.at(1_700_000_000.123) }
+      let(:serialized_hash) do
+        {
+          "workflow" => workflow,
+          "workflow_started_at" => fixed_time.to_f,
+          "task_context" => { "task_name" => nil, "parent_job_id" => nil, "index" => 0, "value" => nil },
+          "task_outputs" => [],
+          "task_job_statuses" => []
+        }
+      end
+
+      it "restores workflow_started_at from the serialized float" do
+        expect(deserialized.workflow_started_at.to_f).to be_within(0.001).of(fixed_time.to_f)
+      end
+    end
+
+    context "when workflow_started_at is absent (legacy data)" do
+      let(:serialized_hash) do
+        {
+          "workflow" => workflow,
+          "task_context" => { "task_name" => nil, "parent_job_id" => nil, "index" => 0, "value" => nil },
+          "task_outputs" => [],
+          "task_job_statuses" => []
+        }
+      end
+
+      it "defaults workflow_started_at to approximately Time.current" do
+        before_time = Time.current
+        expect(deserialized.workflow_started_at).to be >= before_time
       end
     end
 
@@ -455,14 +511,16 @@ RSpec.describe JobWorkflow::Context do
     end
 
     it "serializes the context to a hash" do
-      expect(serialized).to eq(
+      expect(serialized).to match(
         {
+          "workflow_started_at" => instance_of(Float),
           "task_context" => {
             "task_name" => nil,
             "parent_job_id" => nil,
             "index" => 0,
             "value" => 10,
-            "retry_count" => 0
+            "retry_count" => 0,
+            "execution_sla_started_at" => nil
           },
           "task_outputs" => [
             { "task_name" => "task_a", "each_index" => 0,

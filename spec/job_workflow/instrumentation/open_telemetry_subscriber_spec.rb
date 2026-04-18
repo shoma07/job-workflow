@@ -154,6 +154,12 @@ RSpec.describe JobWorkflow::Instrumentation::OpenTelemetrySubscriber do
     end
   end
 
+  describe "::SUBSCRIBED_EVENTS" do
+    subject(:subscribed_events) { described_class::SUBSCRIBED_EVENTS }
+
+    it { is_expected.to include(JobWorkflow::Instrumentation::Events::SLA_EXCEEDED) }
+  end
+
   describe ".unsubscribe!" do
     subject(:unsubscribe) { described_class.unsubscribe! }
 
@@ -250,6 +256,27 @@ RSpec.describe JobWorkflow::Instrumentation::OpenTelemetrySubscriber do
         payload = { job_name: "TestJob", job_id: "123", task_name: :process_items }
         expect(mock_tracer).to receive(:start_span).with(anything, kind: :producer, attributes: anything)
         subscriber.start("task.enqueue.job_workflow", "id", payload)
+      end
+
+      it "adds SLA attributes for sla.exceeded events" do
+        payload = {
+          job_name: "TestJob",
+          job_id: "123",
+          task_name: :process_items,
+          sla_type: :execution,
+          sla_limit_seconds: 10.0,
+          sla_elapsed_seconds: 12.5
+        }
+        expect(mock_tracer).to receive(:start_span).with(
+          "TestJob.process_items sla.exceeded",
+          kind: :internal,
+          attributes: include(
+            "job_workflow.sla.type" => "execution",
+            "job_workflow.sla.limit_seconds" => 10.0,
+            "job_workflow.sla.elapsed_seconds" => 12.5
+          )
+        )
+        subscriber.start("sla.exceeded.job_workflow", "id", payload)
       end
 
       it "uses default span name when job_name is missing" do

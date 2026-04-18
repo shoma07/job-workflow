@@ -11,15 +11,16 @@ module JobWorkflow
     end
 
     #:  () -> void
-    def run
+    def run # rubocop:disable Metrics/AbcSize
+      enforce_queue_wait_sla!
       task = context._task_context.task
       if !task.nil? && context.sub_job?
-        run_task(task)
+        with_workflow_execution_sla { run_task(task) }
         QueueAdapter.current.persist_job_context(job)
         return
       end
 
-      catch(:rescheduled) { run_workflow }
+      catch(:rescheduled) { with_workflow_execution_sla { run_workflow } }
       QueueAdapter.current.persist_job_context(job)
     end
 
@@ -40,6 +41,44 @@ module JobWorkflow
     #:  () -> HookRegistry
     def hooks
       workflow.hooks
+    end
+
+    #:  () -> void
+    def enforce_queue_wait_sla! # rubocop:disable Metrics/AbcSize
+      task = context._task_context.task
+      limit = task.nil? ? workflow.sla.queue_wait : workflow.sla.merge(task.sla).queue_wait
+      return if limit.nil?
+
+      job_data = QueueAdapter.current.find_job(job.job_id)
+      return if job_data.nil?
+
+      elapsed = queue_wait_elapsed(job_data)
+      return if elapsed.nil?
+      return if elapsed < limit
+
+      raise_sla_exceeded!(sla_type: :queue_wait, limit:, elapsed:)
+    end
+
+    #:  (Hash[String, untyped]) -> Numeric?
+    def queue_wait_elapsed(job_data)
+      started_at = coerce_to_time(job_data["scheduled_at"]) || coerce_to_time(job_data["enqueued_at"])
+      return if started_at.nil?
+
+      Time.current - started_at
+    end
+
+    #:  (untyped) -> Time?
+    def coerce_to_time(value)
+      case value
+      when Time
+        value
+      when Numeric
+        Time.at(value)
+      when String
+        value.to_time
+      end
+    rescue ArgumentError, TypeError
+      nil
     end
 
     #:  () -> void
@@ -132,11 +171,12 @@ module JobWorkflow
     end
 
     #:  (Task, Task, ActiveJob::Continuation::Step) -> void
-    def poll_until_complete_or_reschedule(waiting_task, dependent_task, step)
+    def poll_until_complete_or_reschedule(waiting_task, dependent_task, step) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
       poll_state = { count: 0, started_at: Time.current }
       dependency_wait = waiting_task.dependency_wait
 
       loop do
+        check_workflow_execution_sla!
         step.checkpoint!
         context.job_status.update_task_job_statuses_from_db(dependent_task.task_name)
         break if context.job_status.needs_waiting?(dependent_task.task_name)
@@ -174,6 +214,42 @@ module JobWorkflow
       finished_job_ids = context.job_status.finished_job_ids(task_name: task.task_name)
       context_data_list = QueueAdapter.current.fetch_job_contexts(finished_job_ids)
       context.output.update_task_outputs_from_contexts(context_data_list, context.workflow)
+    end
+
+    # Raises SlaExceededError immediately if the workflow execution SLA window has closed.
+    # Used in polling loops where no task execution is in progress.
+    #:  () -> void
+    def check_workflow_execution_sla!
+      limit = workflow.sla.execution
+      return if limit.nil?
+
+      elapsed = Time.current - context.workflow_started_at
+      raise_sla_exceeded!(sla_type: :execution, limit:, elapsed:) if elapsed >= limit
+    end
+
+    # Wraps the block with a workflow-level execution SLA guard.
+    # The window is anchored at Context#workflow_started_at and therefore survives
+    # retries and resumed jobs.
+    #:  () { () -> void } -> void
+    def with_workflow_execution_sla # rubocop:disable Metrics/AbcSize
+      limit = workflow.sla.execution
+      return yield if limit.nil?
+
+      elapsed = Time.current - context.workflow_started_at
+      raise_sla_exceeded!(sla_type: :execution, limit:, elapsed:) if elapsed >= limit
+
+      remaining = limit - elapsed
+      Timeout.timeout(remaining, SlaTimeoutSignal) { yield } # rubocop:disable Style/ExplicitBlockArgument
+    rescue SlaTimeoutSignal
+      elapsed = Time.current - context.workflow_started_at
+      raise_sla_exceeded!(sla_type: :execution, limit:, elapsed:)
+    end
+
+    #:  (sla_type: Symbol, limit: Numeric, elapsed: Numeric) -> void
+    def raise_sla_exceeded!(sla_type:, limit:, elapsed:)
+      error = SlaExceededError.new(sla_type:, limit:, elapsed:)
+      Instrumentation.notify_sla_exceeded(job, context._task_context.task, error)
+      raise error
     end
   end
 end

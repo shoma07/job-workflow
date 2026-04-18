@@ -26,6 +26,7 @@ status.pending?    # => true if not yet started
 status.running?    # => true if currently executing
 status.completed?  # => true if finished successfully
 status.failed?     # => true if execution failed
+status.sla_breached? # => true if current SLA window is breached
 ```
 
 ## Accessing Workflow Information
@@ -99,6 +100,24 @@ job_status.flat_task_job_statuses.each do |task_status|
 end
 ```
 
+### SLA State
+
+Access the current SLA evaluation (`execution` or `queue_wait`):
+
+```ruby
+state = status.sla_state
+# => {
+#   breached: false,
+#   type: :execution,   # or :queue_wait
+#   limit: 600,
+#   elapsed: 123.45
+# }
+
+status.sla_breached? # => false
+```
+
+`type` indicates which SLA dimension (`:execution` or `:queue_wait`) is represented in the returned state, and `elapsed` is the elapsed seconds for that dimension.
+
 ## Hash Representation
 
 Convert workflow status to a hash for serialization or API responses:
@@ -109,6 +128,12 @@ status_hash = status.to_h
 #   status: :running,
 #   job_class_name: "OrderProcessingJob",
 #   current_task_name: :validate_payment,
+#   sla: {
+#     breached: false,
+#     type: :execution,
+#     limit: 600,
+#     elapsed: 123.45
+#   },
 #   arguments: { order_id: 12345, user_id: 789 },
 #   output: [
 #     {

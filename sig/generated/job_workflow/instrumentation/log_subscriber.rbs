@@ -46,6 +46,9 @@ module JobWorkflow
       def task_retry: (ActiveSupport::Notifications::Event) -> void
 
       # :  (ActiveSupport::Notifications::Event) -> void
+      def sla_exceeded: (ActiveSupport::Notifications::Event) -> void
+
+      # :  (ActiveSupport::Notifications::Event) -> void
       def throttle_acquire: (ActiveSupport::Notifications::Event) -> void
 
       # :  (ActiveSupport::Notifications::Event) -> void

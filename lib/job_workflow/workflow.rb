@@ -4,6 +4,7 @@ module JobWorkflow
   class Workflow
     attr_reader :namespace #: Namespace
     attr_reader :dry_run_config #: DryRunConfig
+    attr_reader :sla #: TaskSla
 
     #:  () -> void
     def initialize
@@ -13,11 +14,17 @@ module JobWorkflow
       @namespace = Namespace.default #: Namespace
       @schedules = {} #: Hash[Symbol, Schedule]
       @dry_run_config = DryRunConfig.new
+      @sla = TaskSla.new
     end
 
     #:  (bool | ^(Context) -> bool) -> void
     def dry_run_config=(value)
       @dry_run_config = DryRunConfig.from_primitive_value(value)
+    end
+
+    #:  (Numeric | Hash[Symbol, untyped] | nil) -> void
+    def sla=(value)
+      @sla = TaskSla.from_primitive_value(value)
     end
 
     #:  (Namespace) { () -> void } -> void

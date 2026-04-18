@@ -349,9 +349,157 @@ RSpec.describe JobWorkflow::WorkflowStatus do
         job_class_name: "TestWorkflowJob",
         arguments: { user_id: 42 },
         current_task_name: nil,
+        sla: { breached: false, type: nil, limit: nil, elapsed: nil },
         output: [{ task_name: :step_one, each_index: 0, data: { result: "test" } }],
         status: :running
       )
     end
+  end
+
+  describe "#sla_state" do
+    subject(:sla_state) { workflow_status.sla_state }
+
+    let(:now) { Time.current.change(usec: 0) }
+    let(:queue_wait_only_sla_workflow_class) do
+      Class.new(ActiveJob::Base) do
+        include JobWorkflow::DSL
+
+        def self.name = "QueueWaitOnlySlaWorkflowJob"
+
+        sla queue_wait: 5.0
+      end
+    end
+    let(:sla_workflow_class) do
+      Class.new(ActiveJob::Base) do
+        include JobWorkflow::DSL
+
+        def self.name = "SlaStatusWorkflowJob"
+
+        sla execution: 10.0, queue_wait: 5.0
+
+        task :bounded_task, sla: { execution: 2.0 } do |_ctx|
+          # noop
+        end
+      end
+    end
+
+    before do
+      allow(Time).to receive(:current).and_return(now)
+    end
+
+    after do
+      JobWorkflow::DSL._included_classes.delete_if do |klass|
+        %w[SlaStatusWorkflowJob QueueWaitOnlySlaWorkflowJob].include?(klass.name)
+      end
+    end
+
+    context "when no SLA is configured" do
+      let(:workflow_status) do
+        described_class.new(
+          context: JobWorkflow::Context.from_hash({ workflow: workflow_class._workflow }),
+          job_class_name: "TestWorkflowJob",
+          status: :running
+        )
+      end
+
+      it { is_expected.to eq({ breached: false, type: nil, limit: nil, elapsed: nil }) }
+    end
+
+    context "when queue wait SLA is breached" do
+      let(:workflow_status) do
+        described_class.new(
+          context: JobWorkflow::Context.from_hash({ workflow: sla_workflow_class._workflow }),
+          job_class_name: "SlaStatusWorkflowJob",
+          status: :pending,
+          job_data: { "enqueued_at" => now - 7 }
+        )
+      end
+
+      it {
+        expect(sla_state).to include(breached: true, type: :queue_wait, limit: 5.0, elapsed: be_within(0.01).of(7.0))
+      }
+    end
+
+    context "when queue wait SLA uses numeric metadata" do
+      let(:workflow_status) do
+        described_class.new(
+          context: JobWorkflow::Context.from_hash({ workflow: sla_workflow_class._workflow }),
+          job_class_name: "SlaStatusWorkflowJob",
+          status: :pending,
+          job_data: { "enqueued_at" => (now - 6).to_f }
+        )
+      end
+
+      it { expect(sla_state).to include(type: :queue_wait, breached: true) }
+    end
+
+    context "when queue wait SLA uses string metadata" do
+      let(:workflow_status) do
+        described_class.new(
+          context: JobWorkflow::Context.from_hash({ workflow: sla_workflow_class._workflow }),
+          job_class_name: "SlaStatusWorkflowJob",
+          status: :pending,
+          job_data: { "scheduled_at" => (now - 6).iso8601 }
+        )
+      end
+
+      it { expect(sla_state).to include(type: :queue_wait, breached: true) }
+    end
+
+    context "when queue wait metadata cannot be parsed" do
+      let(:workflow_status) do
+        invalid = Class.new(String) do
+          def to_time
+            raise ArgumentError, "invalid"
+          end
+        end.new("invalid")
+        described_class.new(
+          context: JobWorkflow::Context.from_hash({ workflow: queue_wait_only_sla_workflow_class._workflow }),
+          job_class_name: "QueueWaitOnlySlaWorkflowJob",
+          status: :pending,
+          job_data: { "enqueued_at" => invalid }
+        )
+      end
+
+      it { is_expected.to eq({ breached: false, type: nil, limit: nil, elapsed: nil }) }
+    end
+
+    context "when task execution SLA is breached" do
+      let(:workflow_status) do
+        task = sla_workflow_class._workflow.fetch_task(:bounded_task)
+        ctx = JobWorkflow::Context.from_hash(
+          {
+            workflow: sla_workflow_class._workflow,
+            task_context: { task:, execution_sla_started_at: now.to_f - 3.0 }
+          }
+        )
+        described_class.new(context: ctx, job_class_name: "SlaStatusWorkflowJob", status: :running)
+      end
+
+      it {
+        expect(sla_state).to include(breached: true, type: :execution, limit: 2.0, elapsed: be_within(0.01).of(3.0))
+      }
+    end
+  end
+
+  describe "#sla_breached?" do
+    subject(:sla_breached?) { workflow_status.sla_breached? }
+
+    let(:workflow_status) do
+      described_class.new(
+        context:,
+        job_class_name: "TestWorkflowJob",
+        status: :pending,
+        job_data: { "enqueued_at" => Time.current - 10 }
+      )
+    end
+    let(:workflow_with_queue_wait_sla) do
+      workflow = workflow_class._workflow
+      workflow.sla = { queue_wait: 1.0 }
+      workflow
+    end
+    let(:context) { JobWorkflow::Context.from_hash({ workflow: workflow_with_queue_wait_sla }) }
+
+    it { is_expected.to be true }
   end
 end

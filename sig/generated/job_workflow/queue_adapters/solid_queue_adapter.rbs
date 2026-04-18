@@ -78,6 +78,9 @@ module JobWorkflow
       # @note
       #   - SolidQueue stores the full ActiveJob serialization in job.arguments
       #   - We need to extract the actual arguments array for consistency
+      #   - enqueued_at maps to job.created_at (the moment the record was inserted)
+      #   - scheduled_at is the timestamp at which the job becomes eligible for pickup;
+      #     nil for immediately-queued jobs
       #
       # :  (String) -> Hash[String, untyped]?
       def find_job: (String) -> Hash[String, untyped]?

@@ -11,6 +11,8 @@ module JobWorkflow
 
     attr_reader job_status: JobStatus
 
+    attr_reader workflow_started_at: Time
+
     # :  (Hash[Symbol, untyped]) -> Context
     def self.from_hash: (Hash[Symbol, untyped]) -> Context
 
@@ -23,9 +25,10 @@ module JobWorkflow
     #      task_context: TaskContext,
     #      output: Output,
     #      job_status: JobStatus,
-    #      ?job: DSL?
+    #      ?job: DSL?,
+    #      ?workflow_started_at: Time?
     #    ) -> void
-    def initialize: (workflow: Workflow, arguments: Arguments, task_context: TaskContext, output: Output, job_status: JobStatus, ?job: DSL?) -> void
+    def initialize: (workflow: Workflow, arguments: Arguments, task_context: TaskContext, output: Output, job_status: JobStatus, ?job: DSL?, ?workflow_started_at: Time?) -> void
 
     # :  () -> Hash[String, untyped]
     def serialize: () -> Hash[String, untyped]
@@ -111,6 +114,8 @@ module JobWorkflow
 
     attr_writer job_status: JobStatus
 
+    attr_writer workflow_started_at: Time
+
     attr_accessor task_context: TaskContext
 
     attr_accessor enabled_with_each_value: bool
@@ -143,6 +148,15 @@ module JobWorkflow
     # :  () { () -> void } -> void
     def with_task_timeout: () { () -> void } -> void
 
+    # :  (Task) -> TaskSla
+    def effective_task_sla: (Task) -> TaskSla
+
+    # Wraps the block with an execution SLA timer for the given task.
+    # The SLA window is anchored at TaskContext#execution_sla_started_at and therefore
+    # survives retries and resumed jobs.
+    # :  (Task) { () -> void } -> void
+    def with_task_execution_sla: (Task) { () -> void } -> void
+
     # :  (Task) { (Integer) -> void } -> void
     def with_retry: (Task) { (Integer) -> void } -> void
 
@@ -151,5 +165,11 @@ module JobWorkflow
 
     # :  (Task) -> bool
     def calculate_dry_run: (Task) -> bool
+
+    # :  (Task, Integer) -> Numeric
+    def resolve_task_execution_sla_started_at: (Task, Integer) -> Numeric
+
+    # :  (sla_type: Symbol, limit: Numeric, elapsed: Numeric) -> void
+    def raise_sla_exceeded!: (sla_type: Symbol, limit: Numeric, elapsed: Numeric) -> void
   end
 end

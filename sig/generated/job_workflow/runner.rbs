@@ -25,6 +25,15 @@ module JobWorkflow
     def hooks: () -> HookRegistry
 
     # :  () -> void
+    def enforce_queue_wait_sla!: () -> void
+
+    # :  (Hash[String, untyped]) -> Numeric?
+    def queue_wait_elapsed: (Hash[String, untyped]) -> Numeric?
+
+    # :  (untyped) -> Time?
+    def coerce_to_time: (untyped) -> Time?
+
+    # :  () -> void
     def run_workflow: () -> void
 
     # :  (Task) -> bool
@@ -62,5 +71,19 @@ module JobWorkflow
 
     # :  (Task) -> void
     def update_task_outputs: (Task) -> void
+
+    # Raises SlaExceededError immediately if the workflow execution SLA window has closed.
+    # Used in polling loops where no task execution is in progress.
+    # :  () -> void
+    def check_workflow_execution_sla!: () -> void
+
+    # Wraps the block with a workflow-level execution SLA guard.
+    # The window is anchored at Context#workflow_started_at and therefore survives
+    # retries and resumed jobs.
+    # :  () { () -> void } -> void
+    def with_workflow_execution_sla: () { () -> void } -> void
+
+    # :  (sla_type: Symbol, limit: Numeric, elapsed: Numeric) -> void
+    def raise_sla_exceeded!: (sla_type: Symbol, limit: Numeric, elapsed: Numeric) -> void
   end
 end

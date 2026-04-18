@@ -40,6 +40,12 @@ module JobWorkflow
         CONCURRENCY_KEY: String
 
         CONCURRENCY_LIMIT: String
+
+        SLA_TYPE: String
+
+        SLA_LIMIT_SECONDS: String
+
+        SLA_ELAPSED_SECONDS: String
       end
 
       SUBSCRIBED_EVENTS: untyped

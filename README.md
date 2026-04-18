@@ -32,6 +32,41 @@ For comprehensive documentation, including step-by-step getting started instruct
 - Rails >= 8.1.0
 - SolidQueue >= 1.24.0
 
+## SLA (Service Level Agreement)
+
+JobWorkflow supports an SLA DSL to enforce end-to-end time budgets.
+
+- `timeout`: per-attempt execution guard for a task block
+- `sla`: end-to-end budget that is preserved across retries/resume
+  - `execution`: total execution window
+  - `queue_wait`: time from enqueue/schedule until execution starts
+
+```ruby
+class OrderWorkflowJob < ApplicationJob
+  include JobWorkflow::DSL
+
+  # Workflow defaults
+  sla execution: 600, queue_wait: 120
+
+  # Uses workflow default execution SLA (600s), but has per-attempt timeout 30s
+  task :charge_payment, timeout: 30 do |ctx|
+    charge!(ctx.arguments.order_id)
+  end
+
+  # Task-level override (execution only)
+  task :generate_invoice, sla: 120 do |ctx|
+    generate!(ctx.arguments.order_id)
+  end
+
+  # Task-level override (queue_wait only, execution falls back to 600s)
+  task :send_email, sla: { queue_wait: 30 } do |ctx|
+    send_email!(ctx.arguments.order_id)
+  end
+end
+```
+
+When an SLA is breached, `JobWorkflow::SlaExceededError` is raised. You can observe SLA state via `WorkflowStatus` and the `sla.exceeded.job_workflow` instrumentation event.
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.

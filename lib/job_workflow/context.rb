@@ -6,6 +6,7 @@ module JobWorkflow
     attr_reader :arguments #: Arguments
     attr_reader :output #: Output
     attr_reader :job_status #: JobStatus
+    attr_reader :workflow_started_at #: Time
 
     class << self
       #:  (Hash[Symbol, untyped]) -> Context
@@ -17,12 +18,13 @@ module JobWorkflow
           arguments: Arguments.new(data: workflow.build_arguments_hash),
           task_context: TaskContext.new(**(hash[:task_context] || {}).symbolize_keys),
           output: Output.from_hash_array(hash.fetch(:task_outputs, [])),
-          job_status: JobStatus.from_hash_array(hash.fetch(:task_job_statuses, []))
+          job_status: JobStatus.from_hash_array(hash.fetch(:task_job_statuses, [])),
+          workflow_started_at: hash[:workflow_started_at]&.then { |t| Time.at(t) }
         )
       end
 
       #:  (Hash[String, untyped]) -> Context
-      def deserialize(hash)
+      def deserialize(hash) # rubocop:disable Metrics/AbcSize
         workflow = hash.fetch("workflow")
         new(
           job: hash["job"],
@@ -39,7 +41,8 @@ module JobWorkflow
             )
           ),
           output: Output.deserialize(hash),
-          job_status: JobStatus.deserialize(hash)
+          job_status: JobStatus.deserialize(hash),
+          workflow_started_at: hash["workflow_started_at"]&.then { |t| Time.at(t) }
         )
       end
     end
@@ -50,9 +53,10 @@ module JobWorkflow
     #     task_context: TaskContext,
     #     output: Output,
     #     job_status: JobStatus,
-    #     ?job: DSL?
+    #     ?job: DSL?,
+    #     ?workflow_started_at: Time?
     #   ) -> void
-    def initialize(workflow:, arguments:, task_context:, output:, job_status:, job: nil) # rubocop:disable Metrics/ParameterLists
+    def initialize(workflow:, arguments:, task_context:, output:, job_status:, job: nil, workflow_started_at: nil) # rubocop:disable Metrics/ParameterLists, Metrics/MethodLength, Metrics/AbcSize
       raise "job does not match the provided workflow" if job&.then { |j| j.class._workflow != workflow }
 
       self.job = job
@@ -61,6 +65,7 @@ module JobWorkflow
       self.task_context = task_context
       self.output = output
       self.job_status = job_status
+      self.workflow_started_at = workflow_started_at || Time.current
       self.enabled_with_each_value = false
       self.throttle_index = 0
       self.skip_in_dry_run_index = 0
@@ -241,6 +246,7 @@ module JobWorkflow
     attr_writer :arguments #: Arguments
     attr_writer :output #: Output
     attr_writer :job_status #: JobStatus
+    attr_writer :workflow_started_at #: Time
     attr_accessor :task_context #: TaskContext
     attr_accessor :enabled_with_each_value #: bool
     attr_accessor :throttle_index #: Integer
@@ -254,6 +260,7 @@ module JobWorkflow
     #:  () -> Hash[String, untyped]
     def serialize_for_job
       {
+        "workflow_started_at" => workflow_started_at.to_f,
         "task_context" => _task_context.serialize,
         "task_outputs" => output.flat_task_outputs.map(&:serialize),
         "task_job_statuses" => job_status.flat_task_job_statuses.map(&:serialize)
@@ -264,6 +271,7 @@ module JobWorkflow
     def serialize_for_sub_job
       task_output = output.fetch(task_name: task_context.task&.task_name, each_index: task_context.index)
       {
+        "workflow_started_at" => workflow_started_at.to_f,
         "task_context" => _task_context.serialize,
         "task_outputs" => [task_output].compact.map(&:serialize),
         "task_job_statuses" => []
@@ -276,10 +284,21 @@ module JobWorkflow
 
       with_each_index_and_value(task) do |value, index|
         dry_run = calculate_dry_run(task)
+        execution_sla_started_at = resolve_task_execution_sla_started_at(task, index)
         with_retry(task) do |retry_count|
-          self.task_context = TaskContext.new(task:, parent_job_id:, index:, value:, retry_count:, dry_run:)
-          with_task_timeout do
-            yielder << self
+          self.task_context = TaskContext.new(
+            task:,
+            parent_job_id:,
+            index:,
+            value:,
+            retry_count:,
+            dry_run:,
+            execution_sla_started_at:
+          )
+          with_task_execution_sla(task) do
+            with_task_timeout do
+              yielder << self
+            end
           end
         end
       ensure
@@ -321,8 +340,33 @@ module JobWorkflow
       Timeout.timeout(timeout) { yield } # rubocop:disable Style/ExplicitBlockArgument
     end
 
+    #:  (Task) -> TaskSla
+    def effective_task_sla(task)
+      workflow.sla.merge(task.sla)
+    end
+
+    # Wraps the block with an execution SLA timer for the given task.
+    # The SLA window is anchored at TaskContext#execution_sla_started_at and therefore
+    # survives retries and resumed jobs.
+    #:  (Task) { () -> void } -> void
+    def with_task_execution_sla(task) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
+      limit = effective_task_sla(task).execution
+      return yield if limit.nil?
+
+      started_at = task_context.execution_sla_started_at || Time.current.to_f
+      elapsed = Time.current.to_f - started_at
+      raise_sla_exceeded!(sla_type: :execution, limit:, elapsed:) if elapsed >= limit
+
+      begin
+        Timeout.timeout(limit - elapsed, SlaTimeoutSignal) { yield } # rubocop:disable Style/ExplicitBlockArgument
+      rescue SlaTimeoutSignal
+        current_elapsed = Time.current.to_f - started_at
+        raise_sla_exceeded!(sla_type: :execution, limit:, elapsed: current_elapsed)
+      end
+    end
+
     #:  (Task) { (Integer) -> void } -> void
-    def with_retry(task)
+    def with_retry(task) # rubocop:disable Metrics/MethodLength
       task_retry = task.task_retry
       0.upto(task_retry.count) do |retry_count|
         next if retry_count < task_context.retry_count
@@ -330,6 +374,8 @@ module JobWorkflow
         yield retry_count
         break
       rescue StandardError => e
+        raise e if e.is_a?(SlaExceededError)
+
         next_retry_count = retry_count + 1
         raise e if next_retry_count >= task_retry.count
 
@@ -347,6 +393,22 @@ module JobWorkflow
     #:  (Task) -> bool
     def calculate_dry_run(task)
       workflow.dry_run_config.evaluate(self) || task.dry_run_config.evaluate(self)
+    end
+
+    #:  (Task, Integer) -> Numeric
+    def resolve_task_execution_sla_started_at(task, index) # rubocop:disable Metrics/AbcSize
+      return Time.current.to_f unless task_context.task&.task_name == task.task_name
+      return Time.current.to_f unless task_context.index == index
+      return Time.current.to_f if task_context.execution_sla_started_at.nil?
+
+      task_context.execution_sla_started_at
+    end
+
+    #:  (sla_type: Symbol, limit: Numeric, elapsed: Numeric) -> void
+    def raise_sla_exceeded!(sla_type:, limit:, elapsed:)
+      error = SlaExceededError.new(sla_type:, limit:, elapsed:)
+      Instrumentation.notify_sla_exceeded(job, task_context.task, error)
+      raise error
     end
   end
 end

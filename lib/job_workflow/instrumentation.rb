@@ -23,6 +23,7 @@ module JobWorkflow
       TASK_SKIP = "task.skip.#{NAMESPACE}".freeze
       TASK_ENQUEUE = "task.enqueue.#{NAMESPACE}".freeze
       TASK_RETRY = "task.retry.#{NAMESPACE}".freeze
+      SLA_EXCEEDED = "sla.exceeded.#{NAMESPACE}".freeze
       THROTTLE_ACQUIRE = "throttle.acquire.#{NAMESPACE}".freeze
       THROTTLE_ACQUIRE_START = "throttle.acquire.start.#{NAMESPACE}".freeze
       THROTTLE_ACQUIRE_COMPLETE = "throttle.acquire.complete.#{NAMESPACE}".freeze
@@ -39,7 +40,7 @@ module JobWorkflow
       DRY_RUN_EXECUTE = "dry_run.execute.#{NAMESPACE}".freeze
     end
 
-    class << self
+    class << self # rubocop:disable Metrics/ClassLength
       #:  (DSL) { () -> untyped } -> untyped
       def instrument_workflow(job, &)
         payload = build_workflow_payload(job)
@@ -71,6 +72,11 @@ module JobWorkflow
       #:  (Task, Context, String, Integer, Float, StandardError) -> void
       def notify_task_retry(task, ctx, job_id, attempt, delay, error) # rubocop:disable Metrics/ParameterLists
         instrument(Events::TASK_RETRY, build_task_retry_payload(task, ctx, job_id, attempt, delay, error))
+      end
+
+      #:  (DSL, Task?, SlaExceededError) -> void
+      def notify_sla_exceeded(job, task, error)
+        instrument(Events::SLA_EXCEEDED, build_sla_exceeded_payload(job, task, error))
       end
 
       #:  (DSL, Task) { () -> untyped } -> untyped
@@ -194,6 +200,23 @@ module JobWorkflow
           attempt:,
           max_attempts: task.task_retry.count,
           delay_seconds: delay.round(3),
+          error:,
+          error_class: error.class.name,
+          error_message: error.message
+        }
+      end
+
+      #:  (DSL, Task?, SlaExceededError) -> Hash[Symbol, untyped]
+      def build_sla_exceeded_payload(job, task, error)
+        {
+          job:,
+          job_id: job.job_id,
+          job_name: job.class.name,
+          task:,
+          task_name: task&.task_name,
+          sla_type: error.sla_type,
+          sla_limit_seconds: error.limit,
+          sla_elapsed_seconds: error.elapsed,
           error:,
           error_class: error.class.name,
           error_message: error.message

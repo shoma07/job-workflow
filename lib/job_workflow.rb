@@ -18,6 +18,7 @@ require_relative "job_workflow/instrumentation/opentelemetry_subscriber"
 require_relative "job_workflow/queue_adapter"
 require_relative "job_workflow/cache_store_adapters"
 require_relative "job_workflow/dry_run_config"
+require_relative "job_workflow/task_sla"
 require_relative "job_workflow/task_retry"
 require_relative "job_workflow/task_throttle"
 require_relative "job_workflow/task_enqueue"
@@ -49,6 +50,21 @@ require_relative "job_workflow/auto_scaling"
 
 module JobWorkflow
   class Error < StandardError; end
+
+  # Raised when an SLA limit is breached at runtime.
+  class SlaExceededError < Error
+    attr_reader :sla_type #: Symbol
+    attr_reader :limit    #: Numeric
+    attr_reader :elapsed  #: Numeric
+
+    #:  (sla_type: Symbol, limit: Numeric, elapsed: Numeric) -> void
+    def initialize(sla_type:, limit:, elapsed:)
+      @sla_type = sla_type
+      @limit    = limit
+      @elapsed  = elapsed
+      super("SLA exceeded: #{sla_type} limit=#{limit}s, elapsed=#{elapsed.round(2)}s")
+    end
+  end
 
   extend Logger
 

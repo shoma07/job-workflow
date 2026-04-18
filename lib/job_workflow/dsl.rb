@@ -129,6 +129,7 @@ module JobWorkflow
       #     ?condition: ^(Context) -> bool,
       #     ?throttle: Integer | Hash[Symbol, untyped],
       #     ?timeout: Numeric?,
+      #     ?sla: Numeric | Hash[Symbol, untyped] | nil,
       #     ?dependency_wait: Hash[Symbol, untyped],
       #     ?dry_run: bool | ^(Context) -> bool
       #   ) { (untyped) -> void } -> void
@@ -142,6 +143,7 @@ module JobWorkflow
         condition: ->(_ctx) { true },
         throttle: {},
         timeout: nil,
+        sla: nil,
         dependency_wait: {},
         dry_run: false,
         &block
@@ -159,6 +161,7 @@ module JobWorkflow
           condition:,
           throttle:,
           timeout:,
+          sla:,
           dependency_wait:,
           dry_run:
         )
@@ -242,6 +245,12 @@ module JobWorkflow
       def dry_run(value = nil, &block)
         validate_namespace!
         _workflow.dry_run_config = block || value
+      end
+
+      #:  (?execution: Numeric?, ?queue_wait: Numeric?) -> void
+      def sla(execution: nil, queue_wait: nil)
+        validate_namespace!
+        _workflow.sla = { execution:, queue_wait: }
       end
 
       # rubocop:disable Metrics/ParameterLists
