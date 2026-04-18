@@ -2,7 +2,6 @@
 
 module JobWorkflow
   class WorkflowStatus
-    # rubocop:disable Metrics/ClassLength
     class NotFoundError < StandardError
     end
 
@@ -14,8 +13,6 @@ module JobWorkflow
 
     attr_reader status: status_type
 
-    attr_reader job_data: Hash[String, untyped]?
-
     # :  (String) -> WorkflowStatus
     def self.find: (String) -> WorkflowStatus
 
@@ -25,8 +22,8 @@ module JobWorkflow
     # :  (Hash[String, untyped]) -> WorkflowStatus
     def self.from_job_data: (Hash[String, untyped]) -> WorkflowStatus
 
-    # :  (context: Context, job_class_name: String, status: status_type, ?job_data: Hash[String, untyped]?) -> void
-    def initialize: (context: Context, job_class_name: String, status: status_type, ?job_data: Hash[String, untyped]?) -> void
+    # :  (context: Context, job_class_name: String, status: status_type) -> void
+    def initialize: (context: Context, job_class_name: String, status: status_type) -> void
 
     # :  () -> Symbol?
     def current_task_name: () -> Symbol?
@@ -52,27 +49,7 @@ module JobWorkflow
     # :  () -> bool
     def pending?: () -> bool
 
-    # :  () -> bool
-    def sla_breached?: () -> bool
-
-    # :  () -> Hash[Symbol, untyped]
-    def sla_state: () -> Hash[Symbol, untyped]
-
     # :  () -> Hash[Symbol, untyped]
     def to_h: () -> Hash[Symbol, untyped]
-
-    private
-
-    # :  () -> Hash[Symbol, untyped]
-    def default_sla_state: () -> Hash[Symbol, untyped]
-
-    # :  (Time) -> Hash[Symbol, untyped]?
-    def queue_wait_sla_state: (Time) -> Hash[Symbol, untyped]?
-
-    # :  (Time) -> Hash[Symbol, untyped]?
-    def execution_sla_state: (Time) -> Hash[Symbol, untyped]?
-
-    # :  (untyped) -> Time?
-    def coerce_to_time: (untyped) -> Time?
   end
 end

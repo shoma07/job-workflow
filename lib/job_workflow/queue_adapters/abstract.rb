@@ -72,15 +72,6 @@ module JobWorkflow
         raise NotImplementedError, "#{self.class}#clear_queue must be implemented"
       end
 
-      # Returns a hash describing the job, or nil if not found.
-      #
-      # Implementations MUST include the following keys so that downstream SLA
-      # checks can compute per-job queue-wait duration:
-      #   "enqueued_at"  - Time the job was originally enqueued (Time or nil)
-      #   "scheduled_at" - Time the job is/was scheduled to run (Time or nil)
-      #
-      # Additional standard keys: "job_id", "class_name", "queue_name",
-      # "arguments", "job_workflow_context", "status".
       #:  (String) -> Hash[String, untyped]?
       def find_job(_job_id)
         raise NotImplementedError, "#{self.class}#find_job must be implemented"

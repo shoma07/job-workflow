@@ -12,7 +12,6 @@ module JobWorkflow
 
     #:  () -> void
     def run # rubocop:disable Metrics/AbcSize
-      enforce_queue_wait_sla!
       task = context._task_context.task
       if !task.nil? && context.sub_job?
         with_workflow_execution_sla { run_task(task) }
@@ -41,44 +40,6 @@ module JobWorkflow
     #:  () -> HookRegistry
     def hooks
       workflow.hooks
-    end
-
-    #:  () -> void
-    def enforce_queue_wait_sla! # rubocop:disable Metrics/AbcSize
-      task = context._task_context.task
-      limit = task.nil? ? workflow.sla.queue_wait : workflow.sla.merge(task.sla).queue_wait
-      return if limit.nil?
-
-      job_data = QueueAdapter.current.find_job(job.job_id)
-      return if job_data.nil?
-
-      elapsed = queue_wait_elapsed(job_data)
-      return if elapsed.nil?
-      return if elapsed < limit
-
-      raise_sla_exceeded!(sla_type: :queue_wait, limit:, elapsed:)
-    end
-
-    #:  (Hash[String, untyped]) -> Numeric?
-    def queue_wait_elapsed(job_data)
-      started_at = coerce_to_time(job_data["scheduled_at"]) || coerce_to_time(job_data["enqueued_at"])
-      return if started_at.nil?
-
-      Time.current - started_at
-    end
-
-    #:  (untyped) -> Time?
-    def coerce_to_time(value)
-      case value
-      when Time
-        value
-      when Numeric
-        Time.at(value)
-      when String
-        value.to_time
-      end
-    rescue ArgumentError, TypeError
-      nil
     end
 
     #:  () -> void

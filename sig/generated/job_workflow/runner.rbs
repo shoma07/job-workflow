@@ -25,15 +25,6 @@ module JobWorkflow
     def hooks: () -> HookRegistry
 
     # :  () -> void
-    def enforce_queue_wait_sla!: () -> void
-
-    # :  (Hash[String, untyped]) -> Numeric?
-    def queue_wait_elapsed: (Hash[String, untyped]) -> Numeric?
-
-    # :  (untyped) -> Time?
-    def coerce_to_time: (untyped) -> Time?
-
-    # :  () -> void
     def run_workflow: () -> void
 
     # :  (Task) -> bool

@@ -492,8 +492,6 @@ RSpec.describe JobWorkflow::QueueAdapters::SolidQueueAdapter do
 
     context "when SolidQueue::Job is defined" do
       let(:job) { Class.new.new }
-      let(:enqueued_at) { Time.now - 120 }
-      let(:scheduled_at) { Time.now - 60 }
 
       before do
         stub_const("SolidQueue::Job", job.class)
@@ -505,8 +503,6 @@ RSpec.describe JobWorkflow::QueueAdapters::SolidQueueAdapter do
           queue_name: "default",
           # SolidQueue stores the full ActiveJob serialization with arguments array
           arguments: { "arguments" => [{ "value" => 42 }] },
-          created_at: enqueued_at,
-          scheduled_at: scheduled_at,
           failed?: false,
           finished?: false,
           claimed?: true
@@ -523,8 +519,6 @@ RSpec.describe JobWorkflow::QueueAdapters::SolidQueueAdapter do
               "queue_name" => "default",
               "arguments" => [{ "value" => 42 }],
               "job_workflow_context" => nil,
-              "enqueued_at" => enqueued_at,
-              "scheduled_at" => scheduled_at,
               "status" => :running
             }
           )
@@ -534,7 +528,6 @@ RSpec.describe JobWorkflow::QueueAdapters::SolidQueueAdapter do
 
     context "when arguments is not a Hash" do
       let(:job) { Class.new.new }
-      let(:enqueued_at) { Time.now - 30 }
 
       before do
         stub_const("SolidQueue::Job", job.class)
@@ -546,8 +539,6 @@ RSpec.describe JobWorkflow::QueueAdapters::SolidQueueAdapter do
           queue_name: "legacy",
           # Non-Hash arguments (e.g., nil or raw array) are returned as-is
           arguments: nil,
-          created_at: enqueued_at,
-          scheduled_at: nil,
           failed?: false,
           finished?: true,
           claimed?: false
@@ -564,8 +555,6 @@ RSpec.describe JobWorkflow::QueueAdapters::SolidQueueAdapter do
               "queue_name" => "legacy",
               "arguments" => nil,
               "job_workflow_context" => nil,
-              "enqueued_at" => enqueued_at,
-              "scheduled_at" => nil,
               "status" => :succeeded
             }
           )
