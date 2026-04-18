@@ -228,6 +228,40 @@ RSpec.describe JobWorkflow::QueueAdapters::SolidQueueAdapter do
     end
   end
 
+  describe described_class::ClaimedExecutionPatch do
+    let(:base_class) do
+      Class.new do
+        attr_accessor :id
+
+        def self.exists?(_id)
+          true
+        end
+
+        private
+
+        def finished
+          :finished_result
+        end
+      end
+    end
+    let(:patched_class) { base_class.tap { |klass| klass.prepend(described_class) } }
+    let(:instance) { patched_class.new.tap { |i| i.id = 1 } }
+
+    context "when the record still exists" do
+      it "delegates to super" do
+        expect(instance.send(:finished)).to eq(:finished_result)
+      end
+    end
+
+    context "when the record has already been deleted (stale record)" do
+      before { allow(patched_class).to receive(:exists?).with(1).and_return(false) }
+
+      it "returns self without calling super" do
+        expect(instance.send(:finished)).to eq(instance)
+      end
+    end
+  end
+
   describe "#pause_queue" do
     subject(:pause_queue) { adapter.pause_queue("import") }
 
