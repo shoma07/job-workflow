@@ -82,5 +82,13 @@ RSpec.describe JobWorkflow::Schedule do
 
       it { expect(config).not_to have_key(:args) }
     end
+
+    context "with v1.4.0 compatibility (static key)" do
+      let(:schedule) { described_class.new(expression: "every hour", class_name: "HourlyJob") }
+
+      it "does not include static key so SolidQueue defaults to static: true" do
+        expect(config).not_to have_key(:static)
+      end
+    end
   end
 end

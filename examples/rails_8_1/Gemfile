@@ -6,7 +6,7 @@ gem "job-workflow", path: "../../"
 gem "puma", ">= 5.0"
 gem "rails", "~> 8.1.1"
 gem "solid_cache", "1.0.10"
-gem "solid_queue", "1.2.4"
+gem "solid_queue", "1.4.0"
 gem "sqlite3", ">= 2.1"
 
 group :development, :test do
