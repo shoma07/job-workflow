@@ -2,6 +2,7 @@
 
 module JobWorkflow
   class WorkflowStatus
+    # rubocop:disable Metrics/ClassLength
     class NotFoundError < StandardError
     end
 
@@ -62,6 +63,9 @@ module JobWorkflow
 
     private
 
+    # :  () -> bool
+    def sla_evaluable?: () -> bool
+
     # :  (Task?) -> TaskSla
     def effective_sla: (Task?) -> TaskSla
 
@@ -70,6 +74,9 @@ module JobWorkflow
 
     # :  (Task?) -> Hash[Symbol, untyped]?
     def build_execution_sla_state: (Task?) -> Hash[Symbol, untyped]?
+
+    # :  (Task?) -> Time?
+    def execution_sla_started_at_for: (Task?) -> Time?
 
     # :  (untyped) -> Time?
     def coerce_to_time: (untyped) -> Time?

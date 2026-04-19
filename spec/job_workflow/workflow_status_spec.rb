@@ -392,6 +392,106 @@ RSpec.describe JobWorkflow::WorkflowStatus do
 
       it { expect(sla_state).to include(type: :execution, breached: true) }
     end
+
+    context "when task is active and execution SLA is breached via task-level start time" do
+      let(:workflow_status) do
+        described_class.from_job_data(
+          {
+            "job_id" => "sla-task-exec-job",
+            "class_name" => "SlaStatusJob",
+            "arguments" => [
+              {
+                "job_workflow_context" => {
+                  "workflow_started_at" => 10.seconds.ago.to_f,
+                  "task_context" => {
+                    "task_name" => "process",
+                    "execution_sla_started_at" => 1.second.ago.to_f
+                  },
+                  "task_outputs" => [],
+                  "task_job_statuses" => []
+                }
+              }
+            ],
+            "status" => :failed
+          }
+        )
+      end
+
+      it { expect(sla_state).to include(type: :execution, breached: true) }
+    end
+
+    context "when task is active but no timing information is available" do
+      let(:workflow_status) do
+        described_class.from_job_data(
+          {
+            "job_id" => "sla-task-no-timing",
+            "class_name" => "SlaStatusJob",
+            "arguments" => [
+              {
+                "job_workflow_context" => {
+                  "task_context" => { "task_name" => "process" },
+                  "task_outputs" => [],
+                  "task_job_statuses" => []
+                }
+              }
+            ],
+            "status" => :running
+          }
+        )
+      end
+
+      it { expect(sla_state).to include(type: :execution, breached: false) }
+    end
+
+    context "when enqueued_at is a Unix timestamp (Numeric)" do
+      let(:workflow_status) do
+        described_class.from_job_data(
+          {
+            "job_id" => "sla-numeric-ts",
+            "class_name" => "SlaStatusJob",
+            "arguments" => [{}],
+            "enqueued_at" => 1.second.ago.to_f,
+            "scheduled_at" => nil,
+            "status" => :failed
+          }
+        )
+      end
+
+      it { expect(sla_state).to include(type: :queue_wait, breached: true) }
+    end
+
+    context "when enqueued_at is an ISO 8601 string" do
+      let(:workflow_status) do
+        described_class.from_job_data(
+          {
+            "job_id" => "sla-string-ts",
+            "class_name" => "SlaStatusJob",
+            "arguments" => [{}],
+            "enqueued_at" => 1.second.ago.iso8601,
+            "scheduled_at" => nil,
+            "status" => :failed
+          }
+        )
+      end
+
+      it { expect(sla_state).to include(type: :queue_wait, breached: true) }
+    end
+
+    context "when enqueued_at is an unparseable string" do
+      let(:workflow_status) do
+        described_class.from_job_data(
+          {
+            "job_id" => "sla-bad-ts",
+            "class_name" => "SlaStatusJob",
+            "arguments" => [{}],
+            "enqueued_at" => "not-a-valid-time",
+            "status" => :failed
+          }
+        )
+      end
+
+      it { expect(sla_state).to include(type: :execution, breached: false) }
+    end
   end
 
   describe "#sla_breached?" do

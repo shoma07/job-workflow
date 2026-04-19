@@ -14,5 +14,15 @@ RSpec.describe "SLA" do
         )
       end
     end
+
+    context "when task completes within execution SLA" do
+      subject(:perform_workflow) { workflow_job.perform_now }
+
+      let(:workflow_job) { AcceptanceSlaJob.new(sleep_seconds: 0.0) }
+
+      it "completes without raising" do
+        expect { perform_workflow }.not_to raise_error
+      end
+    end
   end
 end

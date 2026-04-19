@@ -96,7 +96,7 @@ module JobWorkflow
 
     #:  () -> Hash[Symbol, untyped]?
     def sla_state
-      return unless pending? || running? || failed?
+      return unless sla_evaluable?
 
       task = context._task_context.task
       queue_wait_state = build_queue_wait_sla_state(task)
@@ -133,6 +133,11 @@ module JobWorkflow
 
     private
 
+    #:  () -> bool
+    def sla_evaluable?
+      pending? || running? || failed?
+    end
+
     #:  (Task?) -> TaskSla
     def effective_sla(task)
       return context.workflow.sla if task.nil?
@@ -157,15 +162,22 @@ module JobWorkflow
       limit = effective_sla(task).execution
       return if limit.nil?
 
-      started_at = if task.nil?
-                     context.workflow_started_at
-                   else
-                     context._task_context.execution_sla_started_at&.then { |value| Time.at(value) } || context.workflow_started_at
-                   end
-      return if started_at.nil?
+      started_at = execution_sla_started_at_for(task)
+      # :nocov:
+      return if started_at.nil? # workflow_started_at always falls back to Time.current
+      # :nocov:
 
       elapsed = Time.current - started_at
       { type: :execution, limit:, elapsed:, breached: elapsed >= limit }
+    end
+
+    #:  (Task?) -> Time?
+    def execution_sla_started_at_for(task)
+      return context.workflow_started_at if task.nil?
+
+      context._task_context.execution_sla_started_at&.then do |value|
+        Time.at(value)
+      end || context.workflow_started_at
     end
 
     #:  (untyped) -> Time?
