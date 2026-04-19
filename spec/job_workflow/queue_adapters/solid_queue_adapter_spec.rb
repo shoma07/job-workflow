@@ -503,6 +503,8 @@ RSpec.describe JobWorkflow::QueueAdapters::SolidQueueAdapter do
           queue_name: "default",
           # SolidQueue stores the full ActiveJob serialization with arguments array
           arguments: { "arguments" => [{ "value" => 42 }] },
+          created_at: Time.at(1_700_000_000),
+          scheduled_at: Time.at(1_700_000_060),
           failed?: false,
           finished?: false,
           claimed?: true
@@ -519,6 +521,8 @@ RSpec.describe JobWorkflow::QueueAdapters::SolidQueueAdapter do
               "queue_name" => "default",
               "arguments" => [{ "value" => 42 }],
               "job_workflow_context" => nil,
+              "enqueued_at" => Time.at(1_700_000_000),
+              "scheduled_at" => Time.at(1_700_000_060),
               "status" => :running
             }
           )
@@ -539,6 +543,8 @@ RSpec.describe JobWorkflow::QueueAdapters::SolidQueueAdapter do
           queue_name: "legacy",
           # Non-Hash arguments (e.g., nil or raw array) are returned as-is
           arguments: nil,
+          created_at: Time.at(1_700_000_100),
+          scheduled_at: nil,
           failed?: false,
           finished?: true,
           claimed?: false
@@ -555,6 +561,8 @@ RSpec.describe JobWorkflow::QueueAdapters::SolidQueueAdapter do
               "queue_name" => "legacy",
               "arguments" => nil,
               "job_workflow_context" => nil,
+              "enqueued_at" => Time.at(1_700_000_100),
+              "scheduled_at" => nil,
               "status" => :succeeded
             }
           )

@@ -163,6 +163,7 @@ module JobWorkflow
           max_attempts
           delay_seconds
           sla_type
+          sla_scope
           sla_limit_seconds
           sla_elapsed_seconds
           concurrency_key

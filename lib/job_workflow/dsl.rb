@@ -101,6 +101,7 @@ module JobWorkflow
         task = new_context._task_context.task
         job = new(new_context.arguments.to_h)
         new_context._job = job
+        new_context._queue_wait_started_at = nil
         job._context = new_context
         job.set(queue: task.enqueue.queue) if !task.nil? && !task.enqueue.queue.nil?
         job

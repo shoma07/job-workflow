@@ -10,7 +10,7 @@ RSpec.describe "SLA" do
       it "raises SlaExceededError with execution sla_type" do
         expect { perform_workflow }.to raise_error(
           an_instance_of(JobWorkflow::SlaExceededError)
-            .and(have_attributes(sla_type: :execution, limit: 0.05))
+            .and(have_attributes(sla_type: :execution, scope: :workflow, limit: 0.05))
         )
       end
     end

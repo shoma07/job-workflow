@@ -1005,6 +1005,25 @@ RSpec.describe JobWorkflow::DSL do
         expect(from_context._context._job).to eq(from_context)
       end
     end
+
+    context "when parent context has queue_wait_started_at" do
+      let(:context) do
+        workflow = klass._workflow
+        task = workflow.fetch_task(:task_one)
+        JobWorkflow::Context.new(
+          workflow:,
+          arguments: JobWorkflow::Arguments.new(data: { arg_one: 42 }),
+          task_context: JobWorkflow::TaskContext.new(task: task),
+          output: JobWorkflow::Output.new(task_outputs: []),
+          job_status: JobWorkflow::JobStatus.new(task_job_statuses: []),
+          queue_wait_started_at: 1.minute.ago
+        )
+      end
+
+      it "resets queue_wait_started_at for the new sub-job" do
+        expect(from_context._context.queue_wait_started_at).to be_nil
+      end
+    end
   end
 
   describe "self.schedule" do

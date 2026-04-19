@@ -264,6 +264,7 @@ RSpec.describe JobWorkflow::Instrumentation::OpenTelemetrySubscriber do
           job_id: "123",
           task_name: :process_items,
           sla_type: :execution,
+          sla_scope: :workflow,
           sla_limit_seconds: 10.0,
           sla_elapsed_seconds: 12.5
         }
@@ -272,6 +273,7 @@ RSpec.describe JobWorkflow::Instrumentation::OpenTelemetrySubscriber do
           kind: :internal,
           attributes: include(
             "job_workflow.sla.type" => "execution",
+            "job_workflow.sla.scope" => "workflow",
             "job_workflow.sla.limit_seconds" => 10.0,
             "job_workflow.sla.elapsed_seconds" => 12.5
           )

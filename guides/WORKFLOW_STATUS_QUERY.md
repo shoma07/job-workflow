@@ -102,13 +102,14 @@ end
 
 ### SLA State
 
-Access the current SLA evaluation (`execution` or `queue_wait`):
+Access the representative SLA evaluation (`execution` or `queue_wait`):
 
 ```ruby
 state = status.sla_state
 # => {
 #   breached: false,
 #   type: :execution,   # or :queue_wait
+#   scope: :workflow,   # or :task
 #   limit: 600,
 #   elapsed: 123.45
 # }
@@ -116,7 +117,7 @@ state = status.sla_state
 status.sla_breached? # => false
 ```
 
-`type` indicates which SLA dimension (`:execution` or `:queue_wait`) is represented in the returned state, and `elapsed` is the elapsed seconds for that dimension.
+`type` indicates which SLA dimension (`:execution` or `:queue_wait`) is represented in the returned state, and `scope` indicates whether the breached/evaluated limit came from workflow defaults or a task override. For failed jobs, `sla_state` prefers the actually persisted breach when available; otherwise it returns the closest currently evaluable SLA state.
 
 ## Hash Representation
 
@@ -131,6 +132,7 @@ status_hash = status.to_h
 #   sla: {
 #     breached: false,
 #     type: :execution,
+#     scope: :workflow,
 #     limit: 600,
 #     elapsed: 123.45
 #   },

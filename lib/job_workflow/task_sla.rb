@@ -31,7 +31,9 @@ module JobWorkflow
         when Hash
           new(
             execution: value[:execution],
-            queue_wait: value[:queue_wait]
+            queue_wait: value[:queue_wait],
+            execution_configured: value.key?(:execution),
+            queue_wait_configured: value.key?(:queue_wait)
           )
         else
           raise ArgumentError, "sla must be Numeric, Hash, or nil"
@@ -39,10 +41,13 @@ module JobWorkflow
       end
     end
 
-    #:  (?execution: Numeric?, ?queue_wait: Numeric?) -> void
-    def initialize(execution: nil, queue_wait: nil)
+    #:  (?execution: Numeric?, ?queue_wait: Numeric?, ?execution_configured: bool, ?queue_wait_configured: bool) -> void
+    def initialize(execution: nil, queue_wait: nil, execution_configured: !execution.nil?,
+                   queue_wait_configured: !queue_wait.nil?)
       @execution = execution
       @queue_wait = queue_wait
+      @execution_configured = execution_configured
+      @queue_wait_configured = queue_wait_configured
     end
 
     # Returns true when no SLA limits are configured.
@@ -56,15 +61,19 @@ module JobWorkflow
     #:  (TaskSla) -> TaskSla
     def merge(task_sla)
       self.class.new(
-        execution: task_sla.execution.nil? ? execution : task_sla.execution,
-        queue_wait: task_sla.queue_wait.nil? ? queue_wait : task_sla.queue_wait
+        execution: task_sla.execution_configured? ? task_sla.execution : execution,
+        queue_wait: task_sla.queue_wait_configured? ? task_sla.queue_wait : queue_wait
       )
     end
-  end
 
-  # Internal signal used by Timeout to enforce SLA windows.
-  # Inheriting from Exception (not StandardError) ensures that
-  # `rescue StandardError` inside retry loops cannot swallow the signal.
-  SlaTimeoutSignal = Class.new(Exception) # rubocop:disable Lint/InheritException
-  private_constant :SlaTimeoutSignal
+    #:  () -> bool
+    def execution_configured?
+      @execution_configured
+    end
+
+    #:  () -> bool
+    def queue_wait_configured?
+      @queue_wait_configured
+    end
+  end
 end

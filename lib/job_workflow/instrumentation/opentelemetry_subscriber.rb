@@ -31,6 +31,7 @@ module JobWorkflow
         CONCURRENCY_KEY = "#{NAMESPACE}.concurrency.key".freeze #: String
         CONCURRENCY_LIMIT = "#{NAMESPACE}.concurrency.limit".freeze #: String
         SLA_TYPE = "#{NAMESPACE}.sla.type".freeze #: String
+        SLA_SCOPE = "#{NAMESPACE}.sla.scope".freeze #: String
         SLA_LIMIT_SECONDS = "#{NAMESPACE}.sla.limit_seconds".freeze #: String
         SLA_ELAPSED_SECONDS = "#{NAMESPACE}.sla.elapsed_seconds".freeze #: String
       end
@@ -185,6 +186,7 @@ module JobWorkflow
           Attributes::CONCURRENCY_KEY => payload[:concurrency_key],
           Attributes::CONCURRENCY_LIMIT => payload[:concurrency_limit],
           Attributes::SLA_TYPE => payload[:sla_type]&.to_s,
+          Attributes::SLA_SCOPE => payload[:sla_scope]&.to_s,
           Attributes::SLA_LIMIT_SECONDS => payload[:sla_limit_seconds],
           Attributes::SLA_ELAPSED_SECONDS => payload[:sla_elapsed_seconds]
         }.compact

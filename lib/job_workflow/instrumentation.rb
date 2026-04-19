@@ -215,6 +215,7 @@ module JobWorkflow
           task:,
           task_name: task&.task_name,
           sla_type: error.sla_type,
+          sla_scope: error.scope,
           sla_limit_seconds: error.limit,
           sla_elapsed_seconds: error.elapsed,
           error:,

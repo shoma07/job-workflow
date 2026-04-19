@@ -39,7 +39,7 @@ JobWorkflow emits multiple events for each operation to support both tracing and
 |------------|-------------|-------------------|
 | `workflow.job_workflow` | Workflow execution span | `job_name`, `job_id`, `duration_ms` |
 | `task.job_workflow` | Task execution span | `task_name`, `each_index`, `retry_count`, `duration_ms` |
-| `sla.exceeded.job_workflow` | SLA breach span | `sla_type`, `sla_limit_seconds`, `sla_elapsed_seconds`, `task_name` |
+| `sla.exceeded.job_workflow` | SLA breach span | `sla_type`, `sla_scope`, `sla_limit_seconds`, `sla_elapsed_seconds`, `task_name` |
 | `throttle.acquire.job_workflow` | Semaphore acquisition span | `concurrency_key`, `concurrency_limit`, `duration_ms` |
 | `dependent.wait.job_workflow` | Dependency wait span | `dependent_task_name`, `duration_ms` |
 
@@ -55,7 +55,7 @@ JobWorkflow emits multiple events for each operation to support both tracing and
 | `task.skip.job_workflow` | Task skipped | `task_name`, `reason` |
 | `task.enqueue.job_workflow` | Sub-jobs enqueued | `task_name`, `sub_job_count` |
 | `task.retry.job_workflow` | Task retry | `task_name`, `attempt`, `max_attempts`, `delay_seconds`, `error_class` |
-| `sla.exceeded.job_workflow` | SLA exceeded | `sla_type`, `sla_limit_seconds`, `sla_elapsed_seconds`, `error_class` |
+| `sla.exceeded.job_workflow` | SLA exceeded | `sla_type`, `sla_scope`, `sla_limit_seconds`, `sla_elapsed_seconds`, `error_class` |
 | `throttle.acquire.start.job_workflow` | Semaphore acquisition started | `concurrency_key`, `concurrency_limit` |
 | `throttle.acquire.complete.job_workflow` | Semaphore acquisition completed | `concurrency_key`, `concurrency_limit` |
 | `throttle.release.job_workflow` | Semaphore released | `concurrency_key`, `concurrency_limit` |

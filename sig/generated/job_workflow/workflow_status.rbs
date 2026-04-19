@@ -52,8 +52,8 @@ module JobWorkflow
     # :  () -> bool
     def pending?: () -> bool
 
-    # :  () -> Hash[Symbol, untyped]?
-    def sla_state: () -> Hash[Symbol, untyped]?
+    # :  () -> SlaState?
+    def sla_state: () -> SlaState?
 
     # :  () -> bool
     def sla_breached?: () -> bool
@@ -63,22 +63,49 @@ module JobWorkflow
 
     private
 
+    # :  () -> Hash[Symbol, untyped]?
+    def sla_state_to_h: () -> Hash[Symbol, untyped]?
+
     # :  () -> bool
     def sla_evaluable?: () -> bool
 
-    # :  (Task?) -> TaskSla
-    def effective_sla: (Task?) -> TaskSla
+    # :  () -> Array[SlaState]
+    def build_sla_states: () -> Array[SlaState]
 
-    # :  (Task?) -> Hash[Symbol, untyped]?
-    def build_queue_wait_sla_state: (Task?) -> Hash[Symbol, untyped]?
+    # :  (Task?, Time) -> SlaState?
+    def build_execution_sla_state: (Task?, Time) -> SlaState?
 
-    # :  (Task?) -> Hash[Symbol, untyped]?
-    def build_execution_sla_state: (Task?) -> Hash[Symbol, untyped]?
+    # :  (Task?, Time) -> SlaState?
+    def build_task_execution_sla_state: (Task?, Time) -> SlaState?
 
-    # :  (Task?) -> Time?
-    def execution_sla_started_at_for: (Task?) -> Time?
+    # :  () -> Time?
+    def resolve_queue_wait_started_at: () -> Time?
 
-    # :  (untyped) -> Time?
-    def coerce_to_time: (untyped) -> Time?
+    # :  () -> Time?
+    def execution_sla_started_at_for: () -> Time?
+
+    # :  () -> Task?
+    def current_task: () -> Task?
+
+    # :  () -> Time?
+    def workflow_execution_started_at: () -> Time?
+
+    # :  () -> Time?
+    def task_context_execution_started_at: () -> Time?
+
+    # :  () -> Symbol?
+    def task_execution_sla_task_name: () -> Symbol?
+
+    # :  () -> Time?
+    def task_execution_sla_started_at: () -> Time?
+
+    # :  () -> SlaState?
+    def persisted_sla_breach: () -> SlaState?
+
+    # :  () -> Hash[String, untyped]?
+    def serialized_context_data: () -> Hash[String, untyped]?
+
+    # :  () -> Hash[String, untyped]
+    def serialized_task_context: () -> Hash[String, untyped]
   end
 end

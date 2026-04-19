@@ -202,7 +202,7 @@ RSpec.describe JobWorkflow::Instrumentation::LogSubscriber do
           sla_type: :queue_wait,
           sla_limit_seconds: 5.0,
           sla_elapsed_seconds: 7.2,
-          error: JobWorkflow::SlaExceededError.new(sla_type: :queue_wait, limit: 5.0, elapsed: 7.2)
+          error: JobWorkflow::SlaExceededError.new(sla_type: :queue_wait, scope: :workflow, limit: 5.0, elapsed: 7.2)
         }
       )
     end

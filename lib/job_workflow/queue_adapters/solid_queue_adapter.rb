@@ -167,6 +167,8 @@ module JobWorkflow
           "queue_name" => job.queue_name,
           "arguments" => args.is_a?(Hash) ? args["arguments"] : args,
           "job_workflow_context" => args.is_a?(Hash) ? args["job_workflow_context"] : nil,
+          "enqueued_at" => job.created_at,
+          "scheduled_at" => job.scheduled_at,
           "status" => job_status(job)
         }
       end

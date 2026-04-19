@@ -221,7 +221,7 @@ end
 
 - `timeout`: per-attempt execution limit for a single task block run
 - `sla.execution`: end-to-end execution budget (survives retries/resume)
-- `sla.queue_wait`: enqueue/schedule-to-start latency budget
+- `sla.queue_wait`: enqueue/schedule-to-start latency budget for the current queue interval
 
 ```ruby
 class BillingWorkflowJob < ApplicationJob
@@ -241,7 +241,12 @@ class BillingWorkflowJob < ApplicationJob
   task :issue_receipt, sla: { queue_wait: 30 } do |ctx|
     receipt!(ctx.arguments.order_id)
   end
+
+  # Disable inherited execution SLA for this task only
+  task :archive_logs, sla: { execution: nil, queue_wait: 300 } do |ctx|
+    archive!(ctx.arguments.order_id)
+  end
 end
 ```
 
-Task-level `sla` values override workflow defaults only for keys you specify. Unspecified keys inherit workflow defaults.
+Task-level `sla` values override workflow defaults only for keys you specify. Unspecified keys inherit workflow defaults. If you explicitly pass `nil` for a key in the task hash, that inherited SLA is disabled for that task.

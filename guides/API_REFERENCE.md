@@ -127,8 +127,15 @@ class FulfillmentJob < ApplicationJob
   task :ship_order, sla: { queue_wait: 30 } do |ctx|
     ship!(ctx.arguments.order_id)
   end
+
+  # Explicitly disable inherited execution SLA for this task
+  task :archive_logs, sla: { execution: nil, queue_wait: 300 } do |ctx|
+    archive!(ctx.arguments.order_id)
+  end
 end
 ```
+
+Task-level hash keys override workflow defaults **per key**. Omitting a key inherits the workflow default, while explicitly passing `nil` for a key disables the inherited SLA for that dimension.
 
 ### workflow_concurrency
 

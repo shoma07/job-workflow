@@ -181,7 +181,7 @@ RSpec.describe JobWorkflow::Instrumentation do
     include_context "with job double"
 
     let(:task) { instance_double(JobWorkflow::Task, task_name: :payment) }
-    let(:error) { JobWorkflow::SlaExceededError.new(sla_type: :execution, limit: 10.0, elapsed: 12.3) }
+    let(:error) { JobWorkflow::SlaExceededError.new(sla_type: :execution, scope: :workflow, limit: 10.0, elapsed: 12.3) }
     let(:event_name) { described_class::Events::SLA_EXCEEDED }
 
     it "fires a sla.exceeded.job_workflow event" do

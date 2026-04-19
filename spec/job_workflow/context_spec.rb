@@ -382,6 +382,14 @@ RSpec.describe JobWorkflow::Context do
       end
     end
 
+    context "when queue_wait_started_at is present in the hash" do
+      it "restores queue_wait_started_at from the serialized float" do
+        fixed_time = Time.at(1_700_000_001.0)
+        ctx = described_class.from_hash(hash.merge(queue_wait_started_at: fixed_time.to_f))
+        expect(ctx.queue_wait_started_at.to_f).to be_within(0.001).of(fixed_time.to_f)
+      end
+    end
+
     it do
       expect(from_hash.output.flat_task_outputs).to contain_exactly(
         have_attributes(task_name: :task_a, each_index: 0, data: { result: 100 }),
@@ -444,6 +452,71 @@ RSpec.describe JobWorkflow::Context do
 
       it "restores workflow_started_at from the serialized float" do
         expect(deserialized.workflow_started_at.to_f).to be_within(0.001).of(fixed_time.to_f)
+      end
+    end
+
+    context "when queue_wait_started_at is present in the hash" do
+      let(:fixed_time) { Time.at(1_700_000_001.123) }
+      let(:serialized_hash) do
+        {
+          "workflow" => workflow,
+          "queue_wait_started_at" => fixed_time.to_f,
+          "task_context" => { "task_name" => nil, "parent_job_id" => nil, "index" => 0, "value" => nil },
+          "task_outputs" => [],
+          "task_job_statuses" => []
+        }
+      end
+
+      it "restores queue_wait_started_at from the serialized float" do
+        expect(deserialized.queue_wait_started_at.to_f).to be_within(0.001).of(fixed_time.to_f)
+      end
+    end
+
+    context "when task execution SLA anchor is present in the hash" do
+      let(:fixed_time) { Time.at(1_700_000_010.123) }
+      let(:serialized_hash) do
+        {
+          "workflow" => workflow,
+          "task_execution_sla_task_name" => "task_a",
+          "task_execution_sla_started_at" => fixed_time.to_f,
+          "task_context" => { "task_name" => nil, "parent_job_id" => nil, "index" => 0, "value" => nil },
+          "task_outputs" => [],
+          "task_job_statuses" => []
+        }
+      end
+
+      it "restores the task execution SLA anchor" do
+        expect(deserialized).to have_attributes(
+          task_execution_sla_task_name: :task_a,
+          task_execution_sla_started_at: have_attributes(to_f: be_within(0.001).of(fixed_time.to_f))
+        )
+      end
+    end
+
+    context "when an SLA breach is present in the hash" do
+      let(:serialized_hash) do
+        {
+          "workflow" => workflow,
+          "sla_breach" => {
+            "type" => "execution",
+            "scope" => "task",
+            "limit" => 10.0,
+            "elapsed" => 12.5
+          },
+          "task_context" => { "task_name" => nil, "parent_job_id" => nil, "index" => 0, "value" => nil },
+          "task_outputs" => [],
+          "task_job_statuses" => []
+        }
+      end
+
+      it "restores the persisted SLA breach payload" do
+        expect(deserialized.sla_breach).to have_attributes(
+          type: :execution,
+          scope: :task,
+          limit: 10.0,
+          elapsed: 12.5,
+          breached?: true
+        )
       end
     end
 
@@ -514,6 +587,10 @@ RSpec.describe JobWorkflow::Context do
       expect(serialized).to match(
         {
           "workflow_started_at" => instance_of(Float),
+          "queue_wait_started_at" => nil,
+          "task_execution_sla_task_name" => nil,
+          "task_execution_sla_started_at" => nil,
+          "sla_breach" => nil,
           "task_context" => {
             "task_name" => nil,
             "parent_job_id" => nil,
@@ -531,6 +608,68 @@ RSpec.describe JobWorkflow::Context do
           ]
         }
       )
+    end
+
+    context "when queue_wait_started_at is present" do
+      let(:fixed_time) { Time.at(1_700_000_002.123) }
+      let(:ctx) do
+        described_class.new(
+          job:,
+          workflow:,
+          arguments: JobWorkflow::Arguments.new(data: { arg_one: "test", arg_two: 42 }),
+          task_context: JobWorkflow::TaskContext.new(parent_job_id: nil, index: 0, value: 10),
+          output: JobWorkflow::Output.new,
+          job_status: JobWorkflow::JobStatus.new,
+          queue_wait_started_at: fixed_time
+        )
+      end
+
+      it "serializes queue_wait_started_at" do
+        expect(serialized["queue_wait_started_at"]).to be_within(0.001).of(fixed_time.to_f)
+      end
+    end
+
+    context "when task execution SLA anchor and SLA breach are present" do
+      let(:fixed_time) { Time.at(1_700_000_004.123) }
+      let(:error) do
+        JobWorkflow::SlaExceededError.new(
+          sla_type: :execution,
+          scope: :task,
+          limit: 10.0,
+          elapsed: 12.5
+        )
+      end
+      let(:ctx) do
+        described_class.new(
+          job:,
+          workflow:,
+          arguments: JobWorkflow::Arguments.new(data: { arg_one: "test", arg_two: 42 }),
+          task_context: JobWorkflow::TaskContext.new(parent_job_id: nil, index: 0, value: 10),
+          output: JobWorkflow::Output.new,
+          job_status: JobWorkflow::JobStatus.new,
+          task_execution_sla_task_name: :task_a,
+          task_execution_sla_started_at: fixed_time,
+          sla_breach: JobWorkflow::SlaState.new(
+            type: error.sla_type,
+            scope: error.scope,
+            limit: error.limit,
+            elapsed: error.elapsed
+          )
+        )
+      end
+
+      it "serializes the extra SLA tracking fields" do
+        expect(serialized).to include(
+          "task_execution_sla_task_name" => :task_a,
+          "task_execution_sla_started_at" => be_within(0.001).of(fixed_time.to_f),
+          "sla_breach" => {
+            "type" => "execution",
+            "scope" => "task",
+            "limit" => 10.0,
+            "elapsed" => 12.5
+          }
+        )
+      end
     end
 
     context "when task_outputs contain a namespaced task_name" do
@@ -592,6 +731,38 @@ RSpec.describe JobWorkflow::Context do
           ),
           "task_outputs" => []
         )
+      end
+    end
+
+    context "when sub_job has queue_wait_started_at" do
+      let(:sub_job_class) do
+        Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          def self.name
+            "SubJobQueueWaitClass"
+          end
+        end
+      end
+      let(:sub_job) do
+        instance = sub_job_class.new
+        instance.job_id = "sub-job-id"
+        instance
+      end
+      let(:ctx) do
+        described_class.new(
+          workflow: sub_job_class._workflow,
+          job: sub_job,
+          arguments: JobWorkflow::Arguments.new(data: {}),
+          task_context: JobWorkflow::TaskContext.new(parent_job_id: "parent-job-id", index: 1),
+          output: JobWorkflow::Output.new(task_outputs: []),
+          job_status: JobWorkflow::JobStatus.new,
+          queue_wait_started_at: Time.at(1_700_000_003.123)
+        )
+      end
+
+      it "serializes queue_wait_started_at for sub-jobs" do
+        expect(serialized["queue_wait_started_at"]).to be_within(0.001).of(Time.at(1_700_000_003.123).to_f)
       end
     end
   end

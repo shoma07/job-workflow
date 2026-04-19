@@ -43,6 +43,8 @@ module JobWorkflow
 
         SLA_TYPE: String
 
+        SLA_SCOPE: String
+
         SLA_LIMIT_SECONDS: String
 
         SLA_ELAPSED_SECONDS: String

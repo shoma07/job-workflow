@@ -150,5 +150,14 @@ RSpec.describe JobWorkflow::TaskSla do
         expect(merged).to have_attributes(execution: 90, queue_wait: nil)
       end
     end
+
+    context "when task_sla explicitly disables inherited execution" do
+      let(:workflow_sla) { described_class.new(execution: 600, queue_wait: 120) }
+      let(:task_sla) { described_class.from_primitive_value({ execution: nil, queue_wait: 30 }) }
+
+      it "treats nil as an explicit override when the key is present" do
+        expect(merged).to have_attributes(execution: nil, queue_wait: 30)
+      end
+    end
   end
 end

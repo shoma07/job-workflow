@@ -38,8 +38,8 @@ JobWorkflow supports an SLA DSL to enforce end-to-end time budgets.
 
 - `timeout`: per-attempt execution guard for a task block
 - `sla`: end-to-end budget that is preserved across retries/resume
-  - `execution`: total execution window
-  - `queue_wait`: time from enqueue/schedule until execution starts
+  - `execution`: workflow/task の end-to-end execution window
+  - `queue_wait`: その enqueue / scheduled 区間ごとの queue wait
 
 ```ruby
 class OrderWorkflowJob < ApplicationJob
@@ -48,7 +48,7 @@ class OrderWorkflowJob < ApplicationJob
   # Workflow defaults
   sla execution: 600, queue_wait: 120
 
-  # Uses workflow default execution SLA (600s), but has per-attempt timeout 30s
+  # Uses workflow execution SLA (600s), but has per-attempt timeout 30s
   task :charge_payment, timeout: 30 do |ctx|
     charge!(ctx.arguments.order_id)
   end
@@ -62,10 +62,15 @@ class OrderWorkflowJob < ApplicationJob
   task :send_email, sla: { queue_wait: 30 } do |ctx|
     send_email!(ctx.arguments.order_id)
   end
+
+  # Explicitly disable inherited execution SLA for this task
+  task :archive_logs, sla: { execution: nil, queue_wait: 300 } do |ctx|
+    archive!(ctx.arguments.order_id)
+  end
 end
 ```
 
-When an SLA is breached, `JobWorkflow::SlaExceededError` is raised. You can observe SLA state via `WorkflowStatus` and the `sla.exceeded.job_workflow` instrumentation event.
+When an SLA is breached, `JobWorkflow::SlaExceededError` is raised. The error exposes `sla_type` (`:execution` / `:queue_wait`) and `scope` (`:workflow` / `:task`). You can observe the representative SLA state via `WorkflowStatus#sla_state` and the `sla.exceeded.job_workflow` instrumentation event.
 
 ## Development
 

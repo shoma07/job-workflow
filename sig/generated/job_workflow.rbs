@@ -8,12 +8,14 @@ module JobWorkflow
   class SlaExceededError < Error
     attr_reader sla_type: Symbol
 
+    attr_reader scope: Symbol
+
     attr_reader limit: Numeric
 
     attr_reader elapsed: Numeric
 
-    # :  (sla_type: Symbol, limit: Numeric, elapsed: Numeric) -> void
-    def initialize: (sla_type: Symbol, limit: Numeric, elapsed: Numeric) -> void
+    # :  (sla_type: Symbol, scope: Symbol, limit: Numeric, elapsed: Numeric) -> void
+    def initialize: (sla_type: Symbol, scope: Symbol, limit: Numeric, elapsed: Numeric) -> void
   end
 
   extend Logger

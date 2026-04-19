@@ -329,6 +329,46 @@ RSpec.describe JobWorkflow::WorkflowStatus do
     let(:context) { JobWorkflow::Context.from_hash({ workflow: workflow_class._workflow }) }
 
     it { is_expected.to be_nil }
+
+    context "when the serialized context only has an SLA anchor task name" do
+      let(:anchored_workflow_class) do
+        Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          def self.name = "SlaStatusJob"
+
+          task :process do |_ctx|
+            nil
+          end
+        end
+      end
+      let(:workflow_status) do
+        described_class.from_job_data(
+          {
+            "job_id" => "task-anchor-job",
+            "class_name" => "SlaStatusJob",
+            "arguments" => [
+              {
+                "job_workflow_context" => {
+                  "task_execution_sla_task_name" => "process",
+                  "task_execution_sla_started_at" => 1.second.ago.to_f,
+                  "task_context" => {},
+                  "task_outputs" => [],
+                  "task_job_statuses" => []
+                }
+              }
+            ],
+            "status" => :running
+          }
+        )
+      end
+
+      before { stub_const("SlaStatusJob", anchored_workflow_class) }
+
+      after { JobWorkflow::DSL._included_classes.delete(anchored_workflow_class) }
+
+      it { is_expected.to eq(:process) }
+    end
   end
 
   describe "#sla_state" do
@@ -342,7 +382,7 @@ RSpec.describe JobWorkflow::WorkflowStatus do
 
         sla execution: 0.1, queue_wait: 0.1
 
-        task :process do |_ctx|
+        task :process, sla: 0.1 do |_ctx|
           nil
         end
       end
@@ -366,7 +406,7 @@ RSpec.describe JobWorkflow::WorkflowStatus do
         )
       end
 
-      it { expect(sla_state).to include(type: :queue_wait, breached: true) }
+      it { expect(sla_state).to have_attributes(type: :queue_wait, scope: :workflow, breached?: true) }
     end
 
     context "when execution SLA is breached" do
@@ -390,15 +430,28 @@ RSpec.describe JobWorkflow::WorkflowStatus do
         )
       end
 
-      it { expect(sla_state).to include(type: :execution, breached: true) }
+      it { expect(sla_state).to have_attributes(type: :execution, scope: :workflow, breached?: true) }
     end
 
     context "when task is active and execution SLA is breached via task-level start time" do
+      let(:task_sla_class) do
+        Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          def self.name = "SlaTaskExecJob"
+
+          sla execution: 300
+
+          task :process, sla: 0.1 do |_ctx|
+            nil
+          end
+        end
+      end
       let(:workflow_status) do
         described_class.from_job_data(
           {
             "job_id" => "sla-task-exec-job",
-            "class_name" => "SlaStatusJob",
+            "class_name" => "SlaTaskExecJob",
             "arguments" => [
               {
                 "job_workflow_context" => {
@@ -417,7 +470,11 @@ RSpec.describe JobWorkflow::WorkflowStatus do
         )
       end
 
-      it { expect(sla_state).to include(type: :execution, breached: true) }
+      before { stub_const("SlaTaskExecJob", task_sla_class) }
+
+      after { JobWorkflow::DSL._included_classes.delete(task_sla_class) }
+
+      it { expect(sla_state).to have_attributes(type: :execution, scope: :task, breached?: true) }
     end
 
     context "when task is active but no timing information is available" do
@@ -440,7 +497,44 @@ RSpec.describe JobWorkflow::WorkflowStatus do
         )
       end
 
-      it { expect(sla_state).to include(type: :execution, breached: false) }
+      it { expect(sla_state).to be_nil }
+    end
+
+    context "when task is active without serialized context data" do
+      let(:no_serialized_context_class) do
+        Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          def self.name = "SlaNoSerializedContextJob"
+
+          task :process, sla: 10 do |_ctx|
+            nil
+          end
+        end
+      end
+      let(:context) do
+        JobWorkflow::Context.new(
+          workflow: no_serialized_context_class._workflow,
+          arguments: JobWorkflow::Arguments.new(data: { user_id: 123 }),
+          task_context: JobWorkflow::TaskContext.new(task: no_serialized_context_class._workflow.fetch_task(:process)),
+          output: JobWorkflow::Output.new,
+          job_status: JobWorkflow::JobStatus.new
+        )
+      end
+      let(:workflow_status) do
+        described_class.new(
+          context:,
+          job_class_name: "SlaNoSerializedContextJob",
+          status: :running,
+          job_data: {}
+        )
+      end
+
+      before { stub_const("SlaNoSerializedContextJob", no_serialized_context_class) }
+
+      after { JobWorkflow::DSL._included_classes.delete(no_serialized_context_class) }
+
+      it { expect(sla_state).to be_nil }
     end
 
     context "when enqueued_at is a Unix timestamp (Numeric)" do
@@ -457,7 +551,7 @@ RSpec.describe JobWorkflow::WorkflowStatus do
         )
       end
 
-      it { expect(sla_state).to include(type: :queue_wait, breached: true) }
+      it { expect(sla_state).to have_attributes(type: :queue_wait, scope: :workflow, breached?: true) }
     end
 
     context "when enqueued_at is an ISO 8601 string" do
@@ -474,7 +568,7 @@ RSpec.describe JobWorkflow::WorkflowStatus do
         )
       end
 
-      it { expect(sla_state).to include(type: :queue_wait, breached: true) }
+      it { expect(sla_state).to have_attributes(type: :queue_wait, scope: :workflow, breached?: true) }
     end
 
     context "when enqueued_at is an unparseable string" do
@@ -490,7 +584,295 @@ RSpec.describe JobWorkflow::WorkflowStatus do
         )
       end
 
-      it { expect(sla_state).to include(type: :execution, breached: false) }
+      it { expect(sla_state).to be_nil }
+    end
+
+    context "when queue_wait_started_at is persisted in the context" do
+      let(:workflow_status) do
+        described_class.from_job_data(
+          {
+            "job_id" => "sla-persisted-queue-wait",
+            "class_name" => "SlaStatusJob",
+            "arguments" => [
+              {
+                "job_workflow_context" => {
+                  "queue_wait_started_at" => 1.second.ago.to_f,
+                  "task_context" => {},
+                  "task_outputs" => [],
+                  "task_job_statuses" => []
+                }
+              }
+            ],
+            "enqueued_at" => Time.current,
+            "scheduled_at" => Time.current,
+            "status" => :failed
+          }
+        )
+      end
+
+      it { expect(sla_state).to have_attributes(type: :queue_wait, scope: :workflow, breached?: true) }
+    end
+
+    context "when task overrides queue_wait SLA" do
+      let(:task_qw_class) do
+        Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          def self.name = "SlaTaskQwJob"
+
+          task :noop, sla: { queue_wait: 0.1 } do |_ctx|
+            nil
+          end
+        end
+      end
+      let(:workflow_status) do
+        described_class.from_job_data(
+          {
+            "job_id" => "sla-task-qw-job",
+            "class_name" => "SlaTaskQwJob",
+            "arguments" => [
+              {
+                "job_workflow_context" => {
+                  "task_context" => { "task_name" => "noop" },
+                  "task_outputs" => [],
+                  "task_job_statuses" => []
+                }
+              }
+            ],
+            "enqueued_at" => 10.seconds.ago,
+            "status" => :running
+          }
+        )
+      end
+
+      before { stub_const("SlaTaskQwJob", task_qw_class) }
+
+      after { JobWorkflow::DSL._included_classes.delete(task_qw_class) }
+
+      it { expect(sla_state).to have_attributes(type: :queue_wait, scope: :task, breached?: true) }
+    end
+
+    context "when only task has execution SLA (no workflow execution SLA)" do
+      let(:task_exec_only_class) do
+        Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          def self.name = "SlaTaskExecOnlyJob"
+
+          task :noop, sla: 0.1 do |_ctx|
+            nil
+          end
+        end
+      end
+      let(:workflow_status) do
+        described_class.from_job_data(
+          {
+            "job_id" => "sla-task-exec-only-job",
+            "class_name" => "SlaTaskExecOnlyJob",
+            "arguments" => [
+              {
+                "job_workflow_context" => {
+                  "workflow_started_at" => 10.seconds.ago.to_f,
+                  "task_context" => {
+                    "task_name" => "noop",
+                    "execution_sla_started_at" => 1.second.ago.to_f
+                  },
+                  "task_outputs" => [],
+                  "task_job_statuses" => []
+                }
+              }
+            ],
+            "status" => :running
+          }
+        )
+      end
+
+      before { stub_const("SlaTaskExecOnlyJob", task_exec_only_class) }
+
+      after { JobWorkflow::DSL._included_classes.delete(task_exec_only_class) }
+
+      it { expect(sla_state).to have_attributes(type: :execution, scope: :task, breached?: true) }
+    end
+
+    context "when an inherited workflow execution SLA is evaluated for the current task" do
+      let(:inherited_execution_class) do
+        Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          def self.name = "SlaInheritedExecutionJob"
+
+          sla execution: 10, queue_wait: 30
+
+          task :process do |_ctx|
+            nil
+          end
+        end
+      end
+      let(:workflow_status) do
+        described_class.from_job_data(
+          {
+            "job_id" => "sla-inherited-execution-job",
+            "class_name" => "SlaInheritedExecutionJob",
+            "arguments" => [
+              {
+                "job_workflow_context" => {
+                  "task_execution_sla_task_name" => "process",
+                  "task_execution_sla_started_at" => 9.seconds.ago.to_f,
+                  "task_context" => {},
+                  "task_outputs" => [],
+                  "task_job_statuses" => []
+                }
+              }
+            ],
+            "status" => :running
+          }
+        )
+      end
+
+      before { stub_const("SlaInheritedExecutionJob", inherited_execution_class) }
+
+      after { JobWorkflow::DSL._included_classes.delete(inherited_execution_class) }
+
+      it { expect(sla_state).to have_attributes(type: :execution, scope: :workflow, breached?: false) }
+    end
+
+    context "when multiple non-breached SLA states exist" do
+      let(:workflow_status) do
+        described_class.from_job_data(
+          {
+            "job_id" => "sla-closest-state-job",
+            "class_name" => "SlaStatusJob",
+            "arguments" => [
+              {
+                "job_workflow_context" => {
+                  "workflow_started_at" => 0.09.seconds.ago.to_f,
+                  "task_context" => {},
+                  "task_outputs" => [],
+                  "task_job_statuses" => []
+                }
+              }
+            ],
+            "enqueued_at" => 0.01.seconds.ago,
+            "scheduled_at" => nil,
+            "status" => :running
+          }
+        )
+      end
+
+      it "returns the closest state to breach" do
+        expect(sla_state).to have_attributes(type: :execution, scope: :workflow, breached?: false)
+      end
+    end
+
+    context "when workflow and task execution SLA states both exist" do
+      let(:workflow_and_task_execution_class) do
+        Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          def self.name = "SlaWorkflowAndTaskExecutionJob"
+
+          sla execution: 10
+
+          task :process, sla: 20 do |_ctx|
+            nil
+          end
+        end
+      end
+      let(:workflow_status) do
+        described_class.from_job_data(
+          {
+            "job_id" => "sla-workflow-and-task-execution-job",
+            "class_name" => "SlaWorkflowAndTaskExecutionJob",
+            "arguments" => [
+              {
+                "job_workflow_context" => {
+                  "workflow_started_at" => 9.seconds.ago.to_f,
+                  "task_context" => {
+                    "task_name" => "process",
+                    "execution_sla_started_at" => 9.seconds.ago.to_f
+                  },
+                  "task_outputs" => [],
+                  "task_job_statuses" => []
+                }
+              }
+            ],
+            "status" => :running
+          }
+        )
+      end
+
+      before { stub_const("SlaWorkflowAndTaskExecutionJob", workflow_and_task_execution_class) }
+
+      after { JobWorkflow::DSL._included_classes.delete(workflow_and_task_execution_class) }
+
+      it "prefers the closer workflow execution SLA state" do
+        expect(sla_state).to have_attributes(type: :execution, scope: :workflow, breached?: false)
+      end
+    end
+
+    context "when the job is pending and only execution SLA is configured" do
+      let(:pending_exec_only_class) do
+        Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          def self.name = "SlaPendingExecutionJob"
+
+          sla execution: 60
+
+          task :noop do |_ctx|
+            nil
+          end
+        end
+      end
+      let(:workflow_status) do
+        described_class.from_job_data(
+          {
+            "job_id" => "sla-pending-execution-job",
+            "class_name" => "SlaPendingExecutionJob",
+            "arguments" => [{}],
+            "status" => :pending
+          }
+        )
+      end
+
+      before { stub_const("SlaPendingExecutionJob", pending_exec_only_class) }
+
+      after { JobWorkflow::DSL._included_classes.delete(pending_exec_only_class) }
+
+      it { expect(sla_state).to be_nil }
+    end
+
+    context "when a failed job persisted the actual SLA breach" do
+      let(:workflow_status) do
+        described_class.from_job_data(
+          {
+            "job_id" => "sla-persisted-breach-job",
+            "class_name" => "SlaStatusJob",
+            "arguments" => [
+              {
+                "job_workflow_context" => {
+                  "sla_breach" => {
+                    "type" => "execution",
+                    "scope" => "task",
+                    "limit" => 10.0,
+                    "elapsed" => 12.5
+                  },
+                  "task_context" => {},
+                  "task_outputs" => [],
+                  "task_job_statuses" => []
+                }
+              }
+            ],
+            "enqueued_at" => 1.second.ago,
+            "status" => :failed
+          }
+        )
+      end
+
+      it {
+        expect(sla_state).to have_attributes(type: :execution, scope: :task, limit: 10.0, elapsed: 12.5,
+                                             breached?: true)
+      }
     end
   end
 
@@ -547,6 +929,19 @@ RSpec.describe JobWorkflow::WorkflowStatus do
         sla: nil,
         status: :running
       )
+    end
+
+    context "when SLA state is present" do
+      let(:workflow_status) do
+        described_class.new(
+          context:, job_class_name: "TestWorkflowJob", status: :failed,
+          job_data: { "enqueued_at" => 1.second.ago }
+        )
+      end
+
+      before { workflow_class._workflow.sla = { queue_wait: 0.1 } }
+
+      it { expect(to_h[:sla]).to include(type: :queue_wait, breached: true) }
     end
   end
 end

@@ -1,0 +1,43 @@
+# Generated from lib/job_workflow/sla_calculator.rb with RBS::Inline
+
+module JobWorkflow
+  # SlaCalculator provides pure SLA evaluation logic shared between Runner
+  # (runtime enforcement) and WorkflowStatus (status query).
+  #
+  # It takes explicit inputs and returns +SlaState+ objects, performing no
+  # mutation or side effects.
+  module SlaCalculator
+    # Evaluates the queue-wait SLA, returning the state if a limit is
+    # configured, or +nil+ otherwise.
+    # :  (workflow_sla: TaskSla, task: Task?, task_sla: TaskSla?, started_at: Time?, now: Time) -> SlaState?
+    def self.evaluate_queue_wait: (workflow_sla: TaskSla, task: Task?, task_sla: TaskSla?, started_at: Time?, now: Time) -> SlaState?
+
+    # Evaluates the workflow-level execution SLA.
+    # :  (workflow_sla: TaskSla, started_at: Time?, now: Time) -> SlaState?
+    def self.evaluate_workflow_execution: (workflow_sla: TaskSla, started_at: Time?, now: Time) -> SlaState?
+
+    # Evaluates the task-level execution SLA.
+    # +task_sla+ determines the scope; +merged_sla+ (defaulting to +task_sla+)
+    # provides the effective limit after workflow-level inheritance.
+    # :  (task_sla: TaskSla, started_at: Time?, now: Time, ?merged_sla: TaskSla) -> SlaState?
+    def self.evaluate_task_execution: (task_sla: TaskSla, started_at: Time?, now: Time, ?merged_sla: TaskSla) -> SlaState?
+
+    # Returns the SLA state closest to (or most past) its deadline.
+    # Among breached states, picks the most overdue. Among non-breached
+    # states, picks the one nearest to breach.
+    # :  (Array[SlaState]) -> SlaState?
+    def self.closest: (Array[SlaState]) -> SlaState?
+
+    # Coerces a raw value (Time, Numeric epoch, ISO-8601 String) into a +Time+.
+    # :  (untyped) -> Time?
+    def self.coerce_to_time: (untyped) -> Time?
+
+    # Determines the scope for a queue-wait SLA.
+    # :  (TaskSla?) -> Symbol
+    def self.queue_wait_scope: (TaskSla?) -> Symbol
+
+    # Determines the scope for an execution SLA.
+    # :  (TaskSla?) -> Symbol
+    def self.execution_scope: (TaskSla?) -> Symbol
+  end
+end

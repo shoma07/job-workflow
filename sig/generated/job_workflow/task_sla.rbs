@@ -24,8 +24,8 @@ module JobWorkflow
     # :  (Numeric | Hash[Symbol, untyped] | nil) -> TaskSla
     def self.from_primitive_value: (Numeric | Hash[Symbol, untyped] | nil) -> TaskSla
 
-    # :  (?execution: Numeric?, ?queue_wait: Numeric?) -> void
-    def initialize: (?execution: Numeric?, ?queue_wait: Numeric?) -> void
+    # :  (?execution: Numeric?, ?queue_wait: Numeric?, ?execution_configured: bool, ?queue_wait_configured: bool) -> void
+    def initialize: (?execution: Numeric?, ?queue_wait: Numeric?, ?execution_configured: bool, ?queue_wait_configured: bool) -> void
 
     # Returns true when no SLA limits are configured.
     # :  () -> bool
@@ -35,10 +35,11 @@ module JobWorkflow
     # Task-level non-nil values take priority; nil values fall back to self.
     # :  (TaskSla) -> TaskSla
     def merge: (TaskSla) -> TaskSla
-  end
 
-  # Internal signal used by Timeout to enforce SLA windows.
-  # Inheriting from Exception (not StandardError) ensures that
-  # `rescue StandardError` inside retry loops cannot swallow the signal.
-  SlaTimeoutSignal: untyped
+    # :  () -> bool
+    def execution_configured?: () -> bool
+
+    # :  () -> bool
+    def queue_wait_configured?: () -> bool
+  end
 end

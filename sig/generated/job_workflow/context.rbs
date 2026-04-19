@@ -13,11 +13,48 @@ module JobWorkflow
 
     attr_reader workflow_started_at: Time
 
+    attr_reader queue_wait_started_at: Time?
+
+    attr_reader task_execution_sla_task_name: Symbol?
+
+    attr_reader task_execution_sla_started_at: Time?
+
+    attr_reader sla_breach: SlaState?
+
+    TaskExecutionSlaTimeoutSignal: untyped
+
+    # :  () -> singleton(TaskExecutionSlaTimeoutSignal)
+    def self.task_execution_sla_timeout_signal: () -> singleton(TaskExecutionSlaTimeoutSignal)
+
     # :  (Hash[Symbol, untyped]) -> Context
     def self.from_hash: (Hash[Symbol, untyped]) -> Context
 
     # :  (Hash[String, untyped]) -> Context
     def self.deserialize: (Hash[String, untyped]) -> Context
+
+    # :  (Hash[Symbol, untyped], Workflow) -> Hash[Symbol, untyped]
+    private def self.build_context_attributes_from_hash: (Hash[Symbol, untyped], Workflow) -> Hash[Symbol, untyped]
+
+    # :  (Hash[String, untyped], Workflow) -> Hash[Symbol, untyped]
+    private def self.build_deserialized_attributes: (Hash[String, untyped], Workflow) -> Hash[Symbol, untyped]
+
+    # :  (Hash[String, untyped], Workflow) -> TaskContext
+    private def self.deserialize_task_context: (Hash[String, untyped], Workflow) -> TaskContext
+
+    # :  (Hash[Symbol | String, untyped], Symbol | String, Symbol | String) -> Hash[Symbol, Time?]
+    private def self.timing_attributes: (Hash[Symbol | String, untyped], Symbol | String, Symbol | String) -> Hash[Symbol, Time?]
+
+    # :  (Hash[Symbol | String, untyped], Symbol | String, Symbol | String, Symbol | String) -> Hash[Symbol, untyped]
+    private def self.sla_tracking_attributes: (Hash[Symbol | String, untyped], Symbol | String, Symbol | String, Symbol | String) -> Hash[Symbol, untyped]
+
+    # :  (untyped) -> Time?
+    private def self.deserialize_time: (untyped) -> Time?
+
+    # :  (untyped) -> Symbol?
+    private def self.deserialize_symbol: (untyped) -> Symbol?
+
+    # :  (untyped) -> SlaState?
+    private def self.deserialize_sla_breach: (untyped) -> SlaState?
 
     # :  (
     #      workflow: Workflow,
@@ -26,9 +63,13 @@ module JobWorkflow
     #      output: Output,
     #      job_status: JobStatus,
     #      ?job: DSL?,
-    #      ?workflow_started_at: Time?
+    #      ?workflow_started_at: Time?,
+    #      ?queue_wait_started_at: Time?,
+    #      ?task_execution_sla_task_name: Symbol?,
+    #      ?task_execution_sla_started_at: Time?,
+    #      ?sla_breach: SlaState?
     #    ) -> void
-    def initialize: (workflow: Workflow, arguments: Arguments, task_context: TaskContext, output: Output, job_status: JobStatus, ?job: DSL?, ?workflow_started_at: Time?) -> void
+    def initialize: (workflow: Workflow, arguments: Arguments, task_context: TaskContext, output: Output, job_status: JobStatus, ?job: DSL?, ?workflow_started_at: Time?, ?queue_wait_started_at: Time?, ?task_execution_sla_task_name: Symbol?, ?task_execution_sla_started_at: Time?, ?sla_breach: SlaState?) -> void
 
     # :  () -> Hash[String, untyped]
     def serialize: () -> Hash[String, untyped]
@@ -41,6 +82,18 @@ module JobWorkflow
 
     # :  () -> DSL?
     def _job: () -> DSL?
+
+    # :  (Time?) -> void
+    def _queue_wait_started_at=: (Time?) -> void
+
+    # :  (Symbol, ?Time) -> void
+    def _start_task_execution_sla: (Symbol, ?Time) -> void
+
+    # :  () -> void
+    def _clear_task_execution_sla: () -> void
+
+    # :  (SlaState) -> void
+    def _record_sla_breach: (SlaState) -> void
 
     # :  () -> String
     def job_id: () -> String
@@ -116,6 +169,14 @@ module JobWorkflow
 
     attr_writer workflow_started_at: Time
 
+    attr_writer queue_wait_started_at: Time?
+
+    attr_writer task_execution_sla_task_name: Symbol?
+
+    attr_writer task_execution_sla_started_at: Time?
+
+    attr_writer sla_breach: SlaState?
+
     attr_accessor task_context: TaskContext
 
     attr_accessor enabled_with_each_value: bool
@@ -148,15 +209,6 @@ module JobWorkflow
     # :  () { () -> void } -> void
     def with_task_timeout: () { () -> void } -> void
 
-    # :  (Task) -> TaskSla
-    def effective_task_sla: (Task) -> TaskSla
-
-    # Wraps the block with an execution SLA timer for the given task.
-    # The SLA window is anchored at TaskContext#execution_sla_started_at and therefore
-    # survives retries and resumed jobs.
-    # :  (Task) { () -> void } -> void
-    def with_task_execution_sla: (Task) { () -> void } -> void
-
     # :  (Task) { (Integer) -> void } -> void
     def with_retry: (Task) { (Integer) -> void } -> void
 
@@ -169,7 +221,10 @@ module JobWorkflow
     # :  (Task, Integer) -> Numeric
     def resolve_task_execution_sla_started_at: (Task, Integer) -> Numeric
 
-    # :  (sla_type: Symbol, limit: Numeric, elapsed: Numeric) -> void
-    def raise_sla_exceeded!: (sla_type: Symbol, limit: Numeric, elapsed: Numeric) -> void
+    # :  () -> Hash[String, untyped]?
+    def serialize_sla_breach: () -> Hash[String, untyped]?
+
+    # :  (task_outputs: Array[Hash[String, untyped]], task_job_statuses: Array[Hash[String, untyped]]) -> Hash[String, untyped]
+    def serialize_context_payload: (task_outputs: Array[Hash[String, untyped]], task_job_statuses: Array[Hash[String, untyped]]) -> Hash[String, untyped]
   end
 end
