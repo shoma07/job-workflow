@@ -1,0 +1,45 @@
+# Generated from lib/job_workflow/task_sla.rb with RBS::Inline
+
+module JobWorkflow
+  # TaskSla holds the SLA configuration for a task or workflow.
+  #
+  # SLA (Service Level Agreement) defines end-to-end time limits that cover the
+  # full lifecycle: execution time, and queue wait time. Unlike +timeout+, which
+  # guards only a single attempt, an SLA window is never reset by retries,
+  # dependency waits, or sub-job scheduling.
+  #
+  # @example Task-level execution SLA (shorthand)
+  #   task :process, sla: 300 do |ctx| ... end
+  #
+  # @example Task-level SLA with both dimensions
+  #   task :process, sla: { execution: 300, queue_wait: 60 } do |ctx| ... end
+  #
+  # @example Workflow-level default SLA
+  #   sla execution: 600, queue_wait: 120
+  class TaskSla
+    attr_reader execution: Numeric?
+
+    attr_reader queue_wait: Numeric?
+
+    # :  (Numeric | Hash[Symbol, untyped] | nil) -> TaskSla
+    def self.from_primitive_value: (Numeric | Hash[Symbol, untyped] | nil) -> TaskSla
+
+    # :  (?execution: Numeric?, ?queue_wait: Numeric?, ?execution_configured: bool, ?queue_wait_configured: bool) -> void
+    def initialize: (?execution: Numeric?, ?queue_wait: Numeric?, ?execution_configured: bool, ?queue_wait_configured: bool) -> void
+
+    # Returns true when no SLA limits are configured.
+    # :  () -> bool
+    def none?: () -> bool
+
+    # Merges this SLA (used as workflow default) with a task-level override.
+    # Task-level non-nil values take priority; nil values fall back to self.
+    # :  (TaskSla) -> TaskSla
+    def merge: (TaskSla) -> TaskSla
+
+    # :  () -> bool
+    def execution_configured?: () -> bool
+
+    # :  () -> bool
+    def queue_wait_configured?: () -> bool
+  end
+end

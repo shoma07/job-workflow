@@ -71,6 +71,11 @@ module JobWorkflow
       end
 
       #:  (ActiveSupport::Notifications::Event) -> void
+      def sla_exceeded(event)
+        log_event(event, :error)
+      end
+
+      #:  (ActiveSupport::Notifications::Event) -> void
       def throttle_acquire(event)
         # Tracing only - no log output (start/complete events handle logging)
       end
@@ -157,6 +162,10 @@ module JobWorkflow
           attempt
           max_attempts
           delay_seconds
+          sla_type
+          sla_scope
+          sla_limit_seconds
+          sla_elapsed_seconds
           concurrency_key
           concurrency_limit
           dependent_task_name

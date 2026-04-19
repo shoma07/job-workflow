@@ -5,6 +5,8 @@ module JobWorkflow
     # rubocop:disable Metrics/ClassLength
     attr_reader context: Context
 
+    WorkflowExecutionSlaTimeoutSignal: untyped
+
     # :  (context: Context) -> void
     def initialize: (context: Context) -> void
 
@@ -60,7 +62,41 @@ module JobWorkflow
     # :  (ctx: Context, task: Task, each_index: Integer, data: untyped) -> void
     def add_task_output: (ctx: Context, task: Task, each_index: Integer, data: untyped) -> void
 
+    # :  (Task, ActiveJob::Continuation::Step) -> void
+    def run_workflow_task: (Task, ActiveJob::Continuation::Step) -> void
+
     # :  (Task) -> void
     def update_task_outputs: (Task) -> void
+
+    # :  () -> void
+    def enforce_queue_wait_sla!: () -> void
+
+    # :  (Task) -> void
+    def prepare_task_execution_sla!: (Task) -> void
+
+    # :  (Task) -> void
+    def check_execution_sla!: (Task) -> void
+
+    # :  (Hash[String, untyped]) -> Time?
+    def resolve_queue_wait_started_at: (Hash[String, untyped]) -> Time?
+
+    # :  (Task) -> SlaState?
+    def find_breached_execution_state: (Task) -> SlaState?
+
+    # Wraps actual task execution with a task-scoped SLA timeout.
+    # :  (Task, Context) { () -> void } -> void
+    def with_task_execution_sla: (Task, Context) { () -> void } -> void
+
+    # :  (Numeric) -> bool
+    def reschedule_with_fresh_queue_wait!: (Numeric) -> bool
+
+    # Wraps the block with a workflow-level execution SLA guard.
+    # The window is anchored at Context#workflow_started_at and therefore survives
+    # retries and resumed jobs.
+    # :  () { () -> void } -> void
+    def with_workflow_execution_sla: () { () -> void } -> void
+
+    # :  (SlaState, ?task: Task?) -> void
+    def raise_sla_exceeded!: (SlaState, ?task: Task?) -> void
   end
 end

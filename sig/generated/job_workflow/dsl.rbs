@@ -77,10 +77,11 @@ module JobWorkflow
       #     ?condition: ^(Context) -> bool,
       #     ?throttle: Integer | Hash[Symbol, untyped],
       #     ?timeout: Numeric?,
+      #     ?sla: Numeric | Hash[Symbol, untyped] | nil,
       #     ?dependency_wait: Hash[Symbol, untyped],
       #     ?dry_run: bool | ^(Context) -> bool
       #   ) { (untyped) -> void } -> void
-      def task: (Symbol task_name, ?each: ^(Context) -> untyped, ?enqueue: true | false | ^(Context) -> bool | Hash[Symbol, untyped], ?retry: Integer | Hash[Symbol, untyped], ?output: Hash[Symbol, String], ?depends_on: Array[Symbol], ?condition: ^(Context) -> bool, ?throttle: Integer | Hash[Symbol, untyped], ?timeout: Numeric?, ?dependency_wait: Hash[Symbol, untyped], ?dry_run: bool | ^(Context) -> bool) { (untyped) -> void } -> void
+      def task: (Symbol task_name, ?each: ^(Context) -> untyped, ?enqueue: true | false | ^(Context) -> bool | Hash[Symbol, untyped], ?retry: Integer | Hash[Symbol, untyped], ?output: Hash[Symbol, String], ?depends_on: Array[Symbol], ?condition: ^(Context) -> bool, ?throttle: Integer | Hash[Symbol, untyped], ?timeout: Numeric?, ?sla: Numeric | Hash[Symbol, untyped] | nil, ?dependency_wait: Hash[Symbol, untyped], ?dry_run: bool | ^(Context) -> bool) { (untyped) -> void } -> void
 
       # :  (*Symbol) { (Context) -> void } -> void
       def before: (*Symbol) { (Context) -> void } -> void
@@ -128,6 +129,9 @@ module JobWorkflow
 
       # :  (?bool) ?{ (Context) -> bool } -> void
       def dry_run: (?bool) ?{ (Context) -> bool } -> void
+
+      # :  (?execution: Numeric?, ?queue_wait: Numeric?) -> void
+      def sla: (?execution: Numeric?, ?queue_wait: Numeric?) -> void
 
       # rubocop:disable Metrics/ParameterLists
       # :  (

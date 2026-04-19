@@ -226,6 +226,53 @@ RSpec.describe JobWorkflow::Task do
 
       it { expect(task).to have_attributes(timeout: 0.5) }
     end
+
+    context "when sla parameter is not provided" do
+      let(:arguments) do
+        {
+          job_name: "TestJob",
+          name: :sample_task,
+          namespace: JobWorkflow::Namespace.default,
+          block: ->(_ctx) {}
+        }
+      end
+
+      it "has a none? sla" do
+        expect(task.sla.none?).to be true
+      end
+    end
+
+    context "when sla parameter is a Numeric" do
+      let(:arguments) do
+        {
+          job_name: "TestJob",
+          name: :sample_task,
+          namespace: JobWorkflow::Namespace.default,
+          block: ->(_ctx) {},
+          sla: 300
+        }
+      end
+
+      it "creates TaskSla with execution limit" do
+        expect(task.sla).to have_attributes(execution: 300, queue_wait: nil)
+      end
+    end
+
+    context "when sla parameter is a Hash" do
+      let(:arguments) do
+        {
+          job_name: "TestJob",
+          name: :sample_task,
+          namespace: JobWorkflow::Namespace.default,
+          block: ->(_ctx) {},
+          sla: { execution: 120, queue_wait: 30 }
+        }
+      end
+
+      it "creates TaskSla with both limits" do
+        expect(task.sla).to have_attributes(execution: 120, queue_wait: 30)
+      end
+    end
   end
 
   describe "#should_enqueue?" do

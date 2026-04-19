@@ -534,13 +534,13 @@ RSpec.describe JobWorkflow::DSL do
       it "includes task_context and task_job_statuses" do
         context_data = serialize["job_workflow_context"]
         expect(context_data).to include(
-          "task_context" => {
+          "task_context" => include(
             "task_name" => :increment,
             "parent_job_id" => job.job_id,
             "index" => 0,
             "value" => nil,
             "retry_count" => 0
-          },
+          ),
           "task_job_statuses" => []
         )
       end
@@ -1005,6 +1005,25 @@ RSpec.describe JobWorkflow::DSL do
         expect(from_context._context._job).to eq(from_context)
       end
     end
+
+    context "when parent context has queue_wait_started_at" do
+      let(:context) do
+        workflow = klass._workflow
+        task = workflow.fetch_task(:task_one)
+        JobWorkflow::Context.new(
+          workflow:,
+          arguments: JobWorkflow::Arguments.new(data: { arg_one: 42 }),
+          task_context: JobWorkflow::TaskContext.new(task: task),
+          output: JobWorkflow::Output.new(task_outputs: []),
+          job_status: JobWorkflow::JobStatus.new(task_job_statuses: []),
+          queue_wait_started_at: 1.minute.ago
+        )
+      end
+
+      it "resets queue_wait_started_at for the new sub-job" do
+        expect(from_context._context.queue_wait_started_at).to be_nil
+      end
+    end
   end
 
   describe "self.schedule" do
@@ -1119,6 +1138,90 @@ RSpec.describe JobWorkflow::DSL do
       end
 
       it { expect(klass._workflow.build_schedules_hash[:ArgsScheduleJob][:args]).to eq([{ type: "weekly" }]) }
+    end
+  end
+
+  describe "self.sla" do
+    let(:klass) do
+      Class.new(ActiveJob::Base) do
+        include JobWorkflow::DSL
+      end
+    end
+
+    context "when called with execution only" do
+      subject(:define_sla) { klass.sla(execution: 600) }
+
+      it "sets workflow-level execution SLA" do
+        define_sla
+        expect(klass._workflow.sla).to have_attributes(execution: 600, queue_wait: nil)
+      end
+    end
+
+    context "when called with queue_wait only" do
+      subject(:define_sla) { klass.sla(queue_wait: 120) }
+
+      it "sets workflow-level queue_wait SLA" do
+        define_sla
+        expect(klass._workflow.sla).to have_attributes(execution: nil, queue_wait: 120)
+      end
+    end
+
+    context "when called with both execution and queue_wait" do
+      subject(:define_sla) { klass.sla(execution: 600, queue_wait: 120) }
+
+      it "sets both limits on the workflow SLA" do
+        define_sla
+        expect(klass._workflow.sla).to have_attributes(execution: 600, queue_wait: 120)
+      end
+    end
+
+    context "when not called" do
+      it "workflow defaults to none? SLA" do
+        expect(klass._workflow.sla.none?).to be true
+      end
+    end
+
+    context "when called within a namespace" do
+      it "raises an error" do
+        expect do
+          klass.namespace(:ns) { klass.sla(execution: 60) }
+        end.to raise_error("cannot be defined within a namespace.")
+      end
+    end
+  end
+
+  describe "self.task with sla option" do
+    let(:klass) do
+      Class.new(ActiveJob::Base) do
+        include JobWorkflow::DSL
+      end
+    end
+
+    context "without sla option" do
+      subject(:task) { klass.task(:work) { |_ctx| nil } }
+
+      it "task has a none? sla" do
+        task
+        expect(klass._workflow.tasks[0].sla.none?).to be true
+      end
+    end
+
+    context "with sla as Numeric" do
+      subject(:task) { klass.task(:work, sla: 90) { |_ctx| nil } }
+
+      it "task has execution-only sla" do
+        task
+        expect(klass._workflow.tasks[0].sla).to have_attributes(execution: 90, queue_wait: nil)
+      end
+    end
+
+    context "with sla as Hash" do
+      subject(:task) { klass.task(:work, sla: { execution: 120, queue_wait: 30 }) { |_ctx| nil } }
+
+      it "task has both sla limits" do
+        task
+        expect(klass._workflow.tasks[0].sla).to have_attributes(execution: 120, queue_wait: 30)
+      end
     end
   end
 end

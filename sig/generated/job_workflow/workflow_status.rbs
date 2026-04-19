@@ -2,6 +2,7 @@
 
 module JobWorkflow
   class WorkflowStatus
+    # rubocop:disable Metrics/ClassLength
     class NotFoundError < StandardError
     end
 
@@ -13,6 +14,8 @@ module JobWorkflow
 
     attr_reader status: status_type
 
+    attr_reader job_data: Hash[String, untyped]
+
     # :  (String) -> WorkflowStatus
     def self.find: (String) -> WorkflowStatus
 
@@ -22,8 +25,8 @@ module JobWorkflow
     # :  (Hash[String, untyped]) -> WorkflowStatus
     def self.from_job_data: (Hash[String, untyped]) -> WorkflowStatus
 
-    # :  (context: Context, job_class_name: String, status: status_type) -> void
-    def initialize: (context: Context, job_class_name: String, status: status_type) -> void
+    # :  (context: Context, job_class_name: String, status: status_type, ?job_data: Hash[String, untyped]) -> void
+    def initialize: (context: Context, job_class_name: String, status: status_type, ?job_data: Hash[String, untyped]) -> void
 
     # :  () -> Symbol?
     def current_task_name: () -> Symbol?
@@ -49,7 +52,60 @@ module JobWorkflow
     # :  () -> bool
     def pending?: () -> bool
 
+    # :  () -> SlaState?
+    def sla_state: () -> SlaState?
+
+    # :  () -> bool
+    def sla_breached?: () -> bool
+
     # :  () -> Hash[Symbol, untyped]
     def to_h: () -> Hash[Symbol, untyped]
+
+    private
+
+    # :  () -> Hash[Symbol, untyped]?
+    def sla_state_to_h: () -> Hash[Symbol, untyped]?
+
+    # :  () -> bool
+    def sla_evaluable?: () -> bool
+
+    # :  () -> Array[SlaState]
+    def build_sla_states: () -> Array[SlaState]
+
+    # :  (Task?, Time) -> SlaState?
+    def build_execution_sla_state: (Task?, Time) -> SlaState?
+
+    # :  (Task?, Time) -> SlaState?
+    def build_task_execution_sla_state: (Task?, Time) -> SlaState?
+
+    # :  () -> Time?
+    def resolve_queue_wait_started_at: () -> Time?
+
+    # :  () -> Time?
+    def execution_sla_started_at_for: () -> Time?
+
+    # :  () -> Task?
+    def current_task: () -> Task?
+
+    # :  () -> Time?
+    def workflow_execution_started_at: () -> Time?
+
+    # :  () -> Time?
+    def task_context_execution_started_at: () -> Time?
+
+    # :  () -> Symbol?
+    def task_execution_sla_task_name: () -> Symbol?
+
+    # :  () -> Time?
+    def task_execution_sla_started_at: () -> Time?
+
+    # :  () -> SlaState?
+    def persisted_sla_breach: () -> SlaState?
+
+    # :  () -> Hash[String, untyped]?
+    def serialized_context_data: () -> Hash[String, untyped]?
+
+    # :  () -> Hash[String, untyped]
+    def serialized_task_context: () -> Hash[String, untyped]
   end
 end

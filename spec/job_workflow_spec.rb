@@ -18,4 +18,20 @@ RSpec.describe JobWorkflow do
         .to include(JobWorkflow::QueueAdapters::SolidQueueAdapter::SchedulingPatch)
     end
   end
+
+  describe JobWorkflow::SlaExceededError do
+    subject(:error) { described_class.new(sla_type: :execution, scope: :workflow, limit: 300, elapsed: 312.5) }
+
+    it "inherits from JobWorkflow::Error" do
+      expect(error).to be_a(JobWorkflow::Error)
+    end
+
+    it "stores sla_type, scope, limit, and elapsed" do
+      expect(error).to have_attributes(sla_type: :execution, scope: :workflow, limit: 300, elapsed: 312.5)
+    end
+
+    it "includes values in the message" do
+      expect(error.message).to eq("SLA exceeded: workflow execution limit=300s, elapsed=312.5s")
+    end
+  end
 end

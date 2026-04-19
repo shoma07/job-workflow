@@ -121,7 +121,8 @@ Use this environment to verify the following aspects:
 3. **Parallel execution**: parallel tasks execute correctly
 4. **Error handling**: errors and retries behave as expected
 5. **Type safety**: RBS/Steep type checks pass
-6. **Performance**: the system handles a large number of tasks stably
+6. **SLA behavior**: execution and queue wait SLAs are enforced as configured
+7. **Performance**: the system handles a large number of tasks stably
 
 ## Notes
 

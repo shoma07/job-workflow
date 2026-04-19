@@ -214,3 +214,39 @@ task :api_call_advanced,
   { response: RateLimitedAPI.call(params) }
 end
 ```
+
+### SLA (Service Level Agreement)
+
+`sla` enforces an end-to-end time budget. This is different from `timeout`.
+
+- `timeout`: per-attempt execution limit for a single task block run
+- `sla.execution`: end-to-end execution budget (survives retries/resume)
+- `sla.queue_wait`: enqueue/schedule-to-start latency budget for the current queue interval
+
+```ruby
+class BillingWorkflowJob < ApplicationJob
+  include JobWorkflow::DSL
+
+  # Workflow-level defaults
+  sla execution: 600, queue_wait: 90
+
+  argument :order_id, "Integer"
+
+  # timeout is per attempt, SLA is end-to-end
+  task :charge_card, timeout: 20, sla: { execution: 120 } do |ctx|
+    charge!(ctx.arguments.order_id)
+  end
+
+  # Override queue_wait only; execution falls back to workflow default (600s)
+  task :issue_receipt, sla: { queue_wait: 30 } do |ctx|
+    receipt!(ctx.arguments.order_id)
+  end
+
+  # Disable inherited execution SLA for this task only
+  task :archive_logs, sla: { execution: nil, queue_wait: 300 } do |ctx|
+    archive!(ctx.arguments.order_id)
+  end
+end
+```
+
+Task-level `sla` values override workflow defaults only for keys you specify. Unspecified keys inherit workflow defaults. If you explicitly pass `nil` for a key in the task hash, that inherited SLA is disabled for that task.

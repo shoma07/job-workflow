@@ -189,12 +189,15 @@ RSpec.describe JobWorkflow::QueueAdapters::NullAdapter do
     end
 
     context "when job is stored" do
+      let(:enqueued_at) { Time.now - 90 }
       let(:job_data) do
         {
           "job_id" => "job-123",
           "class_name" => "TestJob",
           "queue_name" => "default",
           "arguments" => { "value" => 42 },
+          "enqueued_at" => enqueued_at,
+          "scheduled_at" => nil,
           "status" => :running
         }
       end
@@ -202,6 +205,10 @@ RSpec.describe JobWorkflow::QueueAdapters::NullAdapter do
       before { adapter.store_job("job-123", job_data) }
 
       it { is_expected.to eq(job_data) }
+
+      it "exposes enqueued_at for SLA queue-wait calculation" do
+        expect(find_job["enqueued_at"]).to eq(enqueued_at)
+      end
     end
   end
 

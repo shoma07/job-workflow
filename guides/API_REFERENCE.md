@@ -34,6 +34,12 @@ task(name, **options, &block)
     - You can pass Integer or Float seconds
     - Timeout does **not** include retry time across attempts
     - `nil` disables timeout
+  - `sla` (Numeric | Hash | nil): End-to-end SLA budget (default: nil)
+    - Numeric shorthand: `sla: 120` means `execution: 120`
+    - Hash form: `sla: { execution: 300, queue_wait: 60 }`
+    - `execution` is measured across retries/resume windows (does not reset per retry)
+    - `queue_wait` measures enqueue/schedule-to-start latency
+    - Task-level non-`nil` values override workflow defaults; missing keys inherit defaults
   - `condition` (Proc): Execute only if returns true (default: `->(_ctx) { true }`)
   - `throttle` (Hash): Throttling settings
   - `output` (Hash): Task output definition
@@ -72,6 +78,14 @@ task :throttled,
   { response: ExternalAPI.call(data) }
 end
 
+# `timeout` is per attempt, while `sla` is end-to-end
+task :with_sla_and_timeout,
+     timeout: 30,
+     sla: { execution: 120, queue_wait: 20 },
+     output: { result: "String" } do |ctx|
+  { result: process(ctx.arguments.data) }
+end
+
 # Parallel processing with collection
 task :process_items,
      each: ->(ctx) { ctx.arguments.items },
@@ -83,6 +97,45 @@ end
 ```
 
 **Map Task Output**: When `each:` is specified, outputs are automatically collected as an array.
+
+### sla
+
+Configure workflow-level default SLA limits.
+
+```ruby
+sla(execution: nil, queue_wait: nil)
+```
+
+**Parameters**:
+- `execution` (Numeric | nil): Workflow end-to-end execution SLA in seconds
+- `queue_wait` (Numeric | nil): Queue wait SLA in seconds
+
+**Example**:
+
+```ruby
+class FulfillmentJob < ApplicationJob
+  include JobWorkflow::DSL
+
+  # Defaults for all tasks
+  sla execution: 600, queue_wait: 120
+
+  task :reserve_stock do |ctx|
+    reserve!(ctx.arguments.order_id)
+  end
+
+  # Override only queue_wait; execution inherits 600
+  task :ship_order, sla: { queue_wait: 30 } do |ctx|
+    ship!(ctx.arguments.order_id)
+  end
+
+  # Explicitly disable inherited execution SLA for this task
+  task :archive_logs, sla: { execution: nil, queue_wait: 300 } do |ctx|
+    archive!(ctx.arguments.order_id)
+  end
+end
+```
+
+Task-level hash keys override workflow defaults **per key**. Omitting a key inherits the workflow default, while explicitly passing `nil` for a key disables the inherited SLA for that dimension.
 
 ### workflow_concurrency
 

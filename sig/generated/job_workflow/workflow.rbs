@@ -6,11 +6,16 @@ module JobWorkflow
 
     attr_reader dry_run_config: DryRunConfig
 
+    attr_reader sla: TaskSla
+
     # :  () -> void
     def initialize: () -> void
 
     # :  (bool | ^(Context) -> bool) -> void
     def dry_run_config=: (bool | ^(Context) -> bool) -> void
+
+    # :  (Numeric | Hash[Symbol, untyped] | nil) -> void
+    def sla=: (Numeric | Hash[Symbol, untyped] | nil) -> void
 
     # :  (Namespace) { () -> void } -> void
     def add_namespace: (Namespace) { () -> void } -> void

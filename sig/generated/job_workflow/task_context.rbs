@@ -16,6 +16,8 @@ module JobWorkflow
 
     attr_reader dry_run: bool
 
+    attr_reader execution_sla_started_at: Numeric?
+
     # :  (Hash[String, untyped]) -> TaskContext
     def self.deserialize: (Hash[String, untyped]) -> TaskContext
 
@@ -25,9 +27,10 @@ module JobWorkflow
     #      ?index: Integer,
     #      ?value: untyped,
     #      ?retry_count: Integer,
-    #      ?dry_run: bool
+    #      ?dry_run: bool,
+    #      ?execution_sla_started_at: Numeric?
     #    ) -> void
-    def initialize: (?task: Task?, ?parent_job_id: String?, ?index: Integer, ?value: untyped, ?retry_count: Integer, ?dry_run: bool) -> void
+    def initialize: (?task: Task?, ?parent_job_id: String?, ?index: Integer, ?value: untyped, ?retry_count: Integer, ?dry_run: bool, ?execution_sla_started_at: Numeric?) -> void
 
     # :  () -> bool
     def enabled?: () -> bool
@@ -48,5 +51,7 @@ module JobWorkflow
     attr_writer retry_count: Integer
 
     attr_writer dry_run: bool
+
+    attr_writer execution_sla_started_at: Numeric?
   end
 end

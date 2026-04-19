@@ -5,6 +5,16 @@ RSpec.describe "Workflow Status Query", :async do
   # The SolidQueue server is started before the test suite by SolidQueueHelper.
   # Uses AcceptanceStatusQueryJob defined in app/jobs/acceptance_status_query_job.rb
 
+  describe "perform_now" do
+    subject(:workflow_job) { AcceptanceStatusQueryJob.new(input_value: 5) }
+
+    before { workflow_job.perform_now }
+
+    it "computes correct result via task block" do
+      expect(workflow_job.output[:compute].first.result).to eq(10)
+    end
+  end
+
   describe "JobWorkflow::WorkflowStatus API structure" do
     it "defines find method that raises NotFoundError for non-existent jobs" do
       expect do

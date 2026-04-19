@@ -34,6 +34,8 @@ module JobWorkflow
 
       TASK_RETRY: untyped
 
+      SLA_EXCEEDED: untyped
+
       THROTTLE_ACQUIRE: untyped
 
       THROTTLE_ACQUIRE_START: untyped
@@ -78,6 +80,9 @@ module JobWorkflow
     # :  (Task, Context, String, Integer, Float, StandardError) -> void
     def self.notify_task_retry: (Task, Context, String, Integer, Float, StandardError) -> void
 
+    # :  (DSL, Task?, SlaExceededError) -> void
+    def self.notify_sla_exceeded: (DSL, Task?, SlaExceededError) -> void
+
     # :  (DSL, Task) { () -> untyped } -> untyped
     def self.instrument_dependent_wait: (DSL, Task) { () -> untyped } -> untyped
 
@@ -119,6 +124,9 @@ module JobWorkflow
 
     # :  (Task, Context, String, Integer, Float, StandardError) -> Hash[Symbol, untyped]
     private def self.build_task_retry_payload: (Task, Context, String, Integer, Float, StandardError) -> Hash[Symbol, untyped]
+
+    # :  (DSL, Task?, SlaExceededError) -> Hash[Symbol, untyped]
+    private def self.build_sla_exceeded_payload: (DSL, Task?, SlaExceededError) -> Hash[Symbol, untyped]
 
     # :  (DSL, Task) -> Hash[Symbol, untyped]
     private def self.build_dependent_payload: (DSL, Task) -> Hash[Symbol, untyped]

@@ -6,6 +6,7 @@ class AcceptanceDependencyWaitJob < ApplicationJob
 
   argument :items, "Array[Integer]"
 
+  # :nocov:
   task :process_each,
        each: ->(ctx) { ctx.arguments.items },
        enqueue: true,
@@ -13,11 +14,14 @@ class AcceptanceDependencyWaitJob < ApplicationJob
     sleep 0.1 # Simulate some work
     { processed: ctx.each_value * 10 }
   end
+  # :nocov:
 
+  # :nocov:
   task :aggregate_results,
        depends_on: [:process_each],
        dependency_wait: { poll_timeout: 30, poll_interval: 1, reschedule_delay: 2 },
        output: { total: "Integer" } do |ctx|
     { total: ctx.output[:process_each].sum(&:processed) }
   end
+  # :nocov:
 end

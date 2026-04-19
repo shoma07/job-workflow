@@ -24,7 +24,7 @@ Core concepts and features you'll use in every workflow:
   - Defining tasks
   - Working with arguments
   - Task dependencies
-  - Task options (retry, condition, throttle, timeout)
+  - Task options (retry, condition, throttle, timeout, sla)
 
 - **[TASK_OUTPUTS.md](TASK_OUTPUTS.md)** - Understanding task outputs
   - Defining and accessing outputs
@@ -100,6 +100,7 @@ Monitoring and debugging your workflows:
 
 - **[INSTRUMENTATION.md](INSTRUMENTATION.md)** - Event-driven observability
   - Architecture and event types
+  - SLA breach event (`sla.exceeded.job_workflow`)
   - Custom instrumentation
   - Building custom subscribers
 
@@ -129,7 +130,7 @@ Production deployment and operations:
 
 - **[WORKFLOW_STATUS_QUERY.md](WORKFLOW_STATUS_QUERY.md)** - Monitoring workflow execution
   - Finding and inspecting workflows
-  - Accessing arguments, outputs, and job status
+  - Accessing arguments, outputs, job status, and SLA state
   - Building dashboards and APIs
 
 - **[TESTING_STRATEGY.md](TESTING_STRATEGY.md)** - Testing your workflows

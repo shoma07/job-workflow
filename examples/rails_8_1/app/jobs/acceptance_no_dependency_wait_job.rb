@@ -9,16 +9,20 @@ class AcceptanceNoDependencyWaitJob < ApplicationJob
 
   argument :items, "Array[Integer]"
 
+  # :nocov:
   task :compute_each,
        each: ->(ctx) { ctx.arguments.items },
        enqueue: true,
        output: { result: "Integer" } do |ctx|
     { result: ctx.each_value * 5 }
   end
+  # :nocov:
 
+  # :nocov:
   task :aggregate,
        depends_on: [:compute_each],
        output: { total: "Integer" } do |ctx|
     { total: ctx.output[:compute_each].sum(&:result) }
   end
+  # :nocov:
 end

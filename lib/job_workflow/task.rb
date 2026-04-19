@@ -13,6 +13,7 @@ module JobWorkflow
     attr_reader :task_retry #: TaskRetry
     attr_reader :throttle #: TaskThrottle
     attr_reader :timeout #: Numeric?
+    attr_reader :sla #: TaskSla
     attr_reader :dependency_wait #: TaskDependencyWait
     attr_reader :dry_run_config #: DryRunConfig
 
@@ -30,6 +31,7 @@ module JobWorkflow
     #     ?task_retry: Integer | Hash[Symbol, untyped],
     #     ?throttle: Integer | Hash[Symbol, untyped],
     #     ?timeout: Numeric?,
+    #     ?sla: Numeric | Hash[Symbol, untyped] | nil,
     #     ?dependency_wait: Hash[Symbol, untyped],
     #     ?dry_run: bool | ^(Context) -> bool
     #   ) -> void
@@ -46,6 +48,7 @@ module JobWorkflow
       task_retry: 0,
       throttle: {},
       timeout: nil,
+      sla: nil,
       dependency_wait: {},
       dry_run: false
     )
@@ -61,6 +64,7 @@ module JobWorkflow
       @task_retry = TaskRetry.from_primitive_value(task_retry)
       @throttle = TaskThrottle.from_primitive_value_with_task(value: throttle, task: self)
       @timeout = timeout
+      @sla = TaskSla.from_primitive_value(sla)
       @dependency_wait = TaskDependencyWait.from_primitive_value(dependency_wait)
       @dry_run_config = DryRunConfig.from_primitive_value(dry_run)
     end

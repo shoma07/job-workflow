@@ -39,6 +39,12 @@ RSpec.describe JobWorkflow::Instrumentation do
 
       it { is_expected.to eq "workflow.job_workflow" }
     end
+
+    describe "SLA_EXCEEDED" do
+      subject(:sla_exceeded_event) { described_class::SLA_EXCEEDED }
+
+      it { is_expected.to eq "sla.exceeded.job_workflow" }
+    end
   end
 
   describe ".instrument_workflow" do
@@ -165,6 +171,26 @@ RSpec.describe JobWorkflow::Instrumentation do
     it "fires a task.retry.job_workflow event" do
       expect(capture_events).to have_attributes(
         size: 1, last: have_attributes(last: include(error_class: "StandardError"))
+      )
+    end
+  end
+
+  describe ".notify_sla_exceeded" do
+    subject(:call) { described_class.notify_sla_exceeded(job, task, error) }
+
+    include_context "with job double"
+
+    let(:task) { instance_double(JobWorkflow::Task, task_name: :payment) }
+    let(:error) { JobWorkflow::SlaExceededError.new(sla_type: :execution, scope: :workflow, limit: 10.0, elapsed: 12.3) }
+    let(:event_name) { described_class::Events::SLA_EXCEEDED }
+
+    it "fires a sla.exceeded.job_workflow event" do
+      expect(capture_events).to have_attributes(size: 1)
+    end
+
+    it "includes SLA payload attributes" do
+      expect(capture_events).to have_attributes(
+        last: have_attributes(last: include(sla_type: :execution, sla_limit_seconds: 10.0))
       )
     end
   end

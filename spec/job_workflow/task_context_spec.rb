@@ -13,7 +13,8 @@ RSpec.describe JobWorkflow::TaskContext do
           parent_job_id: nil,
           index: 0,
           value: nil,
-          retry_count: 0
+          retry_count: 0,
+          execution_sla_started_at: nil
         )
       end
     end
@@ -30,7 +31,8 @@ RSpec.describe JobWorkflow::TaskContext do
           parent_job_id: "parent-123",
           index: 5,
           value: { key: "value" },
-          retry_count: 2
+          retry_count: 2,
+          execution_sla_started_at: 1_700_000_000.123
         }
       end
 
@@ -40,7 +42,8 @@ RSpec.describe JobWorkflow::TaskContext do
           parent_job_id: "parent-123",
           index: 5,
           value: { key: "value" },
-          retry_count: 2
+          retry_count: 2,
+          execution_sla_started_at: 1_700_000_000.123
         )
       end
     end
@@ -76,7 +79,8 @@ RSpec.describe JobWorkflow::TaskContext do
         parent_job_id: "parent-123",
         index: 3,
         value: "test_value",
-        retry_count: 1
+        retry_count: 1,
+        execution_sla_started_at: 1_700_000_000.123
       )
     end
 
@@ -86,7 +90,8 @@ RSpec.describe JobWorkflow::TaskContext do
         "parent_job_id" => "parent-123",
         "index" => 3,
         "value" => "test_value",
-        "retry_count" => 1
+        "retry_count" => 1,
+        "execution_sla_started_at" => 1_700_000_000.123
       )
     end
   end
@@ -100,7 +105,8 @@ RSpec.describe JobWorkflow::TaskContext do
           "parent_job_id" => "parent-456",
           "index" => 7,
           "value" => "deserialized_value",
-          "retry_count" => 3
+          "retry_count" => 3,
+          "execution_sla_started_at" => 1_700_000_001.456
         }
       end
 
@@ -109,7 +115,8 @@ RSpec.describe JobWorkflow::TaskContext do
           parent_job_id: "parent-456",
           index: 7,
           value: "deserialized_value",
-          retry_count: 3
+          retry_count: 3,
+          execution_sla_started_at: 1_700_000_001.456
         )
       end
     end
@@ -127,7 +134,8 @@ RSpec.describe JobWorkflow::TaskContext do
         expect(deserialized).to have_attributes(
           parent_job_id: "parent-789",
           index: 2,
-          retry_count: 0
+          retry_count: 0,
+          execution_sla_started_at: nil
         )
       end
     end
@@ -139,7 +147,8 @@ RSpec.describe JobWorkflow::TaskContext do
         parent_job_id: "parent-abc",
         index: 10,
         value: { nested: [1, 2, 3] },
-        retry_count: 5
+        retry_count: 5,
+        execution_sla_started_at: 1_700_000_002.789
       )
     end
 
@@ -151,7 +160,8 @@ RSpec.describe JobWorkflow::TaskContext do
         parent_job_id: original.parent_job_id,
         index: original.index,
         value: original.value,
-        retry_count: original.retry_count
+        retry_count: original.retry_count,
+        execution_sla_started_at: original.execution_sla_started_at
       )
     end
   end

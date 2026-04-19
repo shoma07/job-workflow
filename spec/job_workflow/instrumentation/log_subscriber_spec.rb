@@ -187,6 +187,39 @@ RSpec.describe JobWorkflow::Instrumentation::LogSubscriber do
     end
   end
 
+  describe "#sla_exceeded" do
+    subject(:call) { subscriber.sla_exceeded(event) }
+
+    let(:event) do
+      ActiveSupport::Notifications::Event.new(
+        "sla.exceeded.job_workflow",
+        Time.current,
+        Time.current,
+        "transaction_id",
+        {
+          job_id: "job-123",
+          task_name: :bounded_task,
+          sla_type: :queue_wait,
+          sla_limit_seconds: 5.0,
+          sla_elapsed_seconds: 7.2,
+          error: JobWorkflow::SlaExceededError.new(sla_type: :queue_wait, scope: :workflow, limit: 5.0, elapsed: 7.2)
+        }
+      )
+    end
+
+    it "logs at error level" do
+      call
+      expect(logger).to have_received(:error).with(hash_including(event: "sla.exceeded.job_workflow"))
+    end
+
+    it "includes SLA details" do
+      call
+      expect(logger).to have_received(:error).with(
+        hash_including(sla_type: :queue_wait, sla_limit_seconds: 5.0, sla_elapsed_seconds: 7.2)
+      )
+    end
+  end
+
   describe "#throttle_acquire" do
     subject(:call) { subscriber.throttle_acquire(event) }
 
