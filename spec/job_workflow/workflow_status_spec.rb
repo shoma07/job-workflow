@@ -331,6 +331,100 @@ RSpec.describe JobWorkflow::WorkflowStatus do
     it { is_expected.to be_nil }
   end
 
+  describe "#sla_state" do
+    subject(:sla_state) { workflow_status.sla_state }
+
+    let(:sla_workflow_class) do
+      Class.new(ActiveJob::Base) do
+        include JobWorkflow::DSL
+
+        def self.name = "SlaStatusJob"
+
+        sla execution: 0.1, queue_wait: 0.1
+
+        task :process do |_ctx|
+          nil
+        end
+      end
+    end
+
+    before { stub_const("SlaStatusJob", sla_workflow_class) }
+
+    after { JobWorkflow::DSL._included_classes.delete(sla_workflow_class) }
+
+    context "when queue wait SLA is breached" do
+      let(:workflow_status) do
+        described_class.from_job_data(
+          {
+            "job_id" => "sla-queue-job",
+            "class_name" => "SlaStatusJob",
+            "arguments" => [{}],
+            "enqueued_at" => 1.second.ago,
+            "scheduled_at" => nil,
+            "status" => :failed
+          }
+        )
+      end
+
+      it { expect(sla_state).to include(type: :queue_wait, breached: true) }
+    end
+
+    context "when execution SLA is breached" do
+      let(:workflow_status) do
+        described_class.from_job_data(
+          {
+            "job_id" => "sla-execution-job",
+            "class_name" => "SlaStatusJob",
+            "arguments" => [
+              {
+                "job_workflow_context" => {
+                  "workflow_started_at" => 1.second.ago.to_f,
+                  "task_context" => {},
+                  "task_outputs" => [],
+                  "task_job_statuses" => []
+                }
+              }
+            ],
+            "status" => :failed
+          }
+        )
+      end
+
+      it { expect(sla_state).to include(type: :execution, breached: true) }
+    end
+  end
+
+  describe "#sla_breached?" do
+    subject(:sla_breached?) { workflow_status.sla_breached? }
+
+    context "when sla_state is breached" do
+      let(:workflow_status) do
+        described_class.new(
+          context: JobWorkflow::Context.from_hash({ workflow: workflow_class._workflow }),
+          job_class_name: "TestWorkflowJob",
+          status: :failed,
+          job_data: { "enqueued_at" => 1.second.ago }
+        )
+      end
+
+      before { workflow_class._workflow.sla = { queue_wait: 0.1 } }
+
+      it { is_expected.to be true }
+    end
+
+    context "when there is no breached sla_state" do
+      let(:workflow_status) do
+        described_class.new(
+          context: JobWorkflow::Context.from_hash({ workflow: workflow_class._workflow }),
+          job_class_name: "TestWorkflowJob",
+          status: :succeeded
+        )
+      end
+
+      it { is_expected.to be false }
+    end
+  end
+
   describe "#to_h" do
     subject(:to_h) { workflow_status.to_h }
 
@@ -350,6 +444,7 @@ RSpec.describe JobWorkflow::WorkflowStatus do
         arguments: { user_id: 42 },
         current_task_name: nil,
         output: [{ task_name: :step_one, each_index: 0, data: { result: "test" } }],
+        sla: nil,
         status: :running
       )
     end

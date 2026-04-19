@@ -13,6 +13,8 @@ module JobWorkflow
 
     attr_reader status: status_type
 
+    attr_reader job_data: Hash[String, untyped]
+
     # :  (String) -> WorkflowStatus
     def self.find: (String) -> WorkflowStatus
 
@@ -22,8 +24,8 @@ module JobWorkflow
     # :  (Hash[String, untyped]) -> WorkflowStatus
     def self.from_job_data: (Hash[String, untyped]) -> WorkflowStatus
 
-    # :  (context: Context, job_class_name: String, status: status_type) -> void
-    def initialize: (context: Context, job_class_name: String, status: status_type) -> void
+    # :  (context: Context, job_class_name: String, status: status_type, ?job_data: Hash[String, untyped]) -> void
+    def initialize: (context: Context, job_class_name: String, status: status_type, ?job_data: Hash[String, untyped]) -> void
 
     # :  () -> Symbol?
     def current_task_name: () -> Symbol?
@@ -49,7 +51,27 @@ module JobWorkflow
     # :  () -> bool
     def pending?: () -> bool
 
+    # :  () -> Hash[Symbol, untyped]?
+    def sla_state: () -> Hash[Symbol, untyped]?
+
+    # :  () -> bool
+    def sla_breached?: () -> bool
+
     # :  () -> Hash[Symbol, untyped]
     def to_h: () -> Hash[Symbol, untyped]
+
+    private
+
+    # :  (Task?) -> TaskSla
+    def effective_sla: (Task?) -> TaskSla
+
+    # :  (Task?) -> Hash[Symbol, untyped]?
+    def build_queue_wait_sla_state: (Task?) -> Hash[Symbol, untyped]?
+
+    # :  (Task?) -> Hash[Symbol, untyped]?
+    def build_execution_sla_state: (Task?) -> Hash[Symbol, untyped]?
+
+    # :  (untyped) -> Time?
+    def coerce_to_time: (untyped) -> Time?
   end
 end

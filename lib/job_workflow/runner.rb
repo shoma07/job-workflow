@@ -12,6 +12,7 @@ module JobWorkflow
 
     #:  () -> void
     def run # rubocop:disable Metrics/AbcSize
+      enforce_queue_wait_sla!
       task = context._task_context.task
       if !task.nil? && context.sub_job?
         with_workflow_execution_sla { run_task(task) }
@@ -175,6 +176,41 @@ module JobWorkflow
       finished_job_ids = context.job_status.finished_job_ids(task_name: task.task_name)
       context_data_list = QueueAdapter.current.fetch_job_contexts(finished_job_ids)
       context.output.update_task_outputs_from_contexts(context_data_list, context.workflow)
+    end
+
+    #:  () -> void
+    def enforce_queue_wait_sla! # rubocop:disable Metrics/AbcSize
+      task = context._task_context.task
+      limit = task.nil? ? workflow.sla.queue_wait : workflow.sla.merge(task.sla).queue_wait
+      return if limit.nil?
+
+      job_data = QueueAdapter.current.find_job(job.job_id)
+      return if job_data.nil?
+
+      elapsed = queue_wait_elapsed(job_data)
+      return if elapsed.nil?
+      return unless elapsed >= limit
+
+      raise_sla_exceeded!(sla_type: :queue_wait, limit:, elapsed:)
+    end
+
+    #:  (Hash[String, untyped]) -> Numeric?
+    def queue_wait_elapsed(job_data)
+      started_at = coerce_to_time(job_data["scheduled_at"]) || coerce_to_time(job_data["enqueued_at"])
+      return if started_at.nil?
+
+      Time.current - started_at
+    end
+
+    #:  (untyped) -> Time?
+    def coerce_to_time(value)
+      return value if value.is_a?(Time)
+      return Time.at(value) if value.is_a?(Numeric)
+      return Time.iso8601(value) if value.is_a?(String)
+
+      nil
+    rescue ArgumentError, TypeError
+      nil
     end
 
     # Raises SlaExceededError immediately if the workflow execution SLA window has closed.

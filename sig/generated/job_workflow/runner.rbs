@@ -63,6 +63,15 @@ module JobWorkflow
     # :  (Task) -> void
     def update_task_outputs: (Task) -> void
 
+    # :  () -> void
+    def enforce_queue_wait_sla!: () -> void
+
+    # :  (Hash[String, untyped]) -> Numeric?
+    def queue_wait_elapsed: (Hash[String, untyped]) -> Numeric?
+
+    # :  (untyped) -> Time?
+    def coerce_to_time: (untyped) -> Time?
+
     # Raises SlaExceededError immediately if the workflow execution SLA window has closed.
     # Used in polling loops where no task execution is in progress.
     # :  () -> void

@@ -299,6 +299,189 @@ RSpec.describe JobWorkflow::Runner do
       end
     end
 
+    context "when queue wait SLA is exceeded (enqueued_at is Time)" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          sla queue_wait: 0.1
+
+          task :queued_task do |_ctx|
+            nil
+          end
+        end
+
+        klass.new
+      end
+      let(:ctx) do
+        JobWorkflow::Context.from_hash({ job:, workflow: job.class._workflow })
+                            ._update_arguments({})
+      end
+
+      before { JobWorkflow::QueueAdapter.current.store_job(job.job_id, { "enqueued_at" => 1.second.ago }) }
+
+      it "raises SlaExceededError with sla_type :queue_wait" do
+        expect { run }.to raise_error(
+          an_instance_of(JobWorkflow::SlaExceededError)
+            .and(have_attributes(sla_type: :queue_wait, limit: 0.1))
+        )
+      end
+    end
+
+    context "when queue wait SLA is set but job data is not found" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          sla queue_wait: 0.1
+
+          task :queued_task do |_ctx|
+            nil
+          end
+        end
+
+        klass.new
+      end
+      let(:ctx) do
+        JobWorkflow::Context.from_hash({ job:, workflow: job.class._workflow })
+                            ._update_arguments({})
+      end
+
+      it "does not raise" do
+        expect { run }.not_to raise_error
+      end
+    end
+
+    context "when queue wait SLA is set but timestamps are missing from job data" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          sla queue_wait: 0.1
+
+          task :queued_task do |_ctx|
+            nil
+          end
+        end
+
+        klass.new
+      end
+      let(:ctx) do
+        JobWorkflow::Context.from_hash({ job:, workflow: job.class._workflow })
+                            ._update_arguments({})
+      end
+
+      before { JobWorkflow::QueueAdapter.current.store_job(job.job_id, { "scheduled_at" => nil, "enqueued_at" => nil }) }
+
+      it "does not raise" do
+        expect { run }.not_to raise_error
+      end
+    end
+
+    context "when queue wait SLA is set and elapsed is within limit" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          sla queue_wait: 300
+
+          task :queued_task do |_ctx|
+            nil
+          end
+        end
+
+        klass.new
+      end
+      let(:ctx) do
+        JobWorkflow::Context.from_hash({ job:, workflow: job.class._workflow })
+                            ._update_arguments({})
+      end
+
+      before { JobWorkflow::QueueAdapter.current.store_job(job.job_id, { "enqueued_at" => Time.current }) }
+
+      it "does not raise" do
+        expect { run }.not_to raise_error
+      end
+    end
+
+    context "when queue wait SLA is exceeded and enqueued_at is a Unix timestamp (Numeric)" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          sla queue_wait: 0.1
+
+          task :queued_task do |_ctx|
+            nil
+          end
+        end
+
+        klass.new
+      end
+      let(:ctx) do
+        JobWorkflow::Context.from_hash({ job:, workflow: job.class._workflow })
+                            ._update_arguments({})
+      end
+
+      before { JobWorkflow::QueueAdapter.current.store_job(job.job_id, { "enqueued_at" => 1.second.ago.to_f }) }
+
+      it "raises SlaExceededError" do
+        expect { run }.to raise_error(JobWorkflow::SlaExceededError)
+      end
+    end
+
+    context "when queue wait SLA is exceeded and enqueued_at is an ISO 8601 string" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          sla queue_wait: 0.1
+
+          task :queued_task do |_ctx|
+            nil
+          end
+        end
+
+        klass.new
+      end
+      let(:ctx) do
+        JobWorkflow::Context.from_hash({ job:, workflow: job.class._workflow })
+                            ._update_arguments({})
+      end
+
+      before { JobWorkflow::QueueAdapter.current.store_job(job.job_id, { "enqueued_at" => 1.second.ago.iso8601 }) }
+
+      it "raises SlaExceededError" do
+        expect { run }.to raise_error(JobWorkflow::SlaExceededError)
+      end
+    end
+
+    context "when queue wait SLA is set and enqueued_at is an unparseable string" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          sla queue_wait: 0.1
+
+          task :queued_task do |_ctx|
+            nil
+          end
+        end
+
+        klass.new
+      end
+      let(:ctx) do
+        JobWorkflow::Context.from_hash({ job:, workflow: job.class._workflow })
+                            ._update_arguments({})
+      end
+
+      before { JobWorkflow::QueueAdapter.current.store_job(job.job_id, { "enqueued_at" => "not-a-valid-time" }) }
+
+      it "does not raise" do
+        expect { run }.not_to raise_error
+      end
+    end
+
     context "when retry succeeds after a timeout" do
       let(:job) do
         klass = Class.new(ActiveJob::Base) do
@@ -2158,6 +2341,208 @@ RSpec.describe JobWorkflow::Runner do
         run
       rescue RuntimeError
         expect(error_log).to be_empty
+      end
+    end
+
+    context "when queue_wait SLA limit is non-nil and find_job returns nil" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          sla queue_wait: 0.1
+
+          task :noop do |_ctx|
+            nil
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobWorkflow::Context.from_hash({ job:, workflow: job.class._workflow })
+                            ._update_arguments({})
+      end
+
+      it { expect { run }.not_to raise_error }
+    end
+
+    context "when queue_wait SLA limit is non-nil and job has no timestamp data" do
+      let(:adapter) { JobWorkflow::QueueAdapter.current }
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          sla queue_wait: 0.1
+
+          task :noop do |_ctx|
+            nil
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobWorkflow::Context.from_hash({ job:, workflow: job.class._workflow })
+                            ._update_arguments({})
+      end
+
+      before { adapter.store_job(job.job_id, { "scheduled_at" => nil, "enqueued_at" => nil }) }
+
+      it { expect { run }.not_to raise_error }
+    end
+
+    context "when queue_wait SLA elapsed is within limit" do
+      let(:adapter) { JobWorkflow::QueueAdapter.current }
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          sla queue_wait: 100
+
+          task :noop do |_ctx|
+            nil
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobWorkflow::Context.from_hash({ job:, workflow: job.class._workflow })
+                            ._update_arguments({})
+      end
+
+      before { adapter.store_job(job.job_id, { "scheduled_at" => nil, "enqueued_at" => Time.current }) }
+
+      it { expect { run }.not_to raise_error }
+    end
+
+    context "when queue_wait SLA elapsed exceeds limit" do
+      let(:adapter) { JobWorkflow::QueueAdapter.current }
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          sla queue_wait: 0.1
+
+          task :noop do |_ctx|
+            nil
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobWorkflow::Context.from_hash({ job:, workflow: job.class._workflow })
+                            ._update_arguments({})
+      end
+
+      before { adapter.store_job(job.job_id, { "scheduled_at" => nil, "enqueued_at" => 10.seconds.ago }) }
+
+      it do
+        expect { run }.to raise_error(
+          an_instance_of(JobWorkflow::SlaExceededError).and(have_attributes(sla_type: :queue_wait))
+        )
+      end
+    end
+
+    context "when queue_wait SLA and enqueued_at is a Numeric" do
+      let(:adapter) { JobWorkflow::QueueAdapter.current }
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          sla queue_wait: 100
+
+          task :noop do |_ctx|
+            nil
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobWorkflow::Context.from_hash({ job:, workflow: job.class._workflow })
+                            ._update_arguments({})
+      end
+
+      before { adapter.store_job(job.job_id, { "scheduled_at" => nil, "enqueued_at" => Time.current.to_f }) }
+
+      it { expect { run }.not_to raise_error }
+    end
+
+    context "when queue_wait SLA and scheduled_at is a valid ISO8601 String" do
+      let(:adapter) { JobWorkflow::QueueAdapter.current }
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          sla queue_wait: 100
+
+          task :noop do |_ctx|
+            nil
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobWorkflow::Context.from_hash({ job:, workflow: job.class._workflow })
+                            ._update_arguments({})
+      end
+
+      before { adapter.store_job(job.job_id, { "scheduled_at" => Time.current.iso8601, "enqueued_at" => nil }) }
+
+      it { expect { run }.not_to raise_error }
+    end
+
+    context "when queue_wait SLA and scheduled_at is an invalid String" do
+      let(:adapter) { JobWorkflow::QueueAdapter.current }
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          sla queue_wait: 0.1
+
+          task :noop do |_ctx|
+            nil
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobWorkflow::Context.from_hash({ job:, workflow: job.class._workflow })
+                            ._update_arguments({})
+      end
+
+      before { adapter.store_job(job.job_id, { "scheduled_at" => "not-a-date", "enqueued_at" => nil }) }
+
+      it { expect { run }.not_to raise_error }
+    end
+
+    context "when task-level queue_wait SLA elapsed exceeds limit" do
+      let(:adapter) { JobWorkflow::QueueAdapter.current }
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          task :noop, sla: { queue_wait: 0.1 } do |_ctx|
+            nil
+          end
+        end
+        klass.new
+      end
+      let(:task) { job.class._workflow.fetch_task(:noop) }
+      let(:ctx) do
+        JobWorkflow::Context.new(
+          job:,
+          workflow: job.class._workflow,
+          arguments: JobWorkflow::Arguments.new(data: {}),
+          task_context: JobWorkflow::TaskContext.new(task:),
+          output: JobWorkflow::Output.new,
+          job_status: JobWorkflow::JobStatus.new
+        )
+      end
+
+      before { adapter.store_job(job.job_id, { "scheduled_at" => nil, "enqueued_at" => 10.seconds.ago }) }
+
+      it do
+        expect { run }.to raise_error(
+          an_instance_of(JobWorkflow::SlaExceededError).and(have_attributes(sla_type: :queue_wait))
+        )
       end
     end
   end
