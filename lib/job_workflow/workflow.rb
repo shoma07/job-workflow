@@ -2,7 +2,6 @@
 
 module JobWorkflow
   class Workflow
-    attr_reader :namespace #: Namespace
     attr_reader :dry_run_config #: DryRunConfig
 
     #:  () -> void
@@ -10,7 +9,6 @@ module JobWorkflow
       @task_graph = TaskGraph.new
       @argument_defs = {} #: Hash[Symbol, ArgumentDef]
       @hook_registry = HookRegistry.new
-      @namespace = Namespace.default #: Namespace
       @schedules = {} #: Hash[Symbol, Schedule]
       @dry_run_config = DryRunConfig.new
     end
@@ -18,15 +16,6 @@ module JobWorkflow
     #:  (bool | ^(Context) -> bool) -> void
     def dry_run_config=(value)
       @dry_run_config = DryRunConfig.from_primitive_value(value)
-    end
-
-    #:  (Namespace) { () -> void } -> void
-    def add_namespace(namespace)
-      original_namespace = @namespace
-      @namespace = namespace.update_parent(original_namespace)
-      yield
-    ensure
-      @namespace = original_namespace
     end
 
     #:  (Task) -> void

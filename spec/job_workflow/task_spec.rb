@@ -38,7 +38,6 @@ RSpec.describe JobWorkflow::Task do
         {
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(ctx) { ctx.arguments.arg_one }
         }
       end
@@ -46,7 +45,6 @@ RSpec.describe JobWorkflow::Task do
       it do
         expect(task).to have_attributes(
           task_name: arguments[:name],
-          namespace: have_attributes(name: :"", parent: nil),
           block: arguments[:block],
           each: nil,
           depends_on: [],
@@ -67,7 +65,6 @@ RSpec.describe JobWorkflow::Task do
         {
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: lambda(&:arg_one),
           condition: ->(ctx) { ctx.arguments.arg_two.size > 2 }
         }
@@ -76,7 +73,6 @@ RSpec.describe JobWorkflow::Task do
       it do
         expect(task).to have_attributes(
           task_name: arguments[:name],
-          namespace: have_attributes(name: :"", parent: nil),
           block: arguments[:block],
           each: nil,
           depends_on: [],
@@ -90,7 +86,6 @@ RSpec.describe JobWorkflow::Task do
         {
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(ctx) { ctx.arguments.arg_one },
           each: :arg_two,
           output: { result: "Integer", message: "String" },
@@ -102,7 +97,6 @@ RSpec.describe JobWorkflow::Task do
       it do
         expect(task).to have_attributes(
           task_name: :sample_task,
-          namespace: have_attributes(name: :"", parent: nil),
           block: arguments[:block],
           each: :arg_two,
           depends_on: %i[depend_task],
@@ -125,7 +119,6 @@ RSpec.describe JobWorkflow::Task do
         {
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(ctx) { ctx.arguments.arg_one },
           output: {}
         }
@@ -141,7 +134,6 @@ RSpec.describe JobWorkflow::Task do
         {
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(ctx) { ctx.arguments.arg_one }
         }
       end
@@ -156,7 +148,6 @@ RSpec.describe JobWorkflow::Task do
         {
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(ctx) { ctx.arguments.arg_one }
         }
       end
@@ -176,7 +167,6 @@ RSpec.describe JobWorkflow::Task do
         {
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(ctx) { ctx.arguments.arg_one },
           task_retry: 3
         }
@@ -197,7 +187,6 @@ RSpec.describe JobWorkflow::Task do
         {
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(ctx) { ctx.arguments.arg_one },
           task_retry: { count: 5, strategy: :linear, base_delay: 2, jitter: true }
         }
@@ -218,7 +207,6 @@ RSpec.describe JobWorkflow::Task do
         {
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(_ctx) {},
           timeout: 0.5
         }
@@ -238,7 +226,6 @@ RSpec.describe JobWorkflow::Task do
         {
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(_ctx) {},
           enqueue: true
         }
@@ -252,7 +239,6 @@ RSpec.describe JobWorkflow::Task do
         {
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(_ctx) {},
           enqueue: false
         }
@@ -266,7 +252,6 @@ RSpec.describe JobWorkflow::Task do
         {
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(_ctx) {},
           enqueue: nil
         }
@@ -280,7 +265,6 @@ RSpec.describe JobWorkflow::Task do
         {
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(_ctx) {},
           enqueue: ->(ctx) { ctx.arguments.arg_two.size > 2 }
         }
@@ -294,7 +278,6 @@ RSpec.describe JobWorkflow::Task do
         {
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(_ctx) {},
           enqueue: ->(ctx) { ctx.arguments.arg_two.size < 2 }
         }
@@ -308,7 +291,6 @@ RSpec.describe JobWorkflow::Task do
         {
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(_ctx) {},
           enqueue: { condition: true }
         }
@@ -322,7 +304,6 @@ RSpec.describe JobWorkflow::Task do
         {
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(_ctx) {},
           enqueue: { condition: false }
         }
@@ -336,7 +317,6 @@ RSpec.describe JobWorkflow::Task do
         {
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(_ctx) {},
           enqueue: { condition: ->(ctx) { ctx.arguments.arg_two.size > 2 } }
         }
@@ -350,7 +330,6 @@ RSpec.describe JobWorkflow::Task do
         {
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(_ctx) {},
           enqueue: { condition: ->(ctx) { ctx.arguments.arg_two.size < 2 } }
         }
@@ -364,7 +343,6 @@ RSpec.describe JobWorkflow::Task do
         {
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(_ctx) {},
           enqueue: { queue: :critical }
         }
@@ -378,7 +356,6 @@ RSpec.describe JobWorkflow::Task do
         {
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(_ctx) {},
           enqueue: { queue: :critical, condition: true }
         }
@@ -392,7 +369,6 @@ RSpec.describe JobWorkflow::Task do
         {
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(_ctx) {},
           enqueue: { condition: "unexpected" }
         }
@@ -406,7 +382,6 @@ RSpec.describe JobWorkflow::Task do
         {
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(_ctx) {},
           enqueue: :invalid_symbol
         }
@@ -426,7 +401,6 @@ RSpec.describe JobWorkflow::Task do
         {
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(_ctx) {},
           enqueue: true
         }
@@ -440,7 +414,6 @@ RSpec.describe JobWorkflow::Task do
         {
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(_ctx) {},
           enqueue: { condition: true }
         }
@@ -454,7 +427,6 @@ RSpec.describe JobWorkflow::Task do
         {
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(_ctx) {},
           enqueue: { queue: :critical }
         }
@@ -468,7 +440,6 @@ RSpec.describe JobWorkflow::Task do
         {
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(_ctx) {},
           enqueue: { queue: :batch, condition: ->(ctx) { ctx.arguments.arg_two.any? } }
         }
@@ -488,7 +459,6 @@ RSpec.describe JobWorkflow::Task do
         {
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(_ctx) {},
           enqueue: true
         }
@@ -502,7 +472,6 @@ RSpec.describe JobWorkflow::Task do
         {
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(_ctx) {},
           enqueue: { queue: :critical }
         }
@@ -516,7 +485,6 @@ RSpec.describe JobWorkflow::Task do
         {
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(_ctx) {},
           enqueue: { concurrency: 10 }
         }
@@ -530,7 +498,6 @@ RSpec.describe JobWorkflow::Task do
         {
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(_ctx) {},
           enqueue: { queue: :batch, condition: true, concurrency: 5 }
         }
@@ -547,11 +514,10 @@ RSpec.describe JobWorkflow::Task do
       described_class.new(
         job_name: "MyJob",
         name: :fetch_data,
-        namespace: JobWorkflow::Namespace.new(name: :namespace_name),
         block: ->(_ctx) {}
       )
     end
 
-    it { is_expected.to eq("MyJob:namespace_name:fetch_data") }
+    it { is_expected.to eq("MyJob:fetch_data") }
   end
 end

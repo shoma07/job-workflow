@@ -62,9 +62,6 @@ module JobWorkflow
       # :  (Symbol argument_name, String type, ?default: untyped) -> void
       def argument: (Symbol argument_name, String type, ?default: untyped) -> void
 
-      # :  (Symbol) { () -> void } -> void
-      def namespace: (Symbol) { () -> void } -> void
-
       # rubocop:disable Metrics/ParameterLists
       #
       # :  (
@@ -139,11 +136,6 @@ module JobWorkflow
       #     ?description: String?
       #   ) -> void
       def schedule: (String expression, ?key: (String | Symbol)?, ?queue: String?, ?priority: Integer?, ?args: Hash[Symbol, untyped], ?description: String?) -> void
-
-      private
-
-      # :  () -> void
-      def validate_namespace!: () -> void
     end
   end
 end

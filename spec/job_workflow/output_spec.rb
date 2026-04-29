@@ -227,10 +227,10 @@ RSpec.describe JobWorkflow::Output do
       end
     end
 
-    context "when task_name is namespaced" do
+    context "when task_name contains colon separator" do
       let(:task_name) { :"ns:task_one" }
 
-      it "returns the namespaced task outputs" do
+      it "returns the task outputs for the compound name" do
         expect(bracket_access).to contain_exactly(have_attributes(value: 99))
       end
     end
@@ -286,7 +286,6 @@ RSpec.describe JobWorkflow::Output do
         JobWorkflow::Task.new(
           job_name: "TestJob",
           name: :sample_task,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(_ctx) {}
         )
       )
