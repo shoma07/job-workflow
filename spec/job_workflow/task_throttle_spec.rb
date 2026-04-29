@@ -8,7 +8,6 @@ RSpec.describe JobWorkflow::TaskThrottle do
       JobWorkflow::Task.new(
         job_name: "SampleJob",
         name: :process_items,
-        namespace: JobWorkflow::Namespace.default,
         block: ->(_ctx) {}
       )
     end

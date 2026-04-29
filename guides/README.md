@@ -67,11 +67,6 @@ Power features for complex workflows:
   - Configuration options (poll_timeout, poll_interval, reschedule_delay)
   - SolidQueue integration
 
-- **[NAMESPACES.md](NAMESPACES.md)** - Organizing large workflows
-  - Basic namespace usage
-  - Nested namespaces
-  - Cross-namespace dependencies
-
 - **[THROTTLING.md](THROTTLING.md)** - Rate limiting and resource control
   - Task-level throttling
   - Runtime throttling

@@ -15,7 +15,6 @@ RSpec.describe JobWorkflow::Workflow do
       JobWorkflow::Task.new(
         job_name: "TestJob",
         name: :sample_task,
-        namespace: JobWorkflow::Namespace.default,
         block: ->(ctx) { ctx[:key] }
       )
     end
@@ -28,12 +27,10 @@ RSpec.describe JobWorkflow::Workflow do
 
     let(:workflow) do
       workflow = described_class.new
-      namespace = JobWorkflow::Namespace.default
       workflow.add_task(
         JobWorkflow::Task.new(
           job_name: "TestJob",
           name: :task1,
-          namespace:,
           block: ->(ctx) { ctx[:a] }
         )
       )
@@ -41,7 +38,6 @@ RSpec.describe JobWorkflow::Workflow do
         JobWorkflow::Task.new(
           job_name: "TestJob",
           name: :task2,
-          namespace:,
           block: ->(ctx) { ctx[:b] }
         )
       )
@@ -68,7 +64,6 @@ RSpec.describe JobWorkflow::Workflow do
       JobWorkflow::Task.new(
         job_name: "TestJob",
         name: :task1,
-        namespace: JobWorkflow::Namespace.default,
         block: ->(ctx) { ctx[:a] }
       )
     end

@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Removed
+
+- Remove the `namespace` DSL and `JobWorkflow::Namespace`, flatten task naming to a single task space, and delete the dedicated namespace guide/example coverage that existed for the removed feature
+
 ## [0.3.0] - 2026-03-13
 
 ### Added

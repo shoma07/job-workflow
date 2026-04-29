@@ -83,7 +83,6 @@ RSpec.describe JobWorkflow::Context do
         task = JobWorkflow::Task.new(
           job_name: "TestJob",
           name: :ctx_two,
-          namespace: JobWorkflow::Namespace.default,
           each: ->(_ctx) { [0, 1, 2, 3] },
           block: ->(_ctx) {}
         )
@@ -111,7 +110,6 @@ RSpec.describe JobWorkflow::Context do
         JobWorkflow::Task.new(
           job_name: "TestJob",
           name: :multi_task,
-          namespace: JobWorkflow::Namespace.default,
           each: ->(_ctx) { [10, 20, 30, 40, 50] },
           block: ->(_ctx) {}
         )
@@ -154,7 +152,6 @@ RSpec.describe JobWorkflow::Context do
         JobWorkflow::Task.new(
           job_name: "TestJob",
           name: :retry_task,
-          namespace: JobWorkflow::Namespace.default,
           each: ->(_ctx) { [:a] },
           block: ->(_ctx) {},
           task_retry: 3
@@ -187,7 +184,6 @@ RSpec.describe JobWorkflow::Context do
         JobWorkflow::Task.new(
           job_name: "TestJob",
           name: :flaky_task,
-          namespace: JobWorkflow::Namespace.default,
           each: ->(_ctx) { [:item] },
           block: ->(_ctx) {},
           task_retry: 2
@@ -475,7 +471,7 @@ RSpec.describe JobWorkflow::Context do
       )
     end
 
-    context "when task_outputs contain a namespaced task_name" do
+    context "when task_outputs contain a task_name with colon separator" do
       let(:ctx) do
         described_class.new(
           job:,
@@ -491,7 +487,7 @@ RSpec.describe JobWorkflow::Context do
         )
       end
 
-      it "preserves the namespace separator" do
+      it "preserves the colon separator in task_name" do
         task_names = serialized.fetch("task_outputs", []).map { |h| h.fetch("task_name") }
         expect(task_names).to contain_exactly("ns:task_one")
       end
@@ -666,7 +662,7 @@ RSpec.describe JobWorkflow::Context do
 
       it "returns the parent job id" do
         task = JobWorkflow::Task.new(
-          job_name: "TestJob", name: :process_items, namespace: JobWorkflow::Namespace.default,
+          job_name: "TestJob", name: :process_items,
           each: ->(ctx) { ctx.arguments.items }, block: ->(_ctx) {}
         )
         local_ctx._with_each_value(task).each do |ctx_with_value|
@@ -676,7 +672,7 @@ RSpec.describe JobWorkflow::Context do
 
       it "maintains task_context parent_job_id after iteration" do
         task = JobWorkflow::Task.new(
-          job_name: "TestJob", name: :process_items, namespace: JobWorkflow::Namespace.default,
+          job_name: "TestJob", name: :process_items,
           each: ->(ctx) { ctx.arguments.items }, block: ->(_ctx) {}
         )
         local_ctx._with_each_value(task).to_a
@@ -692,7 +688,6 @@ RSpec.describe JobWorkflow::Context do
       JobWorkflow::Task.new(
         job_name: "TestJob",
         name: :task_name,
-        namespace: JobWorkflow::Namespace.default,
         block: ->(_ctx) {}
       )
     end
@@ -855,7 +850,6 @@ RSpec.describe JobWorkflow::Context do
       JobWorkflow::Task.new(
         job_name: "TestJob",
         name: :process_items,
-        namespace: JobWorkflow::Namespace.default,
         each: ->(ctx) { ctx.arguments.items },
         block: ->(_ctx) {}
       )
@@ -929,7 +923,6 @@ RSpec.describe JobWorkflow::Context do
         dry_run_task = JobWorkflow::Task.new(
           job_name: "TestJob",
           name: :process_items,
-          namespace: JobWorkflow::Namespace.default,
           each: ->(ctx) { ctx.arguments.items },
           block: ->(_ctx) {}
         )
@@ -954,7 +947,6 @@ RSpec.describe JobWorkflow::Context do
       JobWorkflow::Task.new(
         job_name: "TestJob",
         name: :process_items,
-        namespace: JobWorkflow::Namespace.default,
         each: ->(ctx) { ctx.arguments.items },
         block: ->(_ctx) {}
       )
@@ -1014,7 +1006,6 @@ RSpec.describe JobWorkflow::Context do
         JobWorkflow::Task.new(
           job_name: "TestJob",
           name: :task_name,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(_ctx) {}
         )
       end
@@ -1049,7 +1040,6 @@ RSpec.describe JobWorkflow::Context do
         JobWorkflow::Task.new(
           job_name: "TestJob",
           name: :task_name,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(_ctx) {}
         )
       end
@@ -1083,7 +1073,6 @@ RSpec.describe JobWorkflow::Context do
         JobWorkflow::Task.new(
           job_name: "TestJob",
           name: :task_name,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(_ctx) {}
         )
       end
@@ -1127,7 +1116,6 @@ RSpec.describe JobWorkflow::Context do
       JobWorkflow::Task.new(
         job_name: "TestJob",
         name: :process_items,
-        namespace: JobWorkflow::Namespace.default,
         each: ->(ctx) { ctx.arguments.items },
         block: ->(_ctx) {}
       )
@@ -1136,7 +1124,6 @@ RSpec.describe JobWorkflow::Context do
       JobWorkflow::Task.new(
         job_name: "TestJob",
         name: :process_nested,
-        namespace: JobWorkflow::Namespace.default,
         each: ->(ctx) { ctx.arguments.nested },
         block: ->(_ctx) {}
       )
@@ -1175,7 +1162,6 @@ RSpec.describe JobWorkflow::Context do
         JobWorkflow::Task.new(
           job_name: "TestJob",
           name: :no_throttle_task,
-          namespace: JobWorkflow::Namespace.default,
           each: ->(_ctx) { [1] },
           block: ->(_ctx) {}
         )
@@ -1195,7 +1181,6 @@ RSpec.describe JobWorkflow::Context do
         JobWorkflow::Task.new(
           job_name: "TestJob",
           name: :throttled_task,
-          namespace: JobWorkflow::Namespace.default,
           each: ->(_ctx) { [1] },
           block: ->(_ctx) {},
           throttle: 5
@@ -1213,7 +1198,6 @@ RSpec.describe JobWorkflow::Context do
       JobWorkflow::Task.new(
         job_name: "TestJob",
         name: :throttle_test_task,
-        namespace: JobWorkflow::Namespace.default,
         each: ->(_ctx) { [1] },
         block: ->(_ctx) {}
       )

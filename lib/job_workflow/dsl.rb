@@ -108,13 +108,7 @@ module JobWorkflow
 
       #:  (Symbol argument_name, String type, ?default: untyped) -> void
       def argument(argument_name, type, default: nil)
-        validate_namespace!
         _workflow.add_argument(ArgumentDef.new(name: argument_name, type:, default:))
-      end
-
-      #:  (Symbol) { () -> void } -> void
-      def namespace(namespace_name, &)
-        _workflow.add_namespace(Namespace.new(name: namespace_name), &)
       end
 
       # rubocop:disable Metrics/ParameterLists
@@ -149,7 +143,6 @@ module JobWorkflow
         new_task = Task.new(
           job_name: name,
           name: task_name,
-          namespace: _workflow.namespace,
           block: block,
           enqueue:,
           each:,
@@ -172,25 +165,21 @@ module JobWorkflow
 
       #:  (*Symbol) { (Context) -> void } -> void
       def before(*task_names, &block)
-        validate_namespace!
         _workflow.add_hook(:before, task_names:, block:)
       end
 
       #:  (*Symbol) { (Context) -> void } -> void
       def after(*task_names, &block)
-        validate_namespace!
         _workflow.add_hook(:after, task_names:, block:)
       end
 
       #:  (*Symbol) { (Context, TaskCallable) -> void } -> void
       def around(*task_names, &block)
-        validate_namespace!
         _workflow.add_hook(:around, task_names:, block:)
       end
 
       #:  (*Symbol) { (Context, StandardError, Task) -> void } -> void
       def on_error(*task_names, &block)
-        validate_namespace!
         _workflow.add_hook(:error, task_names:, block:)
       end
 
@@ -240,7 +229,6 @@ module JobWorkflow
 
       #:  (?bool) ?{ (Context) -> bool } -> void
       def dry_run(value = nil, &block)
-        validate_namespace!
         _workflow.dry_run_config = block || value
       end
 
@@ -254,7 +242,6 @@ module JobWorkflow
       #     ?description: String?
       #   ) -> void
       def schedule(expression, key: nil, queue: nil, priority: nil, args: {}, description: nil)
-        validate_namespace!
         _workflow.add_schedule(
           Schedule.new(
             expression:,
@@ -268,13 +255,6 @@ module JobWorkflow
         )
       end
       # rubocop:enable Metrics/ParameterLists
-
-      private
-
-      #:  () -> void
-      def validate_namespace!
-        raise "cannot be defined within a namespace." unless _workflow.namespace.default?
-      end
     end
   end
 end

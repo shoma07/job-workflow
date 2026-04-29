@@ -98,22 +98,10 @@ RSpec.describe JobWorkflow::DSL do
       end
     end
 
-    context "with not default namespace" do
-      it do
-        expect do
-          klass.namespace :custom_namespace do
-            klass.argument :example_argument, "Integer", default: 10
-          end
-        end.to raise_error("cannot be defined within a namespace.")
-      end
-    end
-
-    context "with default namespace" do
-      it do
-        expect { klass.argument(:example_argument, "Integer", default: 10) }.to(
-          change { klass._workflow.arguments.size }.from(0).to(1)
-        )
-      end
+    it do
+      expect { klass.argument(:example_argument, "Integer", default: 10) }.to(
+        change { klass._workflow.arguments.size }.from(0).to(1)
+      )
     end
   end
 
@@ -365,54 +353,6 @@ RSpec.describe JobWorkflow::DSL do
 
       it "passes the existing Context to the key Proc" do
         expect(resolved_key).to eq("prefix:hello")
-      end
-    end
-  end
-
-  describe "self.namespace" do
-    let(:klass) do
-      Class.new(ActiveJob::Base) do
-        include JobWorkflow::DSL
-      end
-    end
-
-    context "when defining tasks within a namespace" do
-      subject(:define_workflow) do
-        klass.namespace :processing do
-          klass.task :step1 do |_ctx|
-            nil
-          end
-
-          klass.task :step2, depends_on: [:"processing:step1"] do |_ctx|
-            nil
-          end
-        end
-      end
-
-      it "prefixes task_name with namespace" do
-        define_workflow
-
-        task_names = klass._workflow.tasks.map(&:task_name)
-        expect(task_names).to contain_exactly(:"processing:step1", :"processing:step2")
-      end
-    end
-
-    context "when defining nested namespaces" do
-      subject(:define_workflow) do
-        klass.namespace :outer do
-          klass.namespace :inner do
-            klass.task :nested_task do |_ctx|
-              nil
-            end
-          end
-        end
-      end
-
-      it "builds nested task_name" do
-        define_workflow
-
-        task_names = klass._workflow.tasks.map(&:task_name)
-        expect(task_names).to contain_exactly(:"outer:inner:nested_task")
       end
     end
   end
@@ -770,16 +710,6 @@ RSpec.describe JobWorkflow::DSL do
       end
     end
 
-    context "with not default namespace" do
-      it do
-        expect do
-          klass.namespace :custom_namespace do
-            add_before
-          end
-        end.to raise_error("cannot be defined within a namespace.")
-      end
-    end
-
     context "with task names" do
       it "adds a before hook to workflow" do
         expect { add_before }.to change { klass._workflow.hooks.before_hooks_for(:task_a).size }.from(0).to(1)
@@ -810,16 +740,6 @@ RSpec.describe JobWorkflow::DSL do
       end
     end
 
-    context "with not default namespace" do
-      it do
-        expect do
-          klass.namespace :custom_namespace do
-            add_after
-          end
-        end.to raise_error("cannot be defined within a namespace.")
-      end
-    end
-
     context "with task names" do
       it "adds an after hook to workflow" do
         expect { add_after }.to change { klass._workflow.hooks.after_hooks_for(:task_a).size }.from(0).to(1)
@@ -845,16 +765,6 @@ RSpec.describe JobWorkflow::DSL do
       end
     end
 
-    context "with not default namespace" do
-      it do
-        expect do
-          klass.namespace :custom_namespace do
-            add_around
-          end
-        end.to raise_error("cannot be defined within a namespace.")
-      end
-    end
-
     context "with task names" do
       it "adds an around hook to workflow" do
         expect { add_around }.to change { klass._workflow.hooks.around_hooks_for(:task_a).size }.from(0).to(1)
@@ -877,16 +787,6 @@ RSpec.describe JobWorkflow::DSL do
     let(:klass) do
       Class.new(ActiveJob::Base) do
         include JobWorkflow::DSL
-      end
-    end
-
-    context "with not default namespace" do
-      it do
-        expect do
-          klass.namespace :custom_namespace do
-            add_on_error
-          end
-        end.to raise_error("cannot be defined within a namespace.")
       end
     end
 
@@ -1008,26 +908,6 @@ RSpec.describe JobWorkflow::DSL do
   end
 
   describe "self.schedule" do
-    context "with not default namespace" do
-      let(:klass) do
-        Class.new(ActiveJob::Base) do
-          include JobWorkflow::DSL
-
-          def self.name
-            "NamespaceScheduleJob"
-          end
-        end
-      end
-
-      it "raises error when defined within namespace" do
-        expect do
-          klass.namespace :custom_namespace do
-            klass.schedule "every hour"
-          end
-        end.to raise_error("cannot be defined within a namespace.")
-      end
-    end
-
     context "with single schedule" do
       let(:klass) do
         Class.new(ActiveJob::Base) do

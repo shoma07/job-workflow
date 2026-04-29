@@ -24,7 +24,6 @@ RSpec.describe JobWorkflow::TaskContext do
           task: JobWorkflow::Task.new(
             job_name: "ExampleJob",
             name: :example,
-            namespace: JobWorkflow::Namespace.default,
             block: ->(_ctx) { true }
           ),
           parent_job_id: "parent-123",
@@ -70,7 +69,6 @@ RSpec.describe JobWorkflow::TaskContext do
         task: JobWorkflow::Task.new(
           job_name: "ExampleJob",
           name: :example,
-          namespace: JobWorkflow::Namespace.default,
           block: ->(_ctx) { true }
         ),
         parent_job_id: "parent-123",

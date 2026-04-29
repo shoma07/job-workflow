@@ -2,8 +2,6 @@
 
 module JobWorkflow
   class Workflow
-    attr_reader namespace: Namespace
-
     attr_reader dry_run_config: DryRunConfig
 
     # :  () -> void
@@ -11,9 +9,6 @@ module JobWorkflow
 
     # :  (bool | ^(Context) -> bool) -> void
     def dry_run_config=: (bool | ^(Context) -> bool) -> void
-
-    # :  (Namespace) { () -> void } -> void
-    def add_namespace: (Namespace) { () -> void } -> void
 
     # :  (Task) -> void
     def add_task: (Task) -> void
