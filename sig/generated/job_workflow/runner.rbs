@@ -30,8 +30,8 @@ module JobWorkflow
     # :  (Task) -> bool
     def skip_task?: (Task) -> bool
 
-    # :  (Task) -> void
-    def run_task: (Task) -> void
+    # :  (Task, ?step: ActiveJob::Continuation::Step?) -> void
+    def run_task: (Task, ?step: ActiveJob::Continuation::Step?) -> void
 
     # :  (Task, Context) -> void
     def run_each_task: (Task, Context) -> void

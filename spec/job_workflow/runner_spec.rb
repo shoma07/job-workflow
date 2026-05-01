@@ -226,6 +226,78 @@ RSpec.describe JobWorkflow::Runner do
       end
     end
 
+    context "when resuming sequential each task from cursor" do
+      let(:tracking) { { processed_items: [], cursor_updates: [], fail_on: nil } }
+      let(:job) do
+        current_tracking = tracking
+        klass = Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          argument :items, "Array[Integer]", default: []
+
+          task :process_items, output: { value: "Integer" }, each: ->(ctx) { ctx.arguments.items } do |ctx|
+            current_tracking[:processed_items] << ctx.each_value
+            raise "sequential each failed" if current_tracking[:fail_on] == ctx.each_value
+
+            { value: ctx.each_value }
+          end
+
+          task :aggregate_sum, output: { value: "Integer" }, depends_on: %i[process_items] do |ctx|
+            { value: ctx.output[:process_items].sum(&:value) }
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        context = JobWorkflow::Context.from_hash({ job:, workflow: job.class._workflow })
+                                      ._update_arguments({ items: [10, 20, 30] })
+        context._add_task_output(
+          JobWorkflow::TaskOutput.new(task_name: :process_items, each_index: 0, data: { value: 10 })
+        )
+        context
+      end
+      let(:steps) do
+        {
+          process: instance_double(ActiveJob::Continuation::Step, cursor: 1),
+          aggregate: instance_double(ActiveJob::Continuation::Step, cursor: nil)
+        }
+      end
+
+      before do
+        allow(steps[:process]).to receive(:set!) { |value| tracking[:cursor_updates] << value }
+        allow(steps[:aggregate]).to receive(:set!)
+        allow(job).to receive(:step) do |task_name, &block|
+          block.call(task_name == :process_items ? steps[:process] : steps[:aggregate])
+        end
+      end
+
+      it "resumes from the stored cursor" do
+        run
+        expect(tracking[:processed_items]).to eq([20, 30])
+      end
+
+      it "preserves previously collected outputs" do
+        run
+        expect(ctx.output[:aggregate_sum].first.value).to eq(60)
+      end
+
+      it "moves the cursor after each completed iteration" do
+        run
+        expect(tracking[:cursor_updates]).to eq([2, 3])
+      end
+
+      it "raises the iteration error" do
+        tracking[:fail_on] = 30
+        expect { run }.to raise_error(RuntimeError, "sequential each failed")
+      end
+
+      it "does not advance the cursor for the failed iteration" do
+        tracking[:fail_on] = 30
+        expect { run }.to raise_error(RuntimeError, "sequential each failed")
+          .and change { tracking[:cursor_updates] }.from([]).to([2])
+      end
+    end
+
     context "when mixing regular and each tasks" do
       let(:job) do
         klass = Class.new(ActiveJob::Base) do
@@ -531,7 +603,7 @@ RSpec.describe JobWorkflow::Runner do
       let(:ctx) do
         JobWorkflow::Context.from_hash({ job:, workflow: job.class._workflow })._update_arguments({ items: [1, 2] })
       end
-      let(:step_mock) { instance_double(ActiveJob::Continuation::Step) }
+      let(:step_mock) { instance_double(ActiveJob::Continuation::Step, cursor: nil) }
       let(:poll_count) { 0 }
 
       before do
@@ -548,7 +620,7 @@ RSpec.describe JobWorkflow::Runner do
         end
 
         allow(step_mock).to receive(:checkpoint!)
-        allow(step_mock).to receive(:advance!)
+        allow(step_mock).to receive(:set!)
         allow(job).to receive(:step).and_yield(step_mock)
 
         # Simulate DB polling: first call returns pending jobs, second call returns finished jobs
@@ -706,7 +778,7 @@ RSpec.describe JobWorkflow::Runner do
       let(:ctx) do
         JobWorkflow::Context.from_hash({ job:, workflow: job.class._workflow })._update_arguments({ items: [10, 20] })
       end
-      let(:step_mock) { instance_double(ActiveJob::Continuation::Step) }
+      let(:step_mock) { instance_double(ActiveJob::Continuation::Step, cursor: nil) }
       let(:created_job_ids) { [] }
 
       before do
@@ -767,7 +839,7 @@ RSpec.describe JobWorkflow::Runner do
         end
 
         allow(step_mock).to receive(:checkpoint!)
-        allow(step_mock).to receive(:advance!)
+        allow(step_mock).to receive(:set!)
         allow(job).to receive(:step).and_yield(step_mock)
       end
 
@@ -815,7 +887,7 @@ RSpec.describe JobWorkflow::Runner do
       let(:ctx) do
         JobWorkflow::Context.from_hash({ job:, workflow: job.class._workflow })._update_arguments({ numbers: [2, 3] })
       end
-      let(:step_mock) { instance_double(ActiveJob::Continuation::Step) }
+      let(:step_mock) { instance_double(ActiveJob::Continuation::Step, cursor: nil) }
       let(:created_jobs) { [] }
 
       before do
@@ -875,7 +947,7 @@ RSpec.describe JobWorkflow::Runner do
         end
 
         allow(step_mock).to receive(:checkpoint!)
-        allow(step_mock).to receive(:advance!)
+        allow(step_mock).to receive(:set!)
         allow(job).to receive(:step).and_yield(step_mock)
       end
 
@@ -942,7 +1014,7 @@ RSpec.describe JobWorkflow::Runner do
 
         ctx
       end
-      let(:step_mock) { instance_double(ActiveJob::Continuation::Step) }
+      let(:step_mock) { instance_double(ActiveJob::Continuation::Step, cursor: nil) }
 
       before do
         stub_const("SolidQueue", Module.new)
@@ -956,7 +1028,7 @@ RSpec.describe JobWorkflow::Runner do
         end
 
         allow(step_mock).to receive(:checkpoint!)
-        allow(step_mock).to receive(:advance!)
+        allow(step_mock).to receive(:set!)
         allow(job).to receive(:step).and_yield(step_mock)
       end
 

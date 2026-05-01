@@ -50,7 +50,7 @@ module JobWorkflow
 
           job.step(task.task_name) do |step|
             wait_for_dependent_tasks(task, step)
-            task.enqueue.should_enqueue?(context) ? enqueue_task(task) : run_task(task)
+            task.enqueue.should_enqueue?(context) ? enqueue_task(task) : run_task(task, step:)
           end
         end
       end
@@ -63,11 +63,12 @@ module JobWorkflow
       result
     end
 
-    #:  (Task) -> void
-    def run_task(task)
+    #:  (Task, ?step: ActiveJob::Continuation::Step?) -> void
+    def run_task(task, step: nil)
       context._load_parent_task_output
-      context._with_each_value(task).each do |ctx|
+      context._with_each_value(task, start_index: step&.cursor).each do |ctx|
         run_each_task(task, ctx)
+        step&.set!(ctx._task_context.index + 1)
       rescue StandardError => e
         run_error_hooks(task, ctx, e)
         raise
