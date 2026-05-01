@@ -48,8 +48,8 @@ module JobWorkflow
     # :  () -> String?
     def concurrency_key: () -> String?
 
-    # :  (Task) -> Enumerator[Context]
-    def _with_each_value: (Task) -> Enumerator[Context]
+    # :  (Task, ?start_index: Integer?) -> Enumerator[Context]
+    def _with_each_value: (Task, ?start_index: Integer?) -> Enumerator[Context]
 
     # :  () { () -> void } -> void
     def _with_task_throttle: () { () -> void } -> void
@@ -128,14 +128,14 @@ module JobWorkflow
     # :  () -> Hash[String, untyped]
     def serialize_for_sub_job: () -> Hash[String, untyped]
 
-    # :  (Task, Enumerator::Yielder) -> void
-    def with_task_context: (Task, Enumerator::Yielder) -> void
+    # :  (Task, Enumerator::Yielder, ?start_index: Integer?) -> void
+    def with_task_context: (Task, Enumerator::Yielder, ?start_index: Integer?) -> void
 
     # :  (Task) -> void
     def reset_task_context_if_task_changed: (Task) -> void
 
-    # :  (Task) { (untyped, Integer) -> void } -> void
-    def with_each_index_and_value: (Task) { (untyped, Integer) -> void } -> void
+    # :  (Task, ?start_index: Integer?) { (untyped, Integer) -> void } -> void
+    def with_each_index_and_value: (Task, ?start_index: Integer?) { (untyped, Integer) -> void } -> void
 
     # :  () -> void
     def clear_after_each_index_and_value: () -> void

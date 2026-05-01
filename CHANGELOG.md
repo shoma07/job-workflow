@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+
+- Fix sequential `each` task resumption to persist continuation cursor progress at the workflow step level, resume from `step.cursor`, and keep the failed iteration retrying from the same `each_index` without skipping previously collected outputs
+
 ### Removed
 
 - Remove the `namespace` DSL and `JobWorkflow::Namespace`, flatten task naming to a single task space, and delete the dedicated namespace guide/example coverage that existed for the removed feature

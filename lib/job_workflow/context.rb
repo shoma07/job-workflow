@@ -108,13 +108,13 @@ module JobWorkflow
       [task_context.parent_job_id, task.task_name].compact.join("/")
     end
 
-    #:  (Task) -> Enumerator[Context]
-    def _with_each_value(task)
+    #:  (Task, ?start_index: Integer?) -> Enumerator[Context]
+    def _with_each_value(task, start_index: nil)
       raise "Nested _with_each_value calls are not allowed" if enabled_with_each_value
 
       self.enabled_with_each_value = true
       Enumerator.new do |y|
-        with_task_context(task, y)
+        with_task_context(task, y, start_index:)
       ensure
         self.enabled_with_each_value = false
       end
@@ -270,11 +270,11 @@ module JobWorkflow
       }
     end
 
-    #:  (Task, Enumerator::Yielder) -> void
-    def with_task_context(task, yielder) # rubocop:disable Metrics/MethodLength
+    #:  (Task, Enumerator::Yielder, ?start_index: Integer?) -> void
+    def with_task_context(task, yielder, start_index: nil) # rubocop:disable Metrics/MethodLength
       reset_task_context_if_task_changed(task)
 
-      with_each_index_and_value(task) do |value, index|
+      with_each_index_and_value(task, start_index:) do |value, index|
         dry_run = calculate_dry_run(task)
         with_retry(task) do |retry_count|
           self.task_context = TaskContext.new(task:, parent_job_id:, index:, value:, retry_count:, dry_run:)
@@ -294,10 +294,12 @@ module JobWorkflow
       self.task_context = TaskContext.new if task_context.task&.task_name != task.task_name
     end
 
-    #:  (Task) { (untyped, Integer) -> void } -> void
-    def with_each_index_and_value(task)
+    #:  (Task, ?start_index: Integer?) { (untyped, Integer) -> void } -> void
+    def with_each_index_and_value(task, start_index: nil)
+      resume_index = start_index || task_context.index
+
       task.each.call(self).each.with_index do |value, index|
-        next if index < task_context.index
+        next if index < resume_index
 
         yield value, index
 
