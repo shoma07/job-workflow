@@ -85,6 +85,29 @@ RSpec.describe "Acceptance job coverage" do
     end
   end
 
+  describe AcceptanceEnqueueDependencyOutputJob do
+    subject(:exposed_value) do
+      context = JobWorkflow::Context.from_hash(job: workflow_job, workflow:)
+      context._add_task_output(
+        JobWorkflow::TaskOutput.new(task_name: :produce, each_index: 0, data: produce_task.block.call(context))
+      )
+      context._add_task_output(
+        JobWorkflow::TaskOutput.new(task_name: :consume, each_index: 0, data: consume_task.block.call(context))
+      )
+      expose_result_task.block.call(context)[:value]
+    end
+
+    let(:workflow_job) { described_class.new({}) }
+    let(:workflow) { described_class._workflow }
+    let(:produce_task) { workflow.fetch_task(:produce) }
+    let(:consume_task) { workflow.fetch_task(:consume) }
+    let(:expose_result_task) { workflow.fetch_task(:expose_result) }
+
+    it "consumes dependency output in the enqueued task" do
+      expect(exposed_value).to eq(6)
+    end
+  end
+
   describe AcceptanceStatusQueryJob do
     let(:workflow_job) { described_class.new(input_value: 42) }
     let(:workflow) { described_class._workflow }

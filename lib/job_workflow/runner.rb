@@ -15,12 +15,12 @@ module JobWorkflow
       task = context._task_context.task
       if !task.nil? && context.sub_job?
         run_task(task)
-        QueueAdapter.current.persist_job_context(job)
+        persist_current_job_context
         return
       end
 
       catch(:rescheduled) { run_workflow }
-      QueueAdapter.current.persist_job_context(job)
+      persist_current_job_context
     end
 
     private
@@ -113,6 +113,7 @@ module JobWorkflow
     #:  (Task) -> void
     def enqueue_task(task)
       sub_jobs = context._with_each_value(task).map { |ctx| job.class.from_context(ctx) }
+      persist_current_job_context
       ActiveJob.perform_all_later(sub_jobs)
       context.job_status.update_task_job_statuses_from_jobs(task_name: task.task_name, jobs: sub_jobs)
       Instrumentation.notify_task_enqueue(job, task, sub_jobs.size)
@@ -175,6 +176,11 @@ module JobWorkflow
       finished_job_ids = context.job_status.finished_job_ids(task_name: task.task_name)
       context_data_list = QueueAdapter.current.fetch_job_contexts(finished_job_ids)
       context.output.update_task_outputs_from_contexts(context_data_list, context.workflow)
+    end
+
+    #:  () -> void
+    def persist_current_job_context
+      QueueAdapter.current.persist_job_context(job)
     end
   end
 end

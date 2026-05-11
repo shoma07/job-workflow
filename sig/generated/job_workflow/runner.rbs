@@ -62,5 +62,8 @@ module JobWorkflow
 
     # :  (Task) -> void
     def update_task_outputs: (Task) -> void
+
+    # :  () -> void
+    def persist_current_job_context: () -> void
   end
 end
