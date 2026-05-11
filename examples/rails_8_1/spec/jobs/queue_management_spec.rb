@@ -35,23 +35,23 @@ RSpec.describe "Queue Management" do
   end
 
   describe "JobWorkflow::Queue.paused_queues" do
-    let(:queue1) { :queue_mgmt_test_1 }
-    let(:queue2) { :queue_mgmt_test_2 }
+    let(:primary_queue) { :queue_mgmt_test_one }
+    let(:secondary_queue) { :queue_mgmt_test_two }
 
     after do
-      JobWorkflow::Queue.resume(queue1)
-      JobWorkflow::Queue.resume(queue2)
+      JobWorkflow::Queue.resume(primary_queue)
+      JobWorkflow::Queue.resume(secondary_queue)
     end
 
     context "when multiple queues are paused" do
       before do
-        JobWorkflow::Queue.pause(queue1)
-        JobWorkflow::Queue.pause(queue2)
+        JobWorkflow::Queue.pause(primary_queue)
+        JobWorkflow::Queue.pause(secondary_queue)
       end
 
       it "returns list of paused queues" do
         paused = JobWorkflow::Queue.paused_queues
-        expect(paused).to include(queue1.to_s, queue2.to_s)
+        expect(paused).to include(primary_queue.to_s, secondary_queue.to_s)
       end
     end
   end
@@ -146,8 +146,7 @@ RSpec.describe "Queue Management" do
 
     it "returns workflow classes for specified queue" do
       workflows = JobWorkflow::Queue.workflows(:workflow_test_queue)
-      expect(workflows).to include(WorkflowAJob, WorkflowBJob)
-      expect(workflows).not_to include(WorkflowCJob)
+      expect(workflows).to contain_exactly(WorkflowAJob, WorkflowBJob)
     end
   end
 

@@ -189,8 +189,10 @@ RSpec.describe "Dry-Run Mode" do
       it "handles named operations with fallbacks" do
         perform_workflow
         output = workflow_job.output[:complex_operation].first
-        expect(output.payment_result).to eq("dry_run_payment")
-        expect(output.notification_result).to eq("dry_run_notification")
+        expect(output).to have_attributes(
+          payment_result: "dry_run_payment",
+          notification_result: "dry_run_notification"
+        )
       end
     end
   end

@@ -119,8 +119,7 @@ RSpec.describe "Instrumentation" do
       it "includes custom payload" do
         perform_workflow
         payload = received_events.first[:payload]
-        expect(payload[:endpoint]).to eq("/users")
-        expect(payload[:method]).to eq("GET")
+        expect(payload).to include(endpoint: "/users", method: "GET")
       end
     end
   end
@@ -159,8 +158,7 @@ RSpec.describe "Instrumentation" do
       it "emits task.skip.job_workflow event for skipped task" do
         perform_workflow
         skip_event = received_events.find { |e| e[:task_name] == :skipped_task }
-        expect(skip_event).not_to be_nil
-        expect(skip_event[:reason]).to eq("condition_not_met")
+        expect(skip_event).to include(task_name: :skipped_task, reason: "condition_not_met")
       end
     end
   end
