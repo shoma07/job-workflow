@@ -193,32 +193,30 @@ RSpec.describe "Instrumentation" do
         ActiveSupport::Notifications.unsubscribe(/throttle.*\.job_workflow$/)
       end
 
-      it "emits throttle acquire events",
-         skip: "ActiveSupport::Notifications events are not shared across processes" do
+      def enqueue_and_wait_for_events(workflow_job, job_id)
         workflow_job.enqueue
         wait_for_job(job_id, timeout: 10)
-
-        # Give time for all events to be processed
         sleep 0.2
+      end
 
-        acquire_events = mutex.synchronize { received_events.select { |e| e[:name].include?("throttle.acquire") } }
-        expect(acquire_events).not_to be_empty
+      def throttle_acquire_events(mutex, received_events)
+        mutex.synchronize { received_events.select { |event| event[:name].include?("throttle.acquire") } }
+      end
+
+      def throttle_release_events(mutex, received_events)
+        mutex.synchronize { received_events.select { |event| event[:name] == "throttle.release.job_workflow" } }
+      end
+
+      it "emits throttle acquire events",
+         skip: "ActiveSupport::Notifications events are not shared across processes" do
+        enqueue_and_wait_for_events(workflow_job, job_id)
+        expect(throttle_acquire_events(mutex, received_events)).not_to be_empty
       end
 
       it "emits throttle release event",
          skip: "ActiveSupport::Notifications events are not shared across processes" do
-        workflow_job.enqueue
-        wait_for_job(job_id, timeout: 10)
-
-        # Give time for all events to be processed
-        sleep 0.2
-
-        release_events = mutex.synchronize do
-          received_events.select do |e|
-            e[:name] == "throttle.release.job_workflow"
-          end
-        end
-        expect(release_events).not_to be_empty
+        enqueue_and_wait_for_events(workflow_job, job_id)
+        expect(throttle_release_events(mutex, received_events)).not_to be_empty
       end
     end
   end

@@ -75,6 +75,7 @@ RSpec.describe "Parallel Processing" do
       # in async execution mode (perform_later with SolidQueue workers).
       it "raises an error in async mode (skipped: perform_now sets task_context.enabled? = true)",
          skip: "Cannot test in perform_now mode - task_context is always enabled" do
+        nil
       end
     end
   end
