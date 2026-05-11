@@ -8,41 +8,18 @@ module SolidQueueHelper
   JOB_WAIT_TIMEOUT = 30 # seconds to wait for job completion
 
   class << self
-    attr_accessor :supervisor_pid, :started
+    attr_accessor :supervisor_pid, :server_started
 
     # Start SolidQueue supervisor in a background process
     # @return [Boolean] true if started successfully
     def start_server
-      return true if started
+      return true if server_started
 
       puts "\n🚀 Starting SolidQueue server..."
-
-      # Ensure database is clean before starting
       clean_database
-
-      # Start the supervisor process using bin/jobs
-      self.supervisor_pid = spawn(
-        { "RAILS_ENV" => "test" },
-        Rails.root.join("bin/jobs").to_s, "start",
-        chdir: Rails.root.to_s,
-        out: File::NULL,
-        err: File::NULL,
-        pgroup: true # Create new process group for clean shutdown
-      )
-
-      # Detach to avoid zombie process
+      self.supervisor_pid = spawn_supervisor
       Process.detach(supervisor_pid)
-
-      # Wait for server to be ready
-      if wait_for_server_ready
-        self.started = true
-        puts "✅ SolidQueue server started (PID: #{supervisor_pid})"
-        true
-      else
-        puts "❌ Failed to start SolidQueue server"
-        stop_server
-        false
-      end
+      complete_startup
     end
 
     # Stop SolidQueue supervisor
@@ -50,34 +27,13 @@ module SolidQueueHelper
       return unless supervisor_pid
 
       puts "\n🛑 Stopping SolidQueue server..."
-
-      begin
-        # Send TERM signal to the process group
-        Process.kill("-TERM", supervisor_pid)
-
-        # Wait for processes to terminate
-        deadline = Time.zone.now + SHUTDOWN_TIMEOUT
-        sleep 0.2 while process_alive?(supervisor_pid) && Time.zone.now < deadline
-
-        if process_alive?(supervisor_pid)
-          # Force kill if still alive
-          begin
-            Process.kill("-KILL", supervisor_pid)
-          rescue StandardError
-            nil
-          end
-          puts "⚠️ SolidQueue server force killed"
-        else
-          puts "✅ SolidQueue server stopped"
-        end
-      rescue Errno::ESRCH
-        puts "✅ SolidQueue server already stopped"
-      rescue StandardError => e
-        puts "⚠️ Error stopping SolidQueue: #{e.message}"
-      ensure
-        self.supervisor_pid = nil
-        self.started = false
-      end
+      puts shutdown_message
+    rescue Errno::ESRCH
+      puts "✅ SolidQueue server already stopped"
+    rescue StandardError => e
+      puts "⚠️ Error stopping SolidQueue: #{e.message}"
+    ensure
+      reset_server_state
     end
 
     # Check if SolidQueue server is running and ready
@@ -152,6 +108,29 @@ module SolidQueueHelper
 
     private
 
+    def spawn_supervisor
+      spawn(
+        { "RAILS_ENV" => "test" },
+        Rails.root.join("bin/jobs").to_s, "start",
+        chdir: Rails.root.to_s,
+        out: File::NULL,
+        err: File::NULL,
+        pgroup: true
+      )
+    end
+
+    def complete_startup
+      unless wait_for_server_ready
+        puts "❌ Failed to start SolidQueue server"
+        stop_server
+        return false
+      end
+
+      self.server_started = true
+      puts "✅ SolidQueue server started (PID: #{supervisor_pid})"
+      true
+    end
+
     def wait_for_server_ready
       deadline = Time.current + STARTUP_TIMEOUT
 
@@ -161,6 +140,27 @@ module SolidQueueHelper
 
         sleep 0.3
       end
+    end
+
+    def shutdown_message
+      Process.kill("-TERM", supervisor_pid)
+      wait_for_shutdown
+      return "✅ SolidQueue server stopped" unless process_alive?(supervisor_pid)
+
+      Process.kill("-KILL", supervisor_pid)
+      "⚠️ SolidQueue server force killed"
+    rescue Errno::EPERM, Errno::EINVAL
+      "⚠️ SolidQueue server force killed"
+    end
+
+    def wait_for_shutdown
+      deadline = Time.zone.now + SHUTDOWN_TIMEOUT
+      sleep 0.2 while process_alive?(supervisor_pid) && Time.zone.now < deadline
+    end
+
+    def reset_server_state
+      self.supervisor_pid = nil
+      self.server_started = false
     end
 
     def process_alive?(pid)
@@ -178,7 +178,7 @@ RSpec.configure do |config|
   config.before(:suite) do
     if SolidQueueHelper.server_ready?
       puts "\n✅ SolidQueue server already running"
-      SolidQueueHelper.started = true
+      SolidQueueHelper.server_started = true
     else
       SolidQueueHelper.start_server
     end

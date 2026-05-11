@@ -47,6 +47,8 @@ Metrics/ClassLength:
     - array
     - hash
     - heredoc
+  Exclude:
+    - spec/support/solid_queue_helper.rb
 
 Metrics/MethodLength:
   Enabled: true
@@ -65,6 +67,8 @@ Metrics/ModuleLength:
     - array
     - hash
     - heredoc
+  Exclude:
+    - spec/support/solid_queue_helper.rb
 
 RSpec/ExampleLength:
   Enabled: true
@@ -73,6 +77,29 @@ RSpec/ExampleLength:
     - array
     - hash
     - heredoc
+
+RSpec/DescribeClass:
+  Exclude:
+    - spec/jobs/acceptance_job_coverage_spec.rb
+    - spec/jobs/conditional_execution_spec.rb
+    - spec/jobs/dependency_wait_spec.rb
+    - spec/jobs/dry_run_spec.rb
+    - spec/jobs/dsl_basics_spec.rb
+    - spec/jobs/error_handling_spec.rb
+    - spec/jobs/lifecycle_hooks_spec.rb
+    - spec/jobs/parallel_processing_spec.rb
+    - spec/jobs/queue_management_spec.rb
+    - spec/jobs/task_outputs_spec.rb
+    - spec/jobs/workflow_composition_spec.rb
+    - spec/jobs/workflow_status_query_spec.rb
+
+RSpec/AroundBlock:
+  Exclude:
+    - spec/jobs/lifecycle_hooks_spec.rb
+
+Naming/PredicateMethod:
+  Exclude:
+    - spec/support/solid_queue_helper.rb
 
 Style/Documentation:
   Enabled: false
