@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- Fix `enqueue: true` consumer tasks that read `depends_on` outputs by persisting the parent context before `perform_all_later`, so sub-jobs load the latest dependency outputs instead of stale persisted state
 - Fix sequential `each` task resumption to persist continuation cursor progress at the workflow step level, resume from `step.cursor`, and keep the failed iteration retrying from the same `each_index` without skipping previously collected outputs
 
 ### Removed
