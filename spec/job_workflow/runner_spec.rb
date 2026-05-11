@@ -395,6 +395,78 @@ RSpec.describe JobWorkflow::Runner do
       end
     end
 
+    context "when enqueued task depends on previous task output" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          task :producer, output: { value: "Integer" } do |_ctx|
+            { value: 5 }
+          end
+
+          task :consumer, enqueue: true, depends_on: [:producer], output: { value: "Integer" } do |ctx|
+            { value: ctx.output[:producer].first.value + 1 }
+          end
+        end
+        klass.new
+      end
+      let(:ctx) { JobWorkflow::Context.from_hash({ job:, workflow: job.class._workflow }) }
+      let(:adapter) { JobWorkflow::QueueAdapter.current }
+      let(:state) { { consumer_values: [], events: [], persisted_context_data: nil } }
+
+      before do
+        job._context = ctx
+        state[:persisted_context_data] = serialized_context_data(job)
+
+        allow(adapter).to receive(:persist_job_context) do |active_job|
+          event_name = active_job.job_id == job.job_id ? :persist_parent : :persist_sub_job
+          state[:events] << event_name
+          next unless active_job.job_id == job.job_id
+
+          state[:persisted_context_data] = serialized_context_data(active_job)
+        end
+
+        allow(JobWorkflow::WorkflowStatus).to receive(:find).with(job.job_id) do
+          build_workflow_status(job.class._workflow, state.fetch(:persisted_context_data))
+        end
+        allow(ActiveJob).to receive(:perform_all_later) do |sub_jobs|
+          state[:events] << :enqueue
+          run_sub_jobs(sub_jobs, state[:consumer_values])
+        end
+      end
+
+      it "loads the parent output from the persisted context" do
+        run
+        expect(state[:consumer_values]).to eq([6])
+      end
+
+      it "persists the parent context before perform_all_later" do
+        run
+        expect(state[:events]).to start_with(:persist_parent, :enqueue)
+      end
+
+      def serialized_context_data(active_job)
+        active_job.serialize.fetch("job_workflow_context")
+      end
+
+      def build_workflow_status(workflow, persisted_context_data)
+        JobWorkflow::WorkflowStatus.new(
+          context: JobWorkflow::Context.deserialize(persisted_context_data.merge("workflow" => workflow)),
+          job_class_name: "TestJob",
+          status: :running
+        )
+      end
+
+      def run_sub_jobs(sub_jobs, consumer_values)
+        sub_jobs.each do |sub_job|
+          restored_job = sub_job.class.new
+          restored_job.deserialize(sub_job.serialize)
+          restored_job.perform(sub_job.arguments.first)
+          consumer_values << restored_job.output[:consumer].first.value
+        end
+      end
+    end
+
     context "when nested _with_each_value calls" do
       let(:job) do
         klass = Class.new(ActiveJob::Base) do
