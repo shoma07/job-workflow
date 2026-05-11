@@ -272,6 +272,13 @@ RSpec.describe "Lifecycle Hooks" do
 
       let(:workflow_job) { OnErrorHookJob.new({}) }
       let(:error_log) { [] }
+      let(:perform_workflow_without_error) do
+        lambda do
+          perform_workflow
+        rescue RuntimeError
+          nil
+        end
+      end
 
       before do
         tracker = error_log
@@ -291,9 +298,14 @@ RSpec.describe "Lifecycle Hooks" do
         end)
       end
 
-      it "invokes on_error hook" do
+      it "raises the original error" do
         expect { perform_workflow }.to raise_error(RuntimeError, "Intentional error")
-        expect(error_log).to eq([{ task: :failing_task, error: "Intentional error" }])
+      end
+
+      it "records the error via on_error hook" do
+        expect(&perform_workflow_without_error).to change(error_log, :dup).from([]).to(
+          [{ task: :failing_task, error: "Intentional error" }]
+        )
       end
     end
   end

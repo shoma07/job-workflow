@@ -65,8 +65,7 @@ RSpec.describe "Parallel Processing" do
       it "provides access to current element via each_value" do
         perform_workflow
         outputs = workflow_job.output[:double_numbers]
-        expect(outputs.map(&:original)).to eq([10, 20, 30])
-        expect(outputs.map(&:doubled)).to eq([20, 40, 60])
+        expect(outputs.map { |output| [output.original, output.doubled] }).to eq([[10, 20], [20, 40], [30, 60]])
       end
     end
 
@@ -177,14 +176,6 @@ RSpec.describe "Parallel Processing" do
 
         status = JobWorkflow::WorkflowStatus.find(job_id)
         expect(status.status).to eq(:succeeded)
-      end
-
-      it "aggregates results after all sub-jobs complete" do
-        workflow_job.enqueue
-        raise "Job did not complete in time" unless wait_for_job(job_id, timeout: 60)
-
-        status = JobWorkflow::WorkflowStatus.find(job_id)
-        expect(status).to be_completed
       end
 
       it "computes correct total from async sub-job outputs" do
