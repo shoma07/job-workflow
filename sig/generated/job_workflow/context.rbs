@@ -141,7 +141,7 @@ module JobWorkflow
     def parent_job_id: () -> String
 
     # :  () -> bool
-    def collection_task?: () -> bool
+    def each_task?: () -> bool
 
     # :  (untyped) -> untyped
     def build_step_cursor: (untyped) -> untyped

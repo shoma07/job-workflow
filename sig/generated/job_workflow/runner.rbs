@@ -33,6 +33,9 @@ module JobWorkflow
     # :  (Task, step: ActiveJob::Continuation::Step) -> void
     def run_task: (Task, step: ActiveJob::Continuation::Step) -> void
 
+    # :  (Task, untyped) -> [Integer?, untyped]
+    def decode_task_cursor: (Task, untyped) -> [ Integer?, untyped ]
+
     # :  (Task, Context, step: ActiveJob::Continuation::Step, ?cursor: untyped) -> void
     def run_each_task: (Task, Context, step: ActiveJob::Continuation::Step, ?cursor: untyped) -> void
 

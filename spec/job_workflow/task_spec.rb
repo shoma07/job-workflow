@@ -521,8 +521,8 @@ RSpec.describe JobWorkflow::Task do
     it { is_expected.to eq("MyJob:fetch_data") }
   end
 
-  describe "#collection?" do
-    subject(:collection?) { task.collection? }
+  describe "#each?" do
+    subject(:each?) { task.each? }
 
     context "when each is not provided" do
       let(:task) do

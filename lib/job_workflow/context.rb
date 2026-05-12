@@ -83,7 +83,7 @@ module JobWorkflow
 
     #:  () -> untyped
     def cursor
-      return nil if current_step.nil?
+      return if current_step.nil?
 
       current_cursor
     end
@@ -101,7 +101,7 @@ module JobWorkflow
     def checkpoint!
       step = current_step || (raise "checkpoint! can be called only in task")
 
-      return step.checkpoint! unless collection_task?
+      return step.checkpoint! unless each_task?
 
       step.set!(build_step_cursor(current_cursor))
     end
@@ -295,13 +295,13 @@ module JobWorkflow
     end
 
     #:  () -> bool
-    def collection_task?
-      task_context.task.collection?
+    def each_task?
+      task_context.task.each?
     end
 
     #:  (untyped) -> untyped
     def build_step_cursor(value)
-      return value unless collection_task?
+      return value unless each_task?
       return task_context.index if value.nil?
 
       {

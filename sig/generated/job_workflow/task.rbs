@@ -53,7 +53,7 @@ module JobWorkflow
     def throttle_prefix_key: () -> String
 
     # :  () -> bool
-    def collection?: () -> bool
+    def each?: () -> bool
 
     private
 

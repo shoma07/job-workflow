@@ -75,7 +75,7 @@ module JobWorkflow
     end
 
     #:  () -> bool
-    def collection?
+    def each?
       !each.nil? && !each.equal?(DEFAULT_EACH)
     end
 

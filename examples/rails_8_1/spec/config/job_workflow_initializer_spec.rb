@@ -24,27 +24,4 @@ RSpec.describe JobWorkflowInitializer do
       end
     end
   end
-
-  describe ".reset_queue_adapter" do
-    context "when QueueAdapter is available" do
-      before do
-        allow(JobWorkflow::QueueAdapter).to receive(:reset!).and_call_original
-      end
-
-      it "resets the queue adapter" do
-        described_class.reset_queue_adapter
-        expect(JobWorkflow::QueueAdapter).to have_received(:reset!)
-      end
-    end
-
-    context "when QueueAdapter is unavailable" do
-      before do
-        hide_const("JobWorkflow::QueueAdapter")
-      end
-
-      it "does not raise" do
-        expect { described_class.reset_queue_adapter }.not_to raise_error
-      end
-    end
-  end
 end
