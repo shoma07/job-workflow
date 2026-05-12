@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [0.4.0] - 2026-05-12
+
 ### Fixed
 
 - Fix `enqueue: true` consumer tasks that read `depends_on` outputs by persisting the parent context before `perform_all_later`, so sub-jobs load the latest dependency outputs instead of stale persisted state
