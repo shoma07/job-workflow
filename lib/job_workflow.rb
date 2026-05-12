@@ -45,6 +45,7 @@ require_relative "job_workflow/task_output"
 require_relative "job_workflow/output"
 require_relative "job_workflow/queue"
 require_relative "job_workflow/auto_scaling"
+require_relative "job_workflow/railtie" if defined?(Rails::Railtie)
 
 module JobWorkflow
   class Error < StandardError; end
@@ -53,6 +54,5 @@ module JobWorkflow
 
   Instrumentation::LogSubscriber.attach!
 
-  ActiveSupport.on_load(:solid_queue) { QueueAdapter.current.initialize_adapter! }
   QueueAdapter.current.initialize_adapter!
 end
