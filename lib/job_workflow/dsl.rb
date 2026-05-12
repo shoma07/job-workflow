@@ -128,7 +128,7 @@ module JobWorkflow
       #   ) { (untyped) -> void } -> void
       def task(
         task_name,
-        each: ->(_ctx) { [TaskContext::NULL_VALUE] },
+        each: Task::DEFAULT_EACH,
         enqueue: nil,
         retry: 0,
         output: {},

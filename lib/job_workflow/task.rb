@@ -2,6 +2,8 @@
 
 module JobWorkflow
   class Task
+    DEFAULT_EACH = ->(_ctx) { [nil] }
+
     attr_reader :job_name #: String
     attr_reader :block #: ^(untyped) -> void
     attr_reader :each #: ^(Context) -> untyped
@@ -70,6 +72,11 @@ module JobWorkflow
     #:  () -> String
     def throttle_prefix_key
       "#{job_name}:#{task_name}"
+    end
+
+    #:  () -> bool
+    def each?
+      !each.nil? && !each.equal?(DEFAULT_EACH)
     end
 
     private

@@ -3,6 +3,8 @@
 module JobWorkflow
   class Context
     # rubocop:disable Metrics/ClassLength
+    EACH_TASK_CURSOR_MARKER: ::String
+
     attr_reader workflow: Workflow
 
     attr_reader arguments: Arguments
@@ -32,6 +34,15 @@ module JobWorkflow
 
     # :  (Hash[Symbol, untyped]) -> Context
     def _update_arguments: (Hash[Symbol, untyped]) -> Context
+
+    # :  () -> untyped
+    def cursor: () -> untyped
+
+    # :  (untyped) -> void
+    def set_cursor!: (untyped) -> void
+
+    # :  () -> void
+    def checkpoint!: () -> void
 
     # :  (DSL) -> void
     def _job=: (DSL) -> void
@@ -93,6 +104,9 @@ module JobWorkflow
     # :  () -> TaskContext
     def _task_context: () -> TaskContext
 
+    # :  (ActiveJob::Continuation::Step, ?cursor: untyped) { () -> void } -> void
+    def _with_current_step: (ActiveJob::Continuation::Step, ?cursor: untyped) { () -> void } -> void
+
     # :  (TaskOutput) -> void
     def _add_task_output: (TaskOutput) -> void
 
@@ -119,8 +133,18 @@ module JobWorkflow
 
     attr_accessor skip_in_dry_run_index: Integer
 
+    attr_accessor current_step: ActiveJob::Continuation::Step?
+
+    attr_accessor current_cursor: untyped
+
     # :  () -> String
     def parent_job_id: () -> String
+
+    # :  () -> bool
+    def each_task?: () -> bool
+
+    # :  (untyped) -> untyped
+    def build_step_cursor: (untyped) -> untyped
 
     # :  () -> Hash[String, untyped]
     def serialize_for_job: () -> Hash[String, untyped]
