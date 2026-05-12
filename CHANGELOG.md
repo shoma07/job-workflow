@@ -1,5 +1,15 @@
 ## [Unreleased]
 
+## [0.5.0] - 2026-05-13
+
+### Added
+
+- Add task-scoped cursor helpers on `Context` so tasks can persist progress, restore task-local continuation state, and delegate explicit checkpoints without exposing ActiveJob continuation internals
+
+### Fixed
+
+- Initialize the SolidQueue adapter from a Railtie after Rails boot so the `ClaimedExecution` patch is applied reliably, rescheduled `dependency_wait` jobs are not marked finished early, and Rails apps no longer need a manual initializer
+
 ## [0.4.0] - 2026-05-12
 
 ### Fixed
