@@ -86,7 +86,9 @@ end
 
 ### Task continuation helpers
 
-Inside a task body, you can access the current step cursor and create checkpoints through the task context:
+Inside a task body, you can read the current task cursor, store a new cursor, and create interruption points through the task context.
+
+#### Regular task example
 
 ```ruby
 task :sync_pages, output: { processed: "Integer" } do |ctx|
@@ -94,19 +96,63 @@ task :sync_pages, output: { processed: "Integer" } do |ctx|
   result = ExternalAPI.fetch(page:)
 
   ctx.set_cursor!(page + 1) if result.next_page?
-  ctx.checkpoint!
 
   { processed: result.items.size }
 end
 ```
 
 - `ctx.cursor` returns the current task cursor, or `nil` when no cursor has been stored
-- `ctx.set_cursor!(value)` validates that `value` is ActiveJob-serializable, stores it in the current continuation step, and creates a checkpoint
+- `ctx.set_cursor!(value)` validates that `value` is ActiveJob-serializable, stores it in the current continuation step, and checkpoints the job through Active Job continuation
 - `ctx.checkpoint!` creates a checkpoint without changing the public cursor value
+- Call `ctx.set_cursor!` when you want to change the public cursor value and create a checkpoint at the same time
+- Call `ctx.checkpoint!` when you want the current task execution to become interruptible without changing the public cursor value
 - Outside task execution, `ctx.cursor` returns `nil`, and `ctx.set_cursor!` / `ctx.checkpoint!` raise an error
 
-For `each:` tasks, JobWorkflow keeps the existing integer resume behavior for completed iterations and automatically preserves the current iteration index when a custom task cursor is stored.
-Regular tasks do not advance an implicit completion cursor at task end; they only persist a cursor when you call `ctx.set_cursor!(value)` explicitly.
+For regular tasks, a cursor is only persisted when you call `ctx.set_cursor!(value)` explicitly.
+
+#### Checkpoint without changing the cursor
+
+```ruby
+task :publish_report do |ctx|
+  report = build_report
+  ctx.checkpoint!
+  deliver_report(report)
+end
+```
+
+#### Repeating work inside a task
+
+```ruby
+task :sync_users do |ctx|
+  start_index = ctx.cursor || 0
+
+  ctx.arguments.user_ids.drop(start_index).each_with_index do |user_id, offset|
+    sync_user(user_id)
+    ctx.set_cursor!(start_index + offset + 1)
+  end
+end
+```
+
+This pattern is useful when a single task iterates over an Enumerable internally and you want to resume from the last completed item after an interruption.
+
+#### `each:` task example
+
+```ruby
+task :sync_users, each: ->(ctx) { ctx.arguments.user_ids } do |ctx|
+  next_cursor = ExternalAPI.sync_user(
+    user_id: ctx.each_value,
+    cursor: ctx.cursor
+  )
+
+  ctx.set_cursor!(next_cursor) unless next_cursor.nil?
+end
+```
+
+For `each:` tasks, JobWorkflow keeps the existing integer resume behavior for completed iterations.
+
+- If an `each:` task is interrupted after calling `ctx.set_cursor!`, JobWorkflow resumes with both the current iteration index and the saved task cursor
+- If an iteration completes normally, the resume state advances to the next integer index
+- In other words, a custom cursor in an `each:` task is meant for resuming work inside the current iteration, not for replacing the completion index of finished iterations
 
 ### workflow_concurrency
 
