@@ -2,6 +2,8 @@
 
 module JobWorkflow
   class Context # rubocop:disable Metrics/ClassLength
+    EACH_TASK_CURSOR_MARKER = "__job_workflow_each_cursor__"
+
     attr_reader :workflow #: Workflow
     attr_reader :arguments #: Arguments
     attr_reader :output #: Output
@@ -52,7 +54,7 @@ module JobWorkflow
     #     job_status: JobStatus,
     #     ?job: DSL?
     #   ) -> void
-    def initialize(workflow:, arguments:, task_context:, output:, job_status:, job: nil) # rubocop:disable Metrics/ParameterLists
+    def initialize(workflow:, arguments:, task_context:, output:, job_status:, job: nil) # rubocop:disable Metrics/ParameterLists, Metrics/AbcSize, Metrics/MethodLength
       raise "job does not match the provided workflow" if job&.then { |j| j.class._workflow != workflow }
 
       self.job = job
@@ -64,6 +66,8 @@ module JobWorkflow
       self.enabled_with_each_value = false
       self.throttle_index = 0
       self.skip_in_dry_run_index = 0
+      self.current_step = nil
+      self.current_cursor = nil
     end
 
     #:  () -> Hash[String, untyped]
@@ -75,6 +79,31 @@ module JobWorkflow
     def _update_arguments(other_arguments)
       self.arguments = arguments.merge(other_arguments.symbolize_keys)
       self
+    end
+
+    #:  () -> untyped
+    def cursor
+      return nil if current_step.nil?
+
+      current_cursor
+    end
+
+    #:  (untyped) -> void
+    def set_cursor!(value)
+      step = current_step || (raise "set_cursor! can be called only in task")
+
+      ActiveJob::Arguments.serialize([value])
+      self.current_cursor = value
+      step.set!(build_step_cursor(value))
+    end
+
+    #:  () -> void
+    def checkpoint!
+      step = current_step || (raise "checkpoint! can be called only in task")
+
+      return step.checkpoint! unless collection_task?
+
+      step.set!(build_step_cursor(current_cursor))
     end
 
     #:  (DSL) -> void
@@ -220,6 +249,18 @@ module JobWorkflow
       task_context
     end
 
+    #:  (ActiveJob::Continuation::Step, ?cursor: untyped) { () -> void } -> void
+    def _with_current_step(step, cursor: nil)
+      previous_step = current_step
+      previous_cursor = current_cursor
+      self.current_step = step
+      self.current_cursor = cursor
+      yield
+    ensure
+      self.current_step = previous_step
+      self.current_cursor = previous_cursor
+    end
+
     #:  (TaskOutput) -> void
     def _add_task_output(task_output)
       output.add_task_output(task_output)
@@ -245,10 +286,29 @@ module JobWorkflow
     attr_accessor :enabled_with_each_value #: bool
     attr_accessor :throttle_index #: Integer
     attr_accessor :skip_in_dry_run_index #: Integer
+    attr_accessor :current_step #: ActiveJob::Continuation::Step?
+    attr_accessor :current_cursor #: untyped
 
     #:  () -> String
     def parent_job_id
       _task_context.parent_job_id || job_id
+    end
+
+    #:  () -> bool
+    def collection_task?
+      task_context.task.collection?
+    end
+
+    #:  (untyped) -> untyped
+    def build_step_cursor(value)
+      return value unless collection_task?
+      return task_context.index if value.nil?
+
+      {
+        EACH_TASK_CURSOR_MARKER => true,
+        "index" => task_context.index,
+        "cursor" => value
+      }
     end
 
     #:  () -> Hash[String, untyped]

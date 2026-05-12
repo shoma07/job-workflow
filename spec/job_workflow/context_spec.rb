@@ -749,6 +749,28 @@ RSpec.describe JobWorkflow::Context do
     end
   end
 
+  describe "#cursor" do
+    subject(:cursor) { ctx.cursor }
+
+    it { is_expected.to be_nil }
+  end
+
+  describe "#set_cursor!" do
+    subject(:set_cursor!) { ctx.set_cursor!("cursor") }
+
+    it "raises outside task execution" do
+      expect { set_cursor! }.to raise_error(RuntimeError, "set_cursor! can be called only in task")
+    end
+  end
+
+  describe "#checkpoint!" do
+    subject(:checkpoint!) { ctx.checkpoint! }
+
+    it "raises outside task execution" do
+      expect { checkpoint! }.to raise_error(RuntimeError, "checkpoint! can be called only in task")
+    end
+  end
+
   describe "#arguments attribute" do
     it "provides access to context values" do
       expect(ctx.arguments).to have_attributes(

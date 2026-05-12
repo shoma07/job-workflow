@@ -84,6 +84,30 @@ end
 
 **Map Task Output**: When `each:` is specified, outputs are automatically collected as an array.
 
+### Task continuation helpers
+
+Inside a task body, you can access the current step cursor and create checkpoints through the task context:
+
+```ruby
+task :sync_pages, output: { processed: "Integer" } do |ctx|
+  page = ctx.cursor || 1
+  result = ExternalAPI.fetch(page:)
+
+  ctx.set_cursor!(page + 1) if result.next_page?
+  ctx.checkpoint!
+
+  { processed: result.items.size }
+end
+```
+
+- `ctx.cursor` returns the current task cursor, or `nil` when no cursor has been stored
+- `ctx.set_cursor!(value)` validates that `value` is ActiveJob-serializable, stores it in the current continuation step, and creates a checkpoint
+- `ctx.checkpoint!` creates a checkpoint without changing the public cursor value
+- Outside task execution, `ctx.cursor` returns `nil`, and `ctx.set_cursor!` / `ctx.checkpoint!` raise an error
+
+For `each:` tasks, JobWorkflow keeps the existing integer resume behavior for completed iterations and automatically preserves the current iteration index when a custom task cursor is stored.
+Regular tasks do not advance an implicit completion cursor at task end; they only persist a cursor when you call `ctx.set_cursor!(value)` explicitly.
+
 ### workflow_concurrency
 
 Configure job-level concurrency limits with workflow-aware context.

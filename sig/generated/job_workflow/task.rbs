@@ -2,6 +2,8 @@
 
 module JobWorkflow
   class Task
+    DEFAULT_EACH: untyped
+
     attr_reader job_name: String
 
     attr_reader block: ^(untyped) -> void
@@ -49,6 +51,9 @@ module JobWorkflow
 
     # :  () -> String
     def throttle_prefix_key: () -> String
+
+    # :  () -> bool
+    def collection?: () -> bool
 
     private
 

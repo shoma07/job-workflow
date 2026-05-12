@@ -6,6 +6,12 @@
 
 JobWorkflow is a declarative workflow orchestration engine for Ruby on Rails applications, built on top of ActiveJob. It provides a simple DSL for defining workflows.
 
+## Highlights
+
+- Declarative task dependencies and typed task outputs
+- Sequential and parallel map tasks with ActiveJob-backed execution
+- Task-level continuation helpers via `ctx.cursor`, `ctx.set_cursor!(value)`, and `ctx.checkpoint!`
+
 ## Installation
 
 Add this line to your application's Gemfile:

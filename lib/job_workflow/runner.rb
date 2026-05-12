@@ -14,7 +14,7 @@ module JobWorkflow
     def run
       task = context._task_context.task
       if !task.nil? && context.sub_job?
-        run_task(task)
+        job.step(task.task_name) { |step| run_task(task, step:) }
         persist_current_job_context
         return
       end
@@ -63,25 +63,45 @@ module JobWorkflow
       result
     end
 
-    #:  (Task, ?step: ActiveJob::Continuation::Step?) -> void
-    def run_task(task, step: nil)
+    #:  (Task, step: ActiveJob::Continuation::Step) -> void
+    def run_task(task, step:) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
       context._load_parent_task_output
-      context._with_each_value(task, start_index: step&.cursor).each do |ctx|
-        run_each_task(task, ctx)
-        step&.set!(ctx._task_context.index + 1)
+      start_index = nil
+      task_cursor = step.cursor
+
+      if task.collection?
+        if task_cursor.is_a?(Integer)
+          start_index = task_cursor
+          task_cursor = nil
+        elsif task_cursor.is_a?(Hash) && task_cursor[Context::EACH_TASK_CURSOR_MARKER]
+          start_index = task_cursor.fetch("index")
+          task_cursor = task_cursor.fetch("cursor")
+        elsif !task_cursor.nil?
+          raise "invalid each task cursor: #{task_cursor.inspect}"
+        end
+      end
+
+      context._with_each_value(task, start_index:).each do |ctx|
+        iteration_cursor = task_cursor
+        iteration_cursor = nil if task.collection? && (task_cursor.nil? || start_index != ctx._task_context.index)
+
+        run_each_task(task, ctx, step:, cursor: iteration_cursor)
+        step.set!(ctx._task_context.index + 1) if task.collection?
       rescue StandardError => e
         run_error_hooks(task, ctx, e)
         raise
       end
     end
 
-    #:  (Task, Context) -> void
-    def run_each_task(task, ctx)
+    #:  (Task, Context, step: ActiveJob::Continuation::Step, ?cursor: untyped) -> void
+    def run_each_task(task, ctx, step:, cursor: nil)
       Instrumentation.instrument_task(job, task, ctx) do
-        ctx._with_task_throttle do
-          run_hooks(task, ctx) do
-            data = task.block.call(ctx)
-            add_task_output(ctx:, task:, each_index: ctx._task_context.index, data:)
+        ctx._with_current_step(step, cursor:) do
+          ctx._with_task_throttle do
+            run_hooks(task, ctx) do
+              data = task.block.call(ctx)
+              add_task_output(ctx:, task:, each_index: ctx._task_context.index, data:)
+            end
           end
         end
       end

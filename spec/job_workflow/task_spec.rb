@@ -520,4 +520,46 @@ RSpec.describe JobWorkflow::Task do
 
     it { is_expected.to eq("MyJob:fetch_data") }
   end
+
+  describe "#collection?" do
+    subject(:collection?) { task.collection? }
+
+    context "when each is not provided" do
+      let(:task) do
+        described_class.new(
+          job_name: "MyJob",
+          name: :fetch_data,
+          block: ->(_ctx) {}
+        )
+      end
+
+      it { is_expected.to be false }
+    end
+
+    context "when each is a custom proc" do
+      let(:task) do
+        described_class.new(
+          job_name: "MyJob",
+          name: :fetch_data,
+          each: ->(_ctx) { [1, 2, 3] },
+          block: ->(_ctx) {}
+        )
+      end
+
+      it { is_expected.to be true }
+    end
+
+    context "when each uses the internal default proc" do
+      let(:task) do
+        described_class.new(
+          job_name: "MyJob",
+          name: :fetch_data,
+          each: described_class::DEFAULT_EACH,
+          block: ->(_ctx) {}
+        )
+      end
+
+      it { is_expected.to be false }
+    end
+  end
 end

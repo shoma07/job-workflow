@@ -142,7 +142,11 @@ RSpec.describe JobWorkflow::Runner do
       end
 
       before do
+        step_mock = instance_double(ActiveJob::Continuation::Step, cursor: nil)
         allow(JobWorkflow::WorkflowStatus).to receive(:find).with("parent-job-id").and_return(parent_workflow_status)
+        allow(step_mock).to receive(:checkpoint!)
+        allow(step_mock).to receive(:set!)
+        allow(job).to receive(:step).with(:process_items).and_yield(step_mock)
       end
 
       it "runs only the current task starting from restored index" do
@@ -155,6 +159,11 @@ RSpec.describe JobWorkflow::Runner do
         allow(adapter).to receive(:persist_job_context)
         run
         expect(adapter).to have_received(:persist_job_context).with(job)
+      end
+
+      it "wraps the sub-job task in a continuation step" do
+        run
+        expect(job).to have_received(:step).with(:process_items)
       end
     end
 
@@ -196,6 +205,178 @@ RSpec.describe JobWorkflow::Runner do
         allow(adapter).to receive(:persist_job_context)
         run
         expect(adapter).to have_received(:persist_job_context).with(job)
+      end
+    end
+
+    context "when regular task resumes with cursor" do
+      let(:seen_cursors) { [] }
+      let(:job) do
+        cursors = seen_cursors
+        klass = Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          task :fetch_page do |ctx|
+            cursors << ctx.cursor
+            { cursor: ctx.cursor }
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobWorkflow::Context.from_hash({ job:, workflow: job.class._workflow })
+      end
+      let(:step_mock) { instance_double(ActiveJob::Continuation::Step, cursor: "page-2") }
+
+      before do
+        allow(step_mock).to receive(:checkpoint!)
+        allow(step_mock).to receive(:set!)
+        allow(job).to receive(:step).with(:fetch_page).and_yield(step_mock)
+      end
+
+      it "exposes the restored cursor inside the task" do
+        run
+        expect(seen_cursors).to eq(["page-2"])
+      end
+    end
+
+    context "when regular task completes without custom cursor" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          task :fetch_page do |_ctx|
+            nil
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobWorkflow::Context.from_hash({ job:, workflow: job.class._workflow })
+      end
+      let(:step_mock) { instance_double(ActiveJob::Continuation::Step, cursor: nil) }
+
+      before do
+        allow(step_mock).to receive(:checkpoint!)
+        allow(step_mock).to receive(:set!)
+        allow(job).to receive(:step).with(:fetch_page).and_yield(step_mock)
+      end
+
+      it "does not advance the continuation cursor at task end" do
+        run
+        expect(step_mock).not_to have_received(:set!)
+      end
+    end
+
+    context "when regular task saves cursor" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          task :fetch_page do |ctx|
+            ctx.set_cursor!("page-2")
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobWorkflow::Context.from_hash({ job:, workflow: job.class._workflow })
+      end
+      let(:step_mock) { instance_double(ActiveJob::Continuation::Step, cursor: nil) }
+
+      before do
+        allow(step_mock).to receive(:checkpoint!)
+        allow(step_mock).to receive(:set!)
+        allow(job).to receive(:step).with(:fetch_page).and_yield(step_mock)
+      end
+
+      it "stores the cursor on the current continuation step" do
+        run
+        expect(step_mock).to have_received(:set!).with("page-2")
+      end
+    end
+
+    context "when regular task checkpoints" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          task :fetch_page, &:checkpoint!
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobWorkflow::Context.from_hash({ job:, workflow: job.class._workflow })
+      end
+      let(:step_mock) { instance_double(ActiveJob::Continuation::Step, cursor: nil) }
+
+      before do
+        allow(step_mock).to receive(:checkpoint!)
+        allow(step_mock).to receive(:set!)
+        allow(job).to receive(:step).with(:fetch_page).and_yield(step_mock)
+      end
+
+      it "delegates checkpointing to the current continuation step" do
+        run
+        expect(step_mock).to have_received(:checkpoint!)
+      end
+    end
+
+    context "when task saves a non-serializable cursor" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          task :fetch_page do |ctx|
+            ctx.set_cursor!(Object.new)
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobWorkflow::Context.from_hash({ job:, workflow: job.class._workflow })
+      end
+      let(:step_mock) { instance_double(ActiveJob::Continuation::Step, cursor: nil) }
+
+      before do
+        allow(step_mock).to receive(:checkpoint!)
+        allow(step_mock).to receive(:set!)
+        allow(job).to receive(:step).with(:fetch_page).and_yield(step_mock)
+      end
+
+      it "raises immediately" do
+        expect { run }.to raise_error(ActiveJob::SerializationError)
+      end
+    end
+
+    context "when each task checkpoints without custom cursor" do
+      let(:cursor_updates) { [] }
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          argument :items, "Array[Integer]", default: []
+
+          task :process_items, each: ->(ctx) { ctx.arguments.items } do |ctx|
+            ctx.checkpoint!
+            raise "saved checkpoint"
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobWorkflow::Context.from_hash({ job:, workflow: job.class._workflow })._update_arguments({ items: [10] })
+      end
+      let(:step_mock) { instance_double(ActiveJob::Continuation::Step, cursor: nil) }
+
+      before do
+        allow(step_mock).to receive(:checkpoint!)
+        allow(step_mock).to receive(:set!) { |value| cursor_updates << value }
+        allow(job).to receive(:step).with(:process_items).and_yield(step_mock)
+      end
+
+      it "stores the current iteration index" do
+        expect { run }.to raise_error(RuntimeError, "saved checkpoint")
+          .and change { cursor_updates }.from([]).to([0])
       end
     end
 
@@ -295,6 +476,93 @@ RSpec.describe JobWorkflow::Runner do
         tracking[:fail_on] = 30
         expect { run }.to raise_error(RuntimeError, "sequential each failed")
           .and change { tracking[:cursor_updates] }.from([]).to([2])
+      end
+    end
+
+    context "when resuming each task from saved task cursor" do
+      let(:tracking) { { executions: [], fail_on: nil } }
+      let(:step_state) { { cursor: nil } }
+      let(:job) do
+        current_tracking = tracking
+        klass = Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          argument :items, "Array[Integer]", default: []
+
+          task :process_items, each: ->(ctx) { ctx.arguments.items }, output: { value: "Integer" } do |ctx|
+            current_tracking[:executions] << { value: ctx.each_value, cursor: ctx.cursor }
+
+            if current_tracking[:fail_on] == ctx.each_value
+              ctx.set_cursor!("token-#{ctx.each_value}")
+              raise "saved task cursor"
+            end
+
+            { value: ctx.each_value }
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobWorkflow::Context
+          .from_hash({ job:, workflow: job.class._workflow })
+          ._update_arguments({ items: [10, 20, 30] })
+      end
+
+      before do
+        step_mock = instance_double(ActiveJob::Continuation::Step)
+        allow(step_mock).to receive(:cursor) { step_state[:cursor] }
+        allow(step_mock).to receive(:checkpoint!)
+        allow(step_mock).to receive(:set!) { |value| step_state[:cursor] = value }
+        allow(job).to receive(:step).with(:process_items).and_yield(step_mock)
+      end
+
+      it "restores the interrupted iteration cursor on resume" do
+        run_with_saved_cursor_resume
+        expect(tracking[:executions]).to eq(
+          [
+            { value: 10, cursor: nil },
+            { value: 20, cursor: nil },
+            { value: 20, cursor: "token-20" },
+            { value: 30, cursor: nil }
+          ]
+        )
+      end
+
+      def run_with_saved_cursor_resume
+        tracking[:fail_on] = 20
+        run
+      rescue RuntimeError
+        tracking[:fail_on] = nil
+        run
+      end
+    end
+
+    context "when each task resumes from an invalid cursor" do
+      let(:job) do
+        klass = Class.new(ActiveJob::Base) do
+          include JobWorkflow::DSL
+
+          argument :items, "Array[Integer]", default: []
+
+          task :process_items, each: ->(ctx) { ctx.arguments.items } do |ctx|
+            { value: ctx.each_value }
+          end
+        end
+        klass.new
+      end
+      let(:ctx) do
+        JobWorkflow::Context.from_hash({ job:, workflow: job.class._workflow })._update_arguments({ items: [10, 20] })
+      end
+      let(:step_mock) { instance_double(ActiveJob::Continuation::Step, cursor: "invalid") }
+
+      before do
+        allow(step_mock).to receive(:checkpoint!)
+        allow(step_mock).to receive(:set!)
+        allow(job).to receive(:step).with(:process_items).and_yield(step_mock)
+      end
+
+      it "raises an invalid cursor error" do
+        expect { run }.to raise_error(RuntimeError, 'invalid each task cursor: "invalid"')
       end
     end
 
