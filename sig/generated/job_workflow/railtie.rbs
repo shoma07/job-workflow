@@ -1,0 +1,6 @@
+# Generated from lib/job_workflow/railtie.rb with RBS::Inline
+
+module JobWorkflow
+  class Railtie < Rails::Railtie
+  end
+end
