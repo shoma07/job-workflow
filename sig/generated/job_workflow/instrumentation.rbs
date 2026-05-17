@@ -63,26 +63,26 @@ module JobWorkflow
       DRY_RUN_EXECUTE: untyped
     end
 
-    # :  (DSL) { () -> untyped } -> untyped
-    def self.instrument_workflow: (DSL) { () -> untyped } -> untyped
+    # :  (_JobInterface) { () -> untyped } -> untyped
+    def self.instrument_workflow: (_JobInterface) { () -> untyped } -> untyped
 
-    # :  (DSL, Task, Context) { () -> untyped } -> untyped
-    def self.instrument_task: (DSL, Task, Context) { () -> untyped } -> untyped
+    # :  (_JobInterface, Task, Context) { () -> untyped } -> untyped
+    def self.instrument_task: (_JobInterface, Task, Context) { () -> untyped } -> untyped
 
-    # :  (DSL, Task, String) -> void
-    def self.notify_task_skip: (DSL, Task, String) -> void
+    # :  (_JobInterface, Task, String) -> void
+    def self.notify_task_skip: (_JobInterface, Task, String) -> void
 
-    # :  (DSL, Task, Integer) -> void
-    def self.notify_task_enqueue: (DSL, Task, Integer) -> void
+    # :  (_JobInterface, Task, Integer) -> void
+    def self.notify_task_enqueue: (_JobInterface, Task, Integer) -> void
 
     # :  (Task, Context, String, Integer, Float, StandardError) -> void
     def self.notify_task_retry: (Task, Context, String, Integer, Float, StandardError) -> void
 
-    # :  (DSL, Task) { () -> untyped } -> untyped
-    def self.instrument_dependent_wait: (DSL, Task) { () -> untyped } -> untyped
+    # :  (_JobInterface, Task) { () -> untyped } -> untyped
+    def self.instrument_dependent_wait: (_JobInterface, Task) { () -> untyped } -> untyped
 
-    # :  (DSL, Task, Numeric, Integer) -> void
-    def self.notify_dependent_reschedule: (DSL, Task, Numeric, Integer) -> void
+    # :  (_JobInterface, Task, Numeric, Integer) -> void
+    def self.notify_dependent_reschedule: (_JobInterface, Task, Numeric, Integer) -> void
 
     # :  (Semaphore) { () -> untyped } -> untyped
     def self.instrument_throttle: (Semaphore) { () -> untyped } -> untyped
@@ -99,32 +99,32 @@ module JobWorkflow
     # :  (String, Hash[Symbol, untyped]) { () -> untyped } -> untyped
     def self.instrument_custom: (String, Hash[Symbol, untyped]) { () -> untyped } -> untyped
 
-    # :  (DSL, Context, Symbol?, Integer, bool) { () -> untyped } -> untyped
-    def self.instrument_dry_run: (DSL, Context, Symbol?, Integer, bool) { () -> untyped } -> untyped
+    # :  (_JobInterface, Context, Symbol?, Integer, bool) { () -> untyped } -> untyped
+    def self.instrument_dry_run: (_JobInterface, Context, Symbol?, Integer, bool) { () -> untyped } -> untyped
 
     # :  (String, Hash[Symbol, untyped]) ?{ () -> untyped } -> untyped
     private def self.instrument: (String, Hash[Symbol, untyped]) ?{ () -> untyped } -> untyped
 
-    # :  (DSL) -> Hash[Symbol, untyped]
-    private def self.build_workflow_payload: (DSL) -> Hash[Symbol, untyped]
+    # :  (_JobInterface) -> Hash[Symbol, untyped]
+    private def self.build_workflow_payload: (_JobInterface) -> Hash[Symbol, untyped]
 
-    # :  (DSL, Task, Context) -> Hash[Symbol, untyped]
-    private def self.build_task_payload: (DSL, Task, Context) -> Hash[Symbol, untyped]
+    # :  (_JobInterface, Task, Context) -> Hash[Symbol, untyped]
+    private def self.build_task_payload: (_JobInterface, Task, Context) -> Hash[Symbol, untyped]
 
-    # :  (DSL, Task, String) -> Hash[Symbol, untyped]
-    private def self.build_task_skip_payload: (DSL, Task, String) -> Hash[Symbol, untyped]
+    # :  (_JobInterface, Task, String) -> Hash[Symbol, untyped]
+    private def self.build_task_skip_payload: (_JobInterface, Task, String) -> Hash[Symbol, untyped]
 
-    # :  (DSL, Task, Integer) -> Hash[Symbol, untyped]
-    private def self.build_task_enqueue_payload: (DSL, Task, Integer) -> Hash[Symbol, untyped]
+    # :  (_JobInterface, Task, Integer) -> Hash[Symbol, untyped]
+    private def self.build_task_enqueue_payload: (_JobInterface, Task, Integer) -> Hash[Symbol, untyped]
 
     # :  (Task, Context, String, Integer, Float, StandardError) -> Hash[Symbol, untyped]
     private def self.build_task_retry_payload: (Task, Context, String, Integer, Float, StandardError) -> Hash[Symbol, untyped]
 
-    # :  (DSL, Task) -> Hash[Symbol, untyped]
-    private def self.build_dependent_payload: (DSL, Task) -> Hash[Symbol, untyped]
+    # :  (_JobInterface, Task) -> Hash[Symbol, untyped]
+    private def self.build_dependent_payload: (_JobInterface, Task) -> Hash[Symbol, untyped]
 
-    # :  (DSL, Task, Numeric, Integer) -> Hash[Symbol, untyped]
-    private def self.build_dependent_reschedule_payload: (DSL, Task, Numeric, Integer) -> Hash[Symbol, untyped]
+    # :  (_JobInterface, Task, Numeric, Integer) -> Hash[Symbol, untyped]
+    private def self.build_dependent_reschedule_payload: (_JobInterface, Task, Numeric, Integer) -> Hash[Symbol, untyped]
 
     # :  (Semaphore) -> Hash[Symbol, untyped]
     private def self.build_throttle_payload: (Semaphore) -> Hash[Symbol, untyped]
@@ -132,7 +132,7 @@ module JobWorkflow
     # :  (String) -> Hash[Symbol, untyped]
     private def self.build_queue_payload: (String) -> Hash[Symbol, untyped]
 
-    # :  (DSL, Context, Symbol?, Integer, bool) -> Hash[Symbol, untyped]
-    private def self.build_skip_in_dry_run_payload: (DSL, Context, Symbol?, Integer, bool) -> Hash[Symbol, untyped]
+    # :  (_JobInterface, Context, Symbol?, Integer, bool) -> Hash[Symbol, untyped]
+    private def self.build_skip_in_dry_run_payload: (_JobInterface, Context, Symbol?, Integer, bool) -> Hash[Symbol, untyped]
   end
 end

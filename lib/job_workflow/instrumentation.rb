@@ -40,7 +40,7 @@ module JobWorkflow
     end
 
     class << self
-      #:  (DSL) { () -> untyped } -> untyped
+      #:  (_JobInterface) { () -> untyped } -> untyped
       def instrument_workflow(job, &)
         payload = build_workflow_payload(job)
         instrument(Events::WORKFLOW_START, payload)
@@ -49,7 +49,7 @@ module JobWorkflow
         instrument(Events::WORKFLOW_COMPLETE, payload)
       end
 
-      #:  (DSL, Task, Context) { () -> untyped } -> untyped
+      #:  (_JobInterface, Task, Context) { () -> untyped } -> untyped
       def instrument_task(job, task, ctx, &)
         payload = build_task_payload(job, task, ctx)
         instrument(Events::TASK_START, payload)
@@ -58,12 +58,12 @@ module JobWorkflow
         instrument(Events::TASK_COMPLETE, payload)
       end
 
-      #:  (DSL, Task, String) -> void
+      #:  (_JobInterface, Task, String) -> void
       def notify_task_skip(job, task, reason)
         instrument(Events::TASK_SKIP, build_task_skip_payload(job, task, reason))
       end
 
-      #:  (DSL, Task, Integer) -> void
+      #:  (_JobInterface, Task, Integer) -> void
       def notify_task_enqueue(job, task, sub_job_count)
         instrument(Events::TASK_ENQUEUE, build_task_enqueue_payload(job, task, sub_job_count))
       end
@@ -73,7 +73,7 @@ module JobWorkflow
         instrument(Events::TASK_RETRY, build_task_retry_payload(task, ctx, job_id, attempt, delay, error))
       end
 
-      #:  (DSL, Task) { () -> untyped } -> untyped
+      #:  (_JobInterface, Task) { () -> untyped } -> untyped
       def instrument_dependent_wait(job, task, &)
         payload = build_dependent_payload(job, task)
         instrument(Events::DEPENDENT_WAIT_START, payload)
@@ -82,7 +82,7 @@ module JobWorkflow
         instrument(Events::DEPENDENT_WAIT_COMPLETE, payload)
       end
 
-      #:  (DSL, Task, Numeric, Integer) -> void
+      #:  (_JobInterface, Task, Numeric, Integer) -> void
       def notify_dependent_reschedule(job, task, reschedule_delay, poll_count)
         instrument(
           Events::DEPENDENT_RESCHEDULE,
@@ -120,7 +120,7 @@ module JobWorkflow
         instrument(event_name, payload, &)
       end
 
-      #:  (DSL, Context, Symbol?, Integer, bool) { () -> untyped } -> untyped
+      #:  (_JobInterface, Context, Symbol?, Integer, bool) { () -> untyped } -> untyped
       def instrument_dry_run(job, ctx, dry_run_name, skip_in_dry_run_index, dry_run, &)
         start_event = dry_run ? Events::DRY_RUN_SKIP : Events::DRY_RUN_EXECUTE
         payload = build_skip_in_dry_run_payload(job, ctx, dry_run_name, skip_in_dry_run_index, dry_run)
@@ -135,7 +135,7 @@ module JobWorkflow
         ActiveSupport::Notifications.instrument(event_name, payload, &)
       end
 
-      #:  (DSL) -> Hash[Symbol, untyped]
+      #:  (_JobInterface) -> Hash[Symbol, untyped]
       def build_workflow_payload(job)
         {
           job:,
@@ -144,7 +144,7 @@ module JobWorkflow
         }
       end
 
-      #:  (DSL, Task, Context) -> Hash[Symbol, untyped]
+      #:  (_JobInterface, Task, Context) -> Hash[Symbol, untyped]
       def build_task_payload(job, task, ctx)
         task_ctx = ctx._task_context
         {
@@ -159,7 +159,7 @@ module JobWorkflow
         }
       end
 
-      #:  (DSL, Task, String) -> Hash[Symbol, untyped]
+      #:  (_JobInterface, Task, String) -> Hash[Symbol, untyped]
       def build_task_skip_payload(job, task, reason)
         {
           job:,
@@ -171,7 +171,7 @@ module JobWorkflow
         }
       end
 
-      #:  (DSL, Task, Integer) -> Hash[Symbol, untyped]
+      #:  (_JobInterface, Task, Integer) -> Hash[Symbol, untyped]
       def build_task_enqueue_payload(job, task, sub_job_count)
         {
           job:,
@@ -200,7 +200,7 @@ module JobWorkflow
         }
       end
 
-      #:  (DSL, Task) -> Hash[Symbol, untyped]
+      #:  (_JobInterface, Task) -> Hash[Symbol, untyped]
       def build_dependent_payload(job, task)
         {
           job:,
@@ -211,7 +211,7 @@ module JobWorkflow
         }
       end
 
-      #:  (DSL, Task, Numeric, Integer) -> Hash[Symbol, untyped]
+      #:  (_JobInterface, Task, Numeric, Integer) -> Hash[Symbol, untyped]
       def build_dependent_reschedule_payload(job, task, reschedule_delay, poll_count)
         {
           job:,
@@ -240,7 +240,7 @@ module JobWorkflow
         }
       end
 
-      #:  (DSL, Context, Symbol?, Integer, bool) -> Hash[Symbol, untyped]
+      #:  (_JobInterface, Context, Symbol?, Integer, bool) -> Hash[Symbol, untyped]
       def build_skip_in_dry_run_payload(job, ctx, dry_run_name, dry_run_index, dry_run)
         {
           job_id: job.job_id,

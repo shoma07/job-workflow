@@ -52,10 +52,12 @@ module JobWorkflow
     #     task_context: TaskContext,
     #     output: Output,
     #     job_status: JobStatus,
-    #     ?job: DSL?
+    #     ?job: _JobInterface?
     #   ) -> void
     def initialize(workflow:, arguments:, task_context:, output:, job_status:, job: nil) # rubocop:disable Metrics/ParameterLists, Metrics/AbcSize, Metrics/MethodLength
-      raise "job does not match the provided workflow" if job&.then { |j| j.class._workflow != workflow }
+      if job&.class.respond_to?(:_workflow) && job.class._workflow != workflow
+        raise "job does not match the provided workflow"
+      end
 
       self.job = job
       self.workflow = workflow
@@ -106,12 +108,12 @@ module JobWorkflow
       step.set!(build_step_cursor(current_cursor))
     end
 
-    #:  (DSL) -> void
+    #:  (_JobInterface) -> void
     def _job=(job)
       self.job = job
     end
 
-    #:  () -> DSL?
+    #:  () -> _JobInterface?
     def _job
       job
     end
@@ -277,7 +279,7 @@ module JobWorkflow
 
     private
 
-    attr_accessor :job #: DSL?
+    attr_accessor :job #: _JobInterface?
     attr_writer :workflow #: Workflow
     attr_writer :arguments #: Arguments
     attr_writer :output #: Output

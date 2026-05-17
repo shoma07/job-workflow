@@ -52,11 +52,11 @@ module JobWorkflow
       # :  (Array[String]) -> Array[Hash[String, untyped]]
       def fetch_job_contexts: (Array[String]) -> Array[Hash[String, untyped]]
 
-      # :  (DSL, Numeric) -> bool
-      def reschedule_job: (DSL, Numeric) -> bool
+      # :  (_JobInterface, Numeric) -> bool
+      def reschedule_job: (_JobInterface, Numeric) -> bool
 
-      # :  (DSL) -> void
-      def persist_job_context: (DSL) -> void
+      # :  (_JobInterface) -> void
+      def persist_job_context: (_JobInterface) -> void
     end
   end
 end

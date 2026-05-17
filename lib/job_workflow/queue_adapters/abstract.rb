@@ -82,12 +82,12 @@ module JobWorkflow
         raise NotImplementedError, "#{self.class}#fetch_job_contexts must be implemented"
       end
 
-      #:  (DSL, Numeric) -> bool
+      #:  (_JobInterface, Numeric) -> bool
       def reschedule_job(_job, _wait)
         false
       end
 
-      #:  (DSL) -> void
+      #:  (_JobInterface) -> void
       def persist_job_context(_job); end
     end
     # rubocop:enable Naming/PredicateMethod

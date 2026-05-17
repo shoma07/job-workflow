@@ -55,7 +55,7 @@ module JobWorkflow
       task_job_statuses[task_job_status.task_name][task_job_status.each_index] = task_job_status
     end
 
-    #:  (task_name: Symbol, jobs: Array[DSL]) -> void
+    #:  (task_name: Symbol, jobs: Array[_JobInterface]) -> void
     def update_task_job_statuses_from_jobs(task_name:, jobs:)
       jobs.each.with_index do |job, index|
         update_task_job_status(

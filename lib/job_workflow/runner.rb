@@ -25,11 +25,11 @@ module JobWorkflow
 
     private
 
-    attr_reader :job #: DSL
+    attr_reader :job #: _JobInterface
 
     #:  () -> Workflow
     def workflow
-      job.class._workflow
+      context.workflow
     end
 
     #:  () -> Array[Task]
@@ -133,7 +133,9 @@ module JobWorkflow
 
     #:  (Task) -> void
     def enqueue_task(task)
-      sub_jobs = context._with_each_value(task).map { |ctx| job.class.from_context(ctx) }
+      sub_jobs = context._with_each_value(task).map do |ctx|
+        SubTaskJob.from_parent_context(context: ctx)
+      end
       persist_current_job_context
       ActiveJob.perform_all_later(sub_jobs)
       context.job_status.update_task_job_statuses_from_jobs(task_name: task.task_name, jobs: sub_jobs)

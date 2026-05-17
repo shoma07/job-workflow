@@ -186,7 +186,7 @@ module JobWorkflow
         end
       end
 
-      #:  (DSL, Numeric) -> bool
+      #:  (_JobInterface, Numeric) -> bool
       def reschedule_job(job, wait)
         return false unless defined?(SolidQueue::Job)
 
@@ -204,7 +204,7 @@ module JobWorkflow
       #     outputs computed during job execution would be lost because
       #     SolidQueue does not re-serialize job arguments after perform.
       #
-      #:  (DSL) -> void
+      #:  (_JobInterface) -> void
       def persist_job_context(job)
         return unless defined?(SolidQueue::Job)
 
@@ -229,7 +229,7 @@ module JobWorkflow
         defined?(SolidQueue::Job) ? SolidQueue::Job.uncached(&) : yield
       end
 
-      #:  (SolidQueue::Job, DSL, Numeric) -> bool
+      #:  (SolidQueue::Job, _JobInterface, Numeric) -> bool
       def reschedule_solid_queue_job(solid_queue_job, active_job, wait)
         solid_queue_job.with_lock do
           solid_queue_job.claimed_execution&.destroy!

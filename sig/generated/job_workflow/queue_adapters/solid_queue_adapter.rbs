@@ -88,8 +88,8 @@ module JobWorkflow
       # :  (Array[String]) -> Array[Hash[String, untyped]]
       def fetch_job_contexts: (Array[String]) -> Array[Hash[String, untyped]]
 
-      # :  (DSL, Numeric) -> bool
-      def reschedule_job: (DSL, Numeric) -> bool
+      # :  (_JobInterface, Numeric) -> bool
+      def reschedule_job: (_JobInterface, Numeric) -> bool
 
       # @note
       #   - Persists the job's updated context (including task outputs) back
@@ -97,8 +97,8 @@ module JobWorkflow
       #     outputs computed during job execution would be lost because
       #     SolidQueue does not re-serialize job arguments after perform.
       #
-      # :  (DSL) -> void
-      def persist_job_context: (DSL) -> void
+      # :  (_JobInterface) -> void
+      def persist_job_context: (_JobInterface) -> void
 
       private
 
@@ -113,8 +113,8 @@ module JobWorkflow
       # :  [T] () { () -> T } -> T
       def without_query_cache: [T] () { () -> T } -> T
 
-      # :  (SolidQueue::Job, DSL, Numeric) -> bool
-      def reschedule_solid_queue_job: (SolidQueue::Job, DSL, Numeric) -> bool
+      # :  (SolidQueue::Job, _JobInterface, Numeric) -> bool
+      def reschedule_solid_queue_job: (SolidQueue::Job, _JobInterface, Numeric) -> bool
 
       # @rbs module-self SolidQueue::ClaimedExecution
       module ClaimedExecutionPatch : SolidQueue::ClaimedExecution

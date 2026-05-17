@@ -95,7 +95,7 @@ module JobWorkflow
         []
       end
 
-      #:  (DSL, Numeric) -> bool
+      #:  (_JobInterface, Numeric) -> bool
       def reschedule_job(_job, _wait)
         false
       end

@@ -33,8 +33,8 @@ module JobWorkflow
     # :  (TaskJobStatus) -> void
     def update_task_job_status: (TaskJobStatus) -> void
 
-    # :  (task_name: Symbol, jobs: Array[DSL]) -> void
-    def update_task_job_statuses_from_jobs: (task_name: Symbol, jobs: Array[DSL]) -> void
+    # :  (task_name: Symbol, jobs: Array[_JobInterface]) -> void
+    def update_task_job_statuses_from_jobs: (task_name: Symbol, jobs: Array[_JobInterface]) -> void
 
     # :  (Symbol) -> void
     def update_task_job_statuses_from_db: (Symbol) -> void

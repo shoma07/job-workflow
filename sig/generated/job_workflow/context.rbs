@@ -25,9 +25,9 @@ module JobWorkflow
     #      task_context: TaskContext,
     #      output: Output,
     #      job_status: JobStatus,
-    #      ?job: DSL?
+    #      ?job: _JobInterface?
     #    ) -> void
-    def initialize: (workflow: Workflow, arguments: Arguments, task_context: TaskContext, output: Output, job_status: JobStatus, ?job: DSL?) -> void
+    def initialize: (workflow: Workflow, arguments: Arguments, task_context: TaskContext, output: Output, job_status: JobStatus, ?job: _JobInterface?) -> void
 
     # :  () -> Hash[String, untyped]
     def serialize: () -> Hash[String, untyped]
@@ -44,11 +44,11 @@ module JobWorkflow
     # :  () -> void
     def checkpoint!: () -> void
 
-    # :  (DSL) -> void
-    def _job=: (DSL) -> void
+    # :  (_JobInterface) -> void
+    def _job=: (_JobInterface) -> void
 
-    # :  () -> DSL?
-    def _job: () -> DSL?
+    # :  () -> _JobInterface?
+    def _job: () -> _JobInterface?
 
     # :  () -> String
     def job_id: () -> String
@@ -115,7 +115,7 @@ module JobWorkflow
 
     private
 
-    attr_accessor job: DSL?
+    attr_accessor job: _JobInterface?
 
     attr_writer workflow: Workflow
 

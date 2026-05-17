@@ -668,6 +668,10 @@ RSpec.describe JobWorkflow::Runner do
         klass = Class.new(ActiveJob::Base) do
           include JobWorkflow::DSL
 
+          def self.name
+            "TestJob"
+          end
+
           task :producer, output: { value: "Integer" } do |_ctx|
             { value: 5 }
           end
@@ -726,12 +730,29 @@ RSpec.describe JobWorkflow::Runner do
       end
 
       def run_sub_jobs(sub_jobs, consumer_values)
+        store_parent_job if adapter.respond_to?(:store_job)
+
         sub_jobs.each do |sub_job|
           restored_job = sub_job.class.new
           restored_job.deserialize(sub_job.serialize)
           restored_job.perform(sub_job.arguments.first)
           consumer_values << restored_job.output[:consumer].first.value
         end
+      end
+
+      def store_parent_job
+        adapter.store_job(job.job_id, parent_job_data_for_sub_jobs)
+      end
+
+      def parent_job_data_for_sub_jobs
+        {
+          "job_id" => job.job_id,
+          "class_name" => job.class.name,
+          "queue_name" => job.queue_name,
+          "arguments" => ActiveJob::Arguments.serialize([job.arguments.first || {}]),
+          "job_workflow_context" => state.fetch(:persisted_context_data),
+          "status" => :running
+        }
       end
     end
 
@@ -1886,7 +1907,10 @@ RSpec.describe JobWorkflow::Runner do
       def verify_sub_jobs_queue(sub_jobs, expected_queue, expected_count)
         expect(sub_jobs).to be_an(Array)
         expect(sub_jobs.size).to eq(expected_count)
-        sub_jobs.each { |sub_job| expect(sub_job.queue_name).to eq(expected_queue) }
+        sub_jobs.each do |sub_job|
+          expect(sub_job).to be_a(JobWorkflow::SubTaskJob)
+          expect(sub_job.queue_name).to eq(expected_queue)
+        end
       end
     end
 
@@ -1924,7 +1948,10 @@ RSpec.describe JobWorkflow::Runner do
       def verify_sub_jobs_queue(sub_jobs, expected_queue, expected_count)
         expect(sub_jobs).to be_an(Array)
         expect(sub_jobs.size).to eq(expected_count)
-        sub_jobs.each { |sub_job| expect(sub_job.queue_name).to eq(expected_queue) }
+        sub_jobs.each do |sub_job|
+          expect(sub_job).to be_a(JobWorkflow::SubTaskJob)
+          expect(sub_job.queue_name).to eq(expected_queue)
+        end
       end
     end
 

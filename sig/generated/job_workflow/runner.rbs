@@ -13,7 +13,7 @@ module JobWorkflow
 
     private
 
-    attr_reader job: DSL
+    attr_reader job: _JobInterface
 
     # :  () -> Workflow
     def workflow: () -> Workflow

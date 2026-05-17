@@ -1,0 +1,40 @@
+# Generated from lib/job_workflow/sub_task_job.rb with RBS::Inline
+
+module JobWorkflow
+  class SubTaskJob < ActiveJob::Base
+    include ActiveJob::Continuable
+
+    # :  (context: Context) -> SubTaskJob
+    def self.from_parent_context: (context: Context) -> SubTaskJob
+
+    # :  (Context) -> void
+    private def self.validate_sub_task_context!: (Context) -> void
+
+    # :  (Hash[untyped, untyped]) -> void
+    def perform: (Hash[untyped, untyped]) -> void
+
+    # :  () -> Output
+    def output: () -> Output
+
+    attr_accessor _context: Context?
+
+    # :  () -> Hash[String, untyped]
+    def serialize: () -> Hash[String, untyped]
+
+    # :  (Hash[String, untyped]) -> void
+    def deserialize: (Hash[String, untyped]) -> void
+
+    private
+
+    attr_accessor serialized_job_workflow_context: Hash[String, untyped]?
+
+    # :  (Hash[Symbol, untyped]) -> Context
+    def build_context: (Hash[Symbol, untyped]) -> Context
+
+    # :  (job_class_name: String) -> Workflow
+    def resolve_workflow: (job_class_name: String) -> Workflow
+
+    # :  (Hash[Symbol, untyped]) -> Hash[String, untyped]
+    def extract_context_data: (Hash[Symbol, untyped]) -> Hash[String, untyped]
+  end
+end
